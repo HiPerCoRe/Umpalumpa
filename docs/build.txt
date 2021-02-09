@@ -1,0 +1,9 @@
+candidates:
+	scons https://scons.org/doc/3.1.2/HTML/scons-user.html#idm239
+	cmake
+
+I opted for scons
+	using python
+		more flexible (we might need it)
+		no need to learn new language (for cmake0
+	we also use it in I2PC (so I do have some experience with it)
