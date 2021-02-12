@@ -1,2 +1,2 @@
 Import('env')
-env.Program(target='helloworld', source = ['helloworld.c']) 
+env.Program(target='helloworld.o', source = ['cuda.cu']) 
