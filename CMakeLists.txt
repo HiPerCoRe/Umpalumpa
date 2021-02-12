@@ -1,6 +1,6 @@
-cmake_minimum_required (VERSION 3.1)
+cmake_minimum_required (VERSION 3.11)
 
-project (libumpalumpa)
+project (libumpalumpa LANGUAGES CUDA CXX C)
 
 # specify the C++ standard
 set(CMAKE_CXX_STANDARD 14)
@@ -31,7 +31,11 @@ function (ensure_starpu)
 	endif ()
 endfunction ()
 
-
 ensure_starpu ()
 
-add_executable(hello_starpu libumpalumpa/hello_starpu.c)
+
+# define default location of executables
+set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+
+
+add_subdirectory(libumpalumpa)
