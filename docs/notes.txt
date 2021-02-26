@@ -1,0 +1,1 @@
+we should include .clang-format and .clang-tidy files in the root, maybe even .cmake-format.yaml (via pip)

@@ -1,6 +1,21 @@
-cmake_minimum_required (VERSION 3.11)
+# we don't have to say the type, by default it's static, can be build by setting BUILD_SHARED_LIBS.
+add_library(umpalumpa)
 
-project (libumpalumpa )
+set_target_properties(umpalumpa PROPERTIES SOVERSION 0 VERSION 0.0.1)
 
-add_executable(hello_starpu hello_starpu.c)
-add_executable(vector_scale_hybrid vector_scale_hybrid.cpp vector-scale_hybrid_cuda.cu)
+# list of headers
+set(umpalumpa_headers
+algorithms/alg1.hpp)
+
+
+# list of source files
+set(umpalumpa_sources
+algorithms/alg1.cpp)
+
+target_include_directories(umpalumpa PUBLIC ${CMAKE_SOURCE_DIR})
+
+target_sources(umpalumpa PRIVATE ${umpalumpa_sources})
+target_link_libraries(
+  umpalumpa
+  PRIVATE project_options
+          project_warnings)
