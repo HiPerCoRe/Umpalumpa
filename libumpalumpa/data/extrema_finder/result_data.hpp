@@ -8,7 +8,7 @@ namespace extrema_finder {
 template <typename T>
 class ResultData {
    public:
-    ResultData(Payload<T> *values, Payload<T> *locations) : values(values), locations(locations) {}
+    ResultData(Payload<T> *vals, Payload<T> *locs) : values(vals), locations(locs) {}
     Payload<T> *const values;
     Payload<T> *const locations;
 };

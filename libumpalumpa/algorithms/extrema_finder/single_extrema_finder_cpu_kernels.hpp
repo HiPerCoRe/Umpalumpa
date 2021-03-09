@@ -11,7 +11,7 @@ void FindSingleExtrema1D(T *vals, T *data, const umpalumpa::data::Size &size, co
     // all checks are expected to be done by caller
     for (size_t n = 0; n < size.n; ++n) {
         const size_t offset = n * size.single;
-        auto &extrema = initVal;
+        auto &extrema = const_cast<T &>(initVal);
         for (size_t i = 0; i < size.single; ++i) {
             auto &v = data[offset + i];
             if (comp(v, extrema)) {

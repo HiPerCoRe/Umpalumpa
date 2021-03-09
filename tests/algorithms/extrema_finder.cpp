@@ -1,3 +1,5 @@
+#include <gtest/gtest.h>
+
 #include <iostream>
 #include <libumpalumpa/algorithms/extrema_finder/single_extrema_finder.hpp>
 #include <memory>
@@ -26,7 +28,7 @@ void PrintData(std::unique_ptr<T>& data, const Size size) {
     }
 }
 
-int main(__attribute__((unused)) int argc, __attribute__((unused)) char** argv) {
+TEST(ExtermaFinder, basic1) {
     auto sizeData = Size(10, 1, 1, 3);
     auto settings = Settings(SearchType::kMax, SearchLocation::kEntire, SearchResult::kValue, sizeData, 10);
     auto data = std::unique_ptr<float[]>(new float[sizeData.total]);
@@ -42,9 +44,6 @@ int main(__attribute__((unused)) int argc, __attribute__((unused)) char** argv) 
     // }, nullptr))
 
     auto searcher = SingleExtremaFinder<float>();
-    searcher.execute({&valuesP, nullptr}, dataP, settings, false);
 
-    //         std::cout
-    //     << s.size.x << "\n";
-    return 0;
+    ASSERT_TRUE(searcher.execute({&valuesP, nullptr}, dataP, settings, false));
 }

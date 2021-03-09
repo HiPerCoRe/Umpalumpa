@@ -15,7 +15,6 @@ add_library(project_options INTERFACE)
 include(cmake/ProjectOptions.cmake)
 set_project_options(project_options)
 # FIXME add sanitizers, doxygen, static analysis, 
-# FIXME add gtests
 # FIXME consider adding precompiled headers support, unity build support
 
 # Link this 'library' to use our warnings
@@ -24,8 +23,16 @@ include(cmake/CompilerWarnings.cmake)
 set_project_warnings(project_warnings)
 
 option(BUILD_SHARED_LIBS "Enable compilation of shared libraries" OFF)
-option(ENABLE_TESTING "Enable Test Builds" ON)
 
+if(CMAKE_CXX_COMPILER_ID MATCHES ".*Clang")
+  option(ENABLE_BUILD_WITH_TIME_TRACE "Enable -ftime-trace to generate time tracing .json files on clang" OFF)
+  if(ENABLE_BUILD_WITH_TIME_TRACE)
+    target_compile_options(project_options INTERFACE -ftime-trace)
+  endif()
+  option(ENABLE_CLANG_TIDY "Run clang-tidy with the compiler" OFF)
+endif()
+
+option(ENABLE_TESTING "Enable Test Builds" ON)
 if(ENABLE_TESTING)
   message("Tests enabled")
       enable_testing()

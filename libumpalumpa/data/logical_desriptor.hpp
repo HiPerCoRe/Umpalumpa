@@ -6,7 +6,7 @@ namespace umpalumpa {
 namespace data {
 class LogicalDescriptor {
    public:
-    LogicalDescriptor(const Size &size, const Size &paddedSize) : size(size), paddedSize(paddedSize) {}
+    LogicalDescriptor(const Size &s, const Size &padded) : size(s), paddedSize(padded) {}
     bool IsValid() const {
         return true;  // FIXME implement: paddedSize >= size;
     }

@@ -18,8 +18,14 @@ class Size {
         return Dimensionality::k1Dim;
     }
 
-    explicit Size(size_t x, size_t y, size_t z, size_t n)
-        : x(x), y(y), z(z), n(n), dim(FromSize(x, y, z)), single(x * y * z), total(x * y * z * n) {}
+    explicit Size(size_t xSize, size_t ySize, size_t zSize, size_t nSize)
+        : x(xSize),
+          y(ySize),
+          z(zSize),
+          n(nSize),
+          dim(FromSize(xSize, ySize, zSize)),
+          single(xSize * ySize * zSize),
+          total(xSize * ySize * zSize * nSize) {}
 
     bool IsValid() const { return (0 != x) && (0 != y) && (0 != z) && (0 != n); }
 

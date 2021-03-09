@@ -10,7 +10,7 @@ FetchContent_MakeAvailable(googletest)
 
 
 add_executable (Umpalumpa_Tests)
-target_sources(Umpalumpa_Tests PRIVATE algorithms/test1.cpp algorithms/test2.cpp)
+target_sources(Umpalumpa_Tests PRIVATE algorithms/extrema_finder.cpp)
 target_link_libraries(
   Umpalumpa_Tests
   PRIVATE project_options umpalumpa gtest_main)

@@ -10,6 +10,7 @@ template <typename T>
 class AExtremaFinder {
    public:
     virtual bool execute(const ResultData<T> &out, const SearchData<T> &in, const Settings &settings, bool dryRun) = 0;
+    virtual ~AExtremaFinder() = default;
 };
 
 }  // namespace extrema_finder

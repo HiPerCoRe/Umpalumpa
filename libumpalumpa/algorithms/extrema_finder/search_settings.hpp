@@ -8,14 +8,14 @@ namespace extrema_finder {
 
 class Settings {
    public:
-    explicit Settings(const SearchType &type, const SearchLocation &location, const SearchResult &result,
-                      const data::Size &size, size_t batch)
-        : type(type), location(location), size(size), batch(batch), result(result) {}
-    const SearchType &type;
-    const SearchLocation &location;
-    const data::Size &size;
+    explicit Settings(const SearchType &t, const SearchLocation &l, const SearchResult &r, const data::Size &s,
+                      size_t batchSize)
+        : type(t), location(l), size(s), batch(batchSize), result(r) {}
+    const SearchType type;
+    const SearchLocation location;
+    const data::Size size;
     const size_t batch;
-    const SearchResult &result;
+    const SearchResult result;
 
     bool IsValid() const { return size.IsValid() and (batch <= size.n); }
 };

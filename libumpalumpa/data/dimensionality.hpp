@@ -4,12 +4,12 @@
 namespace umpalumpa {
 namespace data {
 
-enum class Dimensionality {
+  enum class Dimensionality {
     k1Dim,
     k2Dim,
     k3Dim,
-};
-}  // namespace data
-}  // namespace umpalumpa
+  };
+}// namespace data
+}// namespace umpalumpa
 
 #endif /* LIBUMPALUMPA_DATA_DIMENSIONALITY */

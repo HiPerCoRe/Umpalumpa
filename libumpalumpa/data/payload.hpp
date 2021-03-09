@@ -8,7 +8,7 @@ namespace data {
 template <typename T>
 class Payload {
    public:
-    Payload(T *data, const LogicalDescriptor &ld, const PhysicalDescriptor &pd) : data(data), info(ld), dataInfo(pd) {}
+    Payload(T *d, const LogicalDescriptor &ld, const PhysicalDescriptor &pd) : data(d), info(ld), dataInfo(pd) {}
     T *const data;
     const LogicalDescriptor info;
     const PhysicalDescriptor dataInfo;
