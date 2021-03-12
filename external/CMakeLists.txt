@@ -14,7 +14,7 @@ set(ktt_dir ${CMAKE_CURRENT_SOURCE_DIR}/KTT)
 if(NOT EXISTS ${ktt_dir}/build/)
 message(STATUS "Building KTT")
 execute_process(COMMAND ${premake} gmake --no-examples a --no-tutorials WORKING_DIRECTORY ${ktt_dir})
-execute_process(COMMAND make WORKING_DIRECTORY ${ktt_dir}/build)
+execute_process(COMMAND make -j 4 WORKING_DIRECTORY ${ktt_dir}/build)
 endif()
 
 # create KTT library
