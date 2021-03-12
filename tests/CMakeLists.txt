@@ -5,7 +5,7 @@ FetchContent_Declare(
   GIT_REPOSITORY https://github.com/google/googletest.git
   GIT_TAG        release-1.10.0
 )
-message("Fetching Google Tests")
+message(STATUS "Fetching Google Tests")
 FetchContent_MakeAvailable(googletest)
 
 
@@ -13,7 +13,7 @@ add_executable (Umpalumpa_Tests)
 target_sources(Umpalumpa_Tests PRIVATE algorithms/extrema_finder.cpp)
 target_link_libraries(
   Umpalumpa_Tests
-  PRIVATE project_options umpalumpa gtest_main)
+  PRIVATE project_options umpalumpa ktt gtest_main)
   
 
 

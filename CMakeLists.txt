@@ -26,7 +26,7 @@ set_project_warnings(project_warnings)
 
 # get submodules
 update_submodules()
-
+add_subdirectory(external)
 
 option(BUILD_SHARED_LIBS "Enable compilation of shared libraries" OFF)
 
