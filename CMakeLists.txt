@@ -24,6 +24,10 @@ add_library(project_warnings INTERFACE)
 include(cmake/CompilerWarnings.cmake)
 set_project_warnings(project_warnings)
 
+# get submodules
+update_submodules()
+
+
 option(BUILD_SHARED_LIBS "Enable compilation of shared libraries" OFF)
 
 if(CMAKE_CXX_COMPILER_ID MATCHES ".*Clang")

@@ -1,6 +1,3 @@
-[submodule "build_example/external/scons-pkg-config"]
-	path = build_example/external/scons-pkg-config
-	url = git@github.com:manuelnaranjo/scons-pkg-config.git
 [submodule "external/KTT"]
 	path = external/KTT
 	url = git@github.com:HiPerCoRe/KTT.git

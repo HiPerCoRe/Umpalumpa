@@ -15,9 +15,4 @@ function(update_submodules)
 			endif()
 		endif()
 	endif()
-
-	if(NOT EXISTS "${PROJECT_SOURCE_DIR}/extern/repo/CMakeLists.txt")
-		message(FATAL_ERROR "The submodules were not downloaded! GIT_SUBMODULE was turned off or failed. Please update submodules and try again.")
-	endif()
-
 endfunction()
