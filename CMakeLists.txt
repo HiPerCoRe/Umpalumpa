@@ -9,6 +9,8 @@ include(cmake/StandardProjectSettings.cmake)
 include(cmake/PreventInSourceBuilds.cmake)
 # enable cache system (for faster build)
 include(cmake/Cache.cmake)
+# get all dependencies
+include(cmake/UpdateSubmodules.cmake)
 
 # Link this 'library' (phony target) to set the c++ standard / compile-time options requested
 add_library(project_options INTERFACE)
@@ -38,6 +40,7 @@ if(ENABLE_TESTING)
       enable_testing()
   add_subdirectory(tests)
 endif()
+
 
 add_subdirectory(libumpalumpa)
 
