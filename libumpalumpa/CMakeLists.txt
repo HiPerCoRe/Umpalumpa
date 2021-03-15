@@ -20,3 +20,7 @@ target_link_libraries(
   umpalumpa
   PRIVATE project_options
           project_warnings)
+		  
+
+ add_executable(simple_gemm simple_gemm.cpp gemm_kernel.cu)
+ target_link_libraries(simple_gemm umpalumpa ktt library_starpu)
