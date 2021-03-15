@@ -13,7 +13,7 @@ add_executable (Umpalumpa_Tests)
 target_sources(Umpalumpa_Tests PRIVATE algorithms/extrema_finder.cpp)
 target_link_libraries(
   Umpalumpa_Tests
-  PRIVATE project_options umpalumpa ktt gtest_main)
+  PRIVATE project_options umpalumpa library_ktt gtest_main)
   
 
 

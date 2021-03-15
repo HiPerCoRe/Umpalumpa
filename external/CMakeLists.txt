@@ -26,6 +26,6 @@ execute_process(COMMAND make -j 4 WORKING_DIRECTORY ${ktt_dir}/build)
 endif()
 
 # create KTT library
-add_library(ktt INTERFACE)
-target_include_directories(ktt INTERFACE ${ktt_dir}/source/)
-target_link_libraries(ktt INTERFACE ${ktt_dir}/build/x86_64_Release/libktt.so)
+add_library(library_ktt INTERFACE)
+target_include_directories(library_ktt INTERFACE ${ktt_dir}/source/)
+target_link_libraries(library_ktt INTERFACE ${ktt_dir}/build/x86_64_Release/libktt.so)
