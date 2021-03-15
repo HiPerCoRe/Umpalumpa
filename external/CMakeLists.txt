@@ -9,6 +9,14 @@ if(NOT EXISTS ${premake})
 	execute_process(COMMAND tar -xf ${premake_version} WORKING_DIRECTORY ${path})
 endif()
 
+if(NOT DEFINED $ENV{CUDA_PATH})
+set(path $ENV{CUDACXX}) # assuming its .../cuda_dir/bin/nvcc
+get_filename_component(path ${path} DIRECTORY) # bin dir
+get_filename_component(path ${path} DIRECTORY) # cuda_dir
+message(STATUS "Setting CUDA_PATH to ${path} (deducted from CUDACXX)")
+set(ENV{CUDA_PATH} ${path})
+endif()
+
 # make sure that KTT is build
 set(ktt_dir ${CMAKE_CURRENT_SOURCE_DIR}/KTT)
 if(NOT EXISTS ${ktt_dir}/build/)
