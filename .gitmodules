@@ -1,4 +1,4 @@
 [submodule "external/KTT"]
 	path = external/KTT
-	url = git@github.com:HiPerCoRe/KTT.git
+	url = https://github.com/HiPerCoRe/KTT.git
 	branch = development_2.0
