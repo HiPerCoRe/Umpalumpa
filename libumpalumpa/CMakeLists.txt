@@ -22,5 +22,7 @@ target_link_libraries(
           project_warnings)
 		  
 
+if(USE_STARPU)
  add_executable(simple_gemm simple_gemm.cpp gemm_kernel.cu)
- target_link_libraries(simple_gemm umpalumpa ktt library_starpu)
+ target_link_libraries(simple_gemm umpalumpa library_ktt library_starpu)
+endif()
