@@ -54,6 +54,10 @@ endif()
 
 add_subdirectory(libumpalumpa)
 
+option(ENABLE_EXAMPLES "Enable Example Builds" ON)
+if (ENABLE_EXAMPLES)
+add_subdirectory(examples)
+endif()
 
 # FIXME handle installation
 #include(GNUInstallDirs)
