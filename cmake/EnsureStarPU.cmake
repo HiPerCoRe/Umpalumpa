@@ -5,7 +5,7 @@ function (ensure_starpu library_name)
 	# check if we have it on the path
 	pkg_check_modules(STARPU QUIET ${STARPU_REQUESTED_VERSION})
 	if (NOT STARPU_FOUND AND NOT DEFINED ENV{STARPU_PATH})
-		message(STATUS "Try to set STARPU_PATH or set PKG_CONFIG_PATH")
+		message(STATUS "Try to set STARPU_PATH or set PKG_CONFIG_PATH. You can also:\nsource path_to_starpu/install/bin/estarpu_env")
 	elseif (DEFINED ENV{STARPU_PATH})
 		# but we have STARPU_PATH
 		set (ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}:$ENV{STARPU_PATH}/lib/pkgconfig")
