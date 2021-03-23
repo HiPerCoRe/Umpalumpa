@@ -2,3 +2,4 @@
 	path = external/KTT
 	url = https://github.com/HiPerCoRe/KTT.git
 	branch = development_2.0
+	ignore = untracked
