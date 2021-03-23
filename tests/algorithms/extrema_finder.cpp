@@ -4,7 +4,7 @@
 #include <libumpalumpa/algorithms/extrema_finder/single_extrema_finder.hpp>
 #include <memory>
 #include <random>
-#include <tuner_api.h>
+#include <Ktt.h>
 
 
 using namespace umpalumpa::extrema_finder;
@@ -31,9 +31,9 @@ void PrintData(std::unique_ptr<T>& data, const Size size) {
 }
 
 TEST(ExtermaFinder, basic1) {
-	ktt::DeviceIndex deviceIndex = 0;
-	ktt::Tuner tuner(0, 0);
-	tuner.printComputeAPIInfo(std::cout);
+	ktt::Tuner tuner(0, 0, ktt::ComputeApi::CUDA);
+	std::vector<ktt::PlatformInfo> platforms = tuner.GetPlatformInfo();
+	std::cout << platforms[0].GetString() << std::endl;
 	
     auto sizeData = Size(10, 1, 1, 3);
     auto settings = Settings(SearchType::kMax, SearchLocation::kEntire, SearchResult::kValue, sizeData, 10);

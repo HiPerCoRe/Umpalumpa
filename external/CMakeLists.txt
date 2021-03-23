@@ -10,22 +10,22 @@ if(NOT EXISTS ${premake})
 endif()
 
 if(NOT DEFINED $ENV{CUDA_PATH})
-set(path $ENV{CUDACXX}) # assuming its .../cuda_dir/bin/nvcc
+set(path ${CMAKE_CUDA_COMPILER}) # assuming its .../cuda_dir/bin/nvcc  # as long as we require CUDA support, this should work
 get_filename_component(path ${path} DIRECTORY) # bin dir
 get_filename_component(path ${path} DIRECTORY) # cuda_dir
-message(STATUS "Setting CUDA_PATH to ${path} (deducted from CUDACXX)")
+message(STATUS "Setting CUDA_PATH to ${path} (deducted from CMAKE_CUDA_COMPILER)")
 set(ENV{CUDA_PATH} ${path})
 endif()
 
 # make sure that KTT is build
 set(ktt_dir ${CMAKE_CURRENT_SOURCE_DIR}/KTT)
-if(NOT EXISTS ${ktt_dir}/build/)
+#if(NOT EXISTS ${ktt_dir}/build/)
 message(STATUS "Building KTT")
 execute_process(COMMAND ${premake} gmake --no-examples a --no-tutorials WORKING_DIRECTORY ${ktt_dir})
-execute_process(COMMAND make -j 4 WORKING_DIRECTORY ${ktt_dir}/build)
-endif()
+execute_process(COMMAND make -j 4 WORKING_DIRECTORY ${ktt_dir}/Build)
+#endif()
 
 # create KTT library
 add_library(library_ktt INTERFACE)
-target_include_directories(library_ktt INTERFACE ${ktt_dir}/source/)
-target_link_libraries(library_ktt INTERFACE ${ktt_dir}/build/x86_64_Release/libktt.so)
+target_include_directories(library_ktt INTERFACE ${ktt_dir}/Source/)
+target_link_libraries(library_ktt INTERFACE ${ktt_dir}/Build/x86_64_Release/libktt.so)
