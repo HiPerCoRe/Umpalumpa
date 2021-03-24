@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 3.14)
 
-
-project (umpalumpa LANGUAGES CUDA CXX C)
+project(umpalumpa LANGUAGES CUDA CXX C)
 
 # set build types, general compile options etc
 include(cmake/StandardProjectSettings.cmake)
@@ -16,8 +15,7 @@ include(cmake/UpdateSubmodules.cmake)
 add_library(project_options INTERFACE)
 include(cmake/ProjectOptions.cmake)
 set_project_options(project_options)
-# FIXME add sanitizers, doxygen, static analysis, 
-# FIXME consider adding precompiled headers support, unity build support
+# FIXME add sanitizers, doxygen, static analysis, FIXME consider adding precompiled headers support, unity build support
 
 # Link this 'library' to use our warnings
 add_library(project_warnings INTERFACE)
@@ -41,33 +39,25 @@ endif()
 option(ENABLE_TESTING "Enable Test Builds" ON)
 if(ENABLE_TESTING)
   message("Tests enabled")
-      enable_testing()
+  enable_testing()
   add_subdirectory(tests)
 endif()
 
 option(USE_STARPU "Use StarPU" ON)
 add_library(library_starpu INTERFACE)
 if(USE_STARPU)
-include(cmake/EnsureStarPU.cmake)
-ensure_starpu (library_starpu)
+  include(cmake/EnsureStarPU.cmake)
+  ensure_starpu(library_starpu)
 endif()
 
 add_subdirectory(libumpalumpa)
 
 option(ENABLE_EXAMPLES "Enable Example Builds" ON)
-if (ENABLE_EXAMPLES)
-add_subdirectory(examples)
+if(ENABLE_EXAMPLES)
+  add_subdirectory(examples)
 endif()
 
-# FIXME handle installation
-#include(GNUInstallDirs)
-#install(TARGETS libumpalumpa) # since cmake 3.14
-#install(TARGETS libumpalumpa # before cmake 3.14
-#RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-#COMPONENT libumpalumpa_Runtime
-#LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-#COMPONENT libumpalumpa_Runtime
-#NAMELINK_COMPONENT libumpalumpa_Development # cmake 3.12
-#ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-#COMPONENT libumpalumpa_Development
-#)
+# FIXME handle installation include(GNUInstallDirs) install(TARGETS libumpalumpa) # since cmake 3.14 install(TARGETS
+# libumpalumpa # before cmake 3.14 RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT libumpalumpa_Runtime LIBRARY
+# DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT libumpalumpa_Runtime NAMELINK_COMPONENT libumpalumpa_Development # cmake
+# 3.12 ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT libumpalumpa_Development )
