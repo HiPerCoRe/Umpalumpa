@@ -1,18 +1,18 @@
-#ifndef LIBUMPALUMPA_DATA_EXTREMA_FINDER_RESULT_DATA
-#define LIBUMPALUMPA_DATA_EXTREMA_FINDER_RESULT_DATA
+#pragma once
+
 #include <libumpalumpa/data/payload.hpp>
+#include <libumpalumpa/data//extrema_finder/search_data.hpp>
 
 namespace umpalumpa {
-namespace data {
 namespace extrema_finder {
-template <typename T>
-class ResultData {
-   public:
-    ResultData(Payload<T> *vals, Payload<T> *locs) : values(vals), locations(locs) {}
-    Payload<T> *const values;
-    Payload<T> *const locations;
-};
-}  // namespace extrema_finder
-}  // namespace data
-}  // namespace umpalumpa
-#endif /* LIBUMPALUMPA_DATA_EXTREMA_FINDER_RESULT_DATA */
+  namespace data {
+    class ResultData
+    {
+    public:
+      ResultData(umpalumpa::data::Payload *vals, umpalumpa::data::Payload *locs) : values(vals), locations(locs) {}
+      umpalumpa::data::Payload *const values;
+      umpalumpa::data::Payload *const locations;
+    };
+  }// namespace data
+}// namespace extrema_finder
+}// namespace umpalumpa

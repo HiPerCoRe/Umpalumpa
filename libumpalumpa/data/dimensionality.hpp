@@ -1,5 +1,4 @@
-#ifndef LIBUMPALUMPA_DATA_DIMENSIONALITY
-#define LIBUMPALUMPA_DATA_DIMENSIONALITY
+#pragma once
 
 namespace umpalumpa {
 namespace data {
@@ -11,5 +10,3 @@ namespace data {
   };
 }// namespace data
 }// namespace umpalumpa
-
-#endif /* LIBUMPALUMPA_DATA_DIMENSIONALITY */

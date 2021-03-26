@@ -8,7 +8,7 @@ endif()
 set_target_properties(umpalumpa PROPERTIES SOVERSION 0 VERSION 0.0.1)
 
 # list of source files
-set(umpalumpa_sources algorithms/extrema_finder/single_extrema_finder.cpp)
+set(umpalumpa_sources algorithms/extrema_finder/single_extrema_finder_cpu.cpp)
 
 target_include_directories(umpalumpa PUBLIC ${CMAKE_SOURCE_DIR})
 

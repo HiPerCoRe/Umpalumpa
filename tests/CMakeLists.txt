@@ -7,7 +7,7 @@ message(STATUS "Fetching Google Tests")
 FetchContent_MakeAvailable(googletest)
 
 add_executable(Umpalumpa_Tests)
-target_sources(Umpalumpa_Tests PRIVATE algorithms/extrema_finder.cpp)
+target_sources(Umpalumpa_Tests PRIVATE algorithms/extrema_finder_cpu.cpp)
 target_link_libraries(
   Umpalumpa_Tests
   PRIVATE project_options

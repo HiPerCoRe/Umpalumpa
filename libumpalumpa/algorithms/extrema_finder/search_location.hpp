@@ -1,7 +1,9 @@
+#pragma once
+
 namespace umpalumpa {
 namespace extrema_finder {
 
-enum class SearchLocation {
+  enum class SearchLocation {
     /**
      * FIXME this will probably have to be some abstract class, and then specific implementations will hold additional
      * info (i.e. distance from center etc)
@@ -11,8 +13,8 @@ enum class SearchLocation {
      * kAroundCenter,  // i.e. within radius from the center of the data
      *
      **/
-    kEntire,  // i.e. check entire data
-};
+    kEntire,// i.e. check entire data
+  };
 
-}  // namespace extrema_finder
-}  // namespace umpalumpa
+}// namespace extrema_finder
+}// namespace umpalumpa
