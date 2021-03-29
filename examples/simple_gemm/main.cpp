@@ -3,6 +3,42 @@
 #include <starpu.h>
 #include <time.h>
 #include <Ktt.h>
+#include <memory>
+#include <fcntl.h>
+#include <atomic>
+#include <thread>
+#include <iostream>
+#include <chrono>
+
+using namespace std::chrono_literals;
+
+struct gemmArgs {
+    int matsize_a;
+    int matsize_b;
+    int matsize_c;
+    int batch;
+    ktt::Tuner* tuner;
+};
+
+
+void fillRandomBytes(void *dst, size_t bytes) {
+    int fd = open("/dev/urandom", O_RDONLY);
+    read(fd, dst, bytes);
+}
+
+void generate_data(void *buffers[], void *func_arg) {
+    float* srcA = (float*)STARPU_VECTOR_GET_PTR(buffers[0]);
+    float* srcB = (float*)STARPU_VECTOR_GET_PTR(buffers[1]);
+    gemmArgs* arguments = (gemmArgs*)func_arg;
+    int a = arguments->matsize_a;
+    int b = arguments->matsize_b;
+    int c = arguments->matsize_c;
+    int batch = arguments->batch;
+    printf("generate: %d %d %d %d\n", a, b, c, batch);
+
+    fillRandomBytes(srcA, a*b*batch*sizeof(float));
+    fillRandomBytes(srcB, a*c*batch*sizeof(float));
+}
 
 void gemm_cpu(void *buffers[], void *func_arg)
 { 
@@ -14,38 +50,38 @@ void gemm_cpu(void *buffers[], void *func_arg)
 
     //uint32_t batch = STARPU_VECTOR_GET_NX(buffers[0]); 
 
-    int* arguments = (int*)func_arg;
-    int a = arguments[0];
-    int b = arguments[1];
-    int c = arguments[2];
-    int batch = arguments[3];
+    gemmArgs* arguments = (gemmArgs*)func_arg;
+    const int a = arguments->matsize_a;
+    const int b = arguments->matsize_b;
+    const int c = arguments->matsize_c;
+    const int batch = arguments->batch;
+    printf("process: %d %d %d %d\n", a, b, c, batch);
 
-    for (int i = 0; i < batch; i++) 
-        for (int j = 0; j < c; j++)
+    for (int i = 0; i < batch; i++) {
+        for (int j = 0; j < c; j++) {
             for (int k = 0; k < b; k++) {
-		float tmp = 0.0;
-                for (int l = 0; l < a; l++)
-                    tmp += srcA[i*a*b + k + l*b] * srcB[i*c*a + l + j*a];
+		        float tmp = 0.0;
+                for (int l = 0; l < a; l++) {
+                    const size_t offsetA = i*a*b + k + l*b;
+                    const size_t offsetB = i*c*a + l + j*a;
+                    tmp += srcA[offsetA] * srcB[offsetB];
+                }
                 result[i*c*b + k + j*b] = tmp;
             }
+        }
+    }
 }
 
 extern "C" void gemm_batch(void *buffers[], void *_args);
 
-struct gemmArgs {
-    int matsize_a;
-    int matsize_b;
-    int matsize_c;
-    int batch;
-    ktt::Tuner* tuner;
-};
 
 struct Codelet {
+    starpu_codelet generate;
     starpu_codelet gemm;
     Codelet();
 };
 
-Codelet::Codelet():gemm{0}{
+Codelet::Codelet():gemm{0}, generate{0}{
     gemm.where = STARPU_CPU|STARPU_CUDA;
     gemm.cpu_funcs[0] = gemm_cpu;
     gemm.cuda_funcs[0] = gemm_batch;
@@ -53,108 +89,107 @@ Codelet::Codelet():gemm{0}{
     gemm.nbuffers = 3;
     gemm.modes[0] = STARPU_R;
     gemm.modes[1] = STARPU_R;
-    gemm.modes[2] = STARPU_RW;
+    gemm.modes[2] = STARPU_W;
+    gemm.name="gemm codelet";
 
-
+    generate.where = STARPU_CPU;
+    generate.cpu_funcs[0] = generate_data;
+    generate.nbuffers = 2;
+    generate.modes[0] = STARPU_W;
+    generate.modes[1] = STARPU_W;
+    generate.name="matrix generation codelet";
 }
 
 Codelet codelet;
 
-#define MAX_MEM 900000000
+#define MAX_BYTES (512 * 1024 * 1024)
 
 unsigned switchtime = 0;
-
-int matsize_a = 0;
-int matsize_b = 0;
-int matsize_c = 0;
-int batch = 0;
-
 int batchcount = 0;
+
+std::atomic<int> running_batches = 0;
+
 
 //right now, the callback function is useless
 void callback_func(void *callback_arg)
 {
-	struct starpu_task *finished_task = (struct starpu_task*) callback_arg;
+	// struct starpu_task *finished_task = (struct starpu_task*) callback_arg;
+    running_batches--;
+    std::cout << "Concurrently running batches: " << running_batches << "\n";
 }
+
+
 
 
 int main(int argc, char **argv)
 {
-    //const auto computeAPI = ktt::ComputeAPI::CUDA;
-    //ktt::Tuner tuner(0, 0, computeAPI);
-
-    matsize_a = 2+(float)(rand())*31 / RAND_MAX;
-    matsize_b = 2+(float)(rand())*31 / RAND_MAX;
-    matsize_c = 2+(float)(rand())*31 / RAND_MAX;
-    batch = ((MAX_MEM/(sizeof(float)*(matsize_a*matsize_b+matsize_c*matsize_a+matsize_c*matsize_b)))/512)*512;
-
     starpu_init(NULL);
 
-    switchtime = (unsigned)time(NULL);
+    constexpr size_t timeout = 5;
+    switchtime = (unsigned)time(NULL) - timeout;
 
-    for (int a=0; a < 1000; a++)
+    gemmArgs arguments;
+    size_t max_config = 5;
+    for (int config_id=0; config_id < max_config;)
     {
-
+         if (running_batches > 10) {
+            std::this_thread::sleep_for(200ms);
+        }
+        running_batches++;
         unsigned currenttime = (unsigned)time(NULL);    
 
-        if (currenttime - switchtime > 9)
+        if (currenttime - switchtime >= timeout)
         {
-            printf("Batch count: %i\n", batchcount);
+            printf("Processed batches: %i\n", batchcount);
             batchcount = 0;
+            config_id++;
             switchtime = currenttime;
-                
-            matsize_a = 2+(float)(rand())*31 / RAND_MAX;
-            matsize_b = 2+(float)(rand())*31 / RAND_MAX;
-            matsize_c = 2+(float)(rand())*31 / RAND_MAX;
-            batch = ((MAX_MEM/(sizeof(float)*(matsize_a*matsize_b+matsize_c*matsize_a+matsize_c*matsize_b)))/512)*512;
-            printf("Switching matrix size: A = %i, B = %i, C = %i.\n", matsize_a, matsize_b, matsize_c);
+
+            auto *args = &arguments;
+            args->matsize_a = 2+(float)(rand())*31 / RAND_MAX;
+            args->matsize_b = 2+(float)(rand())*31 / RAND_MAX;
+            args->matsize_c = 2+(float)(rand())*31 / RAND_MAX;
+            args->batch = (MAX_BYTES / sizeof(float)) / ((args->matsize_a*args->matsize_b)+(args->matsize_c*args->matsize_a)+(args->matsize_c*args->matsize_b));
+            printf("Switching matrix size: A = %i, B = %i, C = %i., batch=%i\n", args->matsize_a, args->matsize_b, args->matsize_c, args->batch);
         }
 
+        auto *args = new gemmArgs(arguments);
         batchcount++;
+        starpu_data_handle_t matrixA = {0};
+        starpu_vector_data_register(&matrixA, -1, 0, args->matsize_a*args->matsize_b*args->batch, sizeof(float));
+        starpu_data_set_name(matrixA, "Matrix A");
+
+        starpu_data_handle_t matrixB = {0};
+        starpu_vector_data_register(&matrixB, -1, 0, args->matsize_c*args->matsize_a*args->batch, sizeof(float));
+        starpu_data_set_name(matrixB, "Matrix B");
+
+        struct starpu_task *generateDataTask = starpu_task_create();
+        generateDataTask->handles[0] = matrixA;
+        generateDataTask->handles[1] = matrixB;
+        generateDataTask->cl_arg = args;
+        generateDataTask->cl_arg_size = sizeof(gemmArgs);
+        generateDataTask->cl = &codelet.generate;
+        generateDataTask->name = "Generate data task";
+        STARPU_CHECK_RETURN_VALUE(starpu_task_submit(generateDataTask), "starpu_task_submit generateDataTask");
+
+        starpu_data_handle_t resultBuffer = {0};
+        starpu_vector_data_register(&resultBuffer, -1, 0, args->matsize_c*args->matsize_b*args->batch, sizeof(float));
+        starpu_data_set_name(resultBuffer, "Result matrix");
 
         struct starpu_task *newtask = starpu_task_create();
-
-        newtask->cl = &codelet.gemm;
-
-        float* matricesA;
-        float* matricesB;
-        float* results;
-
-        starpu_malloc((void**)&matricesA, matsize_a*matsize_b*batch*sizeof(float));
-        starpu_malloc((void**)&matricesB, matsize_c*matsize_a*batch*sizeof(float));
-        starpu_malloc((void**)&results, matsize_c*matsize_b*batch*sizeof(float));
-
-        for (size_t i = 0; i < matsize_a*matsize_b*batch; i++)
-            matricesA[i] = 10.0f*((float)rand()) / ((float) RAND_MAX);
-        for (size_t i = 0; i < matsize_c*matsize_a*batch; i++)
-            matricesB[i] = 10.0f*((float)rand()) / ((float) RAND_MAX);
-        for (size_t i = 0; i < matsize_c*matsize_b*batch; i++)
-            results[i] = 0.0f;
-
-        starpu_data_handle_t bufferA;
-        starpu_vector_data_register(&bufferA, STARPU_MAIN_RAM, (uintptr_t)matricesA, matsize_a*matsize_b*batch, sizeof(float));
-        newtask->handles[0] = bufferA;
-
-        starpu_data_handle_t bufferB;
-        starpu_vector_data_register(&bufferB, STARPU_MAIN_RAM, (uintptr_t)matricesB, matsize_c*matsize_a*batch, sizeof(float));
-        newtask->handles[1] = bufferB;
-
-        starpu_data_handle_t resultBuffer;
-        starpu_vector_data_register(&resultBuffer, STARPU_MAIN_RAM, (uintptr_t)results, matsize_c*matsize_b*batch, sizeof(float));
+        newtask->handles[0] = matrixA;
+        newtask->handles[1] = matrixB;
         newtask->handles[2] = resultBuffer;
-
-        gemmArgs gemmArg = {matsize_a, matsize_b, matsize_c, batch, nullptr};
-        newtask->cl_arg = (void*)&gemmArg;
-
-        newtask->callback_arg = newtask;
+        newtask->cl = &codelet.gemm;
+        newtask->cl_arg = args;
+        newtask->cl_arg_size = sizeof(gemmArgs);
         newtask->callback_func = callback_func;
+        newtask->name = "Compute GEMM task";
+        STARPU_CHECK_RETURN_VALUE(starpu_task_submit(newtask), "starpu_task_submit newtask");  
 
-        starpu_task_submit(newtask);
-        
-        starpu_data_unregister_submit(bufferA);
-        starpu_data_unregister_submit(bufferB);
+        starpu_data_unregister_submit(matrixA);
+        starpu_data_unregister_submit(matrixB);
         starpu_data_unregister_submit(resultBuffer);
-
     }	
 	
     starpu_shutdown();

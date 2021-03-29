@@ -3,25 +3,24 @@
 #define REAL float
 #define REAL2 float2
 #define REAL4 float4
-#define CACHING_STRATEGY 1
+#define CACHING_STRATEGY 0
 #define GROUP_SIZE_Y 4
 #define GROUP_SIZE_Z 4
 #define PADD_AA 0
 #define PADD_AB 0
 #define PADD_C 0
-#define DIRECT_WRITE 0
+#define DIRECT_WRITE 1
 #define UNROLL_K 1
-#define SIZE_A 16
-#define SIZE_B 16
-#define SIZE_C 16
 
-static __global__ void gemm_batch_kernel(const REAL* A, const REAL* B, REAL* C, int n) {
+static __global__ void gemm_batch_kernel(const REAL* A, const REAL* B, REAL* C, int n, int SIZE_A, int SIZE_B, int SIZE_C) {
+
+
       
     int matrix = blockIdx.x*GROUP_SIZE_Z + threadIdx.z;
-    int matrixBatch = blockIdx.x*GROUP_SIZE_Z;
+    // int matrixBatch = blockIdx.x*GROUP_SIZE_Z;
     int tx = threadIdx.x;
     int ty = threadIdx.y;
-    int tz = threadIdx.z;
+    // int tz = threadIdx.z;
 
 /* preload data */
  #if CACHING_STRATEGY == 1 or CACHING_STRATEGY == 2
@@ -186,7 +185,12 @@ static __global__ void gemm_batch_kernel(const REAL* A, const REAL* B, REAL* C, 
  #endif
 }
 
-
+struct gemmArgs {
+  int matsize_a;
+  int matsize_b;
+  int matsize_c;
+  int batch;
+};
 
 extern "C" void gemm_batch(void *buffers[], void *_args){
 
@@ -195,12 +199,16 @@ extern "C" void gemm_batch(void *buffers[], void *_args){
     const float* B = (float*)STARPU_VECTOR_GET_PTR(buffers[1]);
     float* C = (float*)STARPU_VECTOR_GET_PTR(buffers[2]);
    
-    int* arguments = (int*)_args;
-    int n = arguments[3];
+    gemmArgs* arguments = (gemmArgs*)_args;
+    int a = arguments->matsize_a;
+    int b = arguments->matsize_b;
+    int c = arguments->matsize_c;
+    int batch = arguments->batch;
+    printf("generate: %d %d %d %d\n", a, b, c, batch);
 
     unsigned threads_per_block = 64;
-    unsigned nblocks = (n + threads_per_block-1) / threads_per_block;
+    unsigned nblocks = ((batch / GROUP_SIZE_Z) + threads_per_block-1) / threads_per_block;
 
-    gemm_batch_kernel<<<nblocks,threads_per_block,0,starpu_cuda_get_local_stream()>>>(A, B, C, n);
+    gemm_batch_kernel<<<nblocks,threads_per_block,0,starpu_cuda_get_local_stream()>>>(A, B, C, batch, a, b, c);
 }
 

@@ -42,8 +42,12 @@ TEST(ExtermaFinderCPU, 1D_batch_noPadd_max_valOnly)
     Payload(values.get(), { sizeValues, sizeValues }, { sizeValues.total * sizeof(float), DataType::kFloat });
 
   auto searcher = SingleExtremaFinderCPU();
+  // make sure the settings is fine
+  settings.dryRun = true;
+  ASSERT_TRUE(searcher.Execute({ &valuesP, nullptr }, in, settings));
 
   // make sure the search finished
+  settings.dryRun = false;
   ASSERT_TRUE(searcher.Execute({ &valuesP, nullptr }, in, settings));
   // make sure that we didn't change data
   ASSERT_EQ(0, memcmp(data.get(), dataOrig.get(), sizeIn.total * sizeof(float)));
