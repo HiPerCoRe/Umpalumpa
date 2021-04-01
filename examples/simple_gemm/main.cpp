@@ -17,7 +17,9 @@ struct gemmArgs {
     int matsize_b;
     int matsize_c;
     int batch;
-    ktt::Tuner* tuner;
+	ktt::Tuner* tuner;
+	const ktt::KernelId* kernel;
+	const ktt::KernelDefinitionId* kernelDefinition;
 };
 
 
@@ -34,28 +36,61 @@ void generate_data(void *buffers[], void *func_arg) {
     int b = arguments->matsize_b;
     int c = arguments->matsize_c;
     int batch = arguments->batch;
-    printf("generate: %d %d %d %d\n", a, b, c, batch);
 
     fillRandomBytes(srcA, a*b*batch*sizeof(float));
     fillRandomBytes(srcB, a*c*batch*sizeof(float));
 }
 
+
+void gemm_cuda(void *buffers[], void *_args)
+{
+    float* A = (float*)STARPU_VECTOR_GET_PTR(buffers[0]);
+    float* B = (float*)STARPU_VECTOR_GET_PTR(buffers[1]);
+    float* C = (float*)STARPU_VECTOR_GET_PTR(buffers[2]);
+
+    gemmArgs* arguments = (gemmArgs*)_args;
+    int matsize_a = arguments->matsize_a;
+    int matsize_b = arguments->matsize_b;
+    int matsize_c = arguments->matsize_c;
+    int batch = arguments->batch;
+    ktt::Tuner* tuner = arguments->tuner;
+    const ktt::KernelId* kernel = arguments->kernel;
+	const ktt::KernelDefinitionId* kernelDefinition = arguments->kernelDefinition;
+
+    printf("CUDA processing: %d %d %d %d\n", matsize_a, matsize_b, matsize_c, batch);
+
+    int bufferSizeA = matsize_a*matsize_b*batch;
+    int bufferSizeB = matsize_c*matsize_a*batch;
+    int bufferSizeC = matsize_c*matsize_b*batch;
+    const ktt::ArgumentId aId = tuner->AddArgumentVector<float>(reinterpret_cast<ktt::ComputeBuffer>(A), bufferSizeA,
+        ktt::ArgumentAccessType::ReadOnly, ktt::ArgumentMemoryLocation::Device);
+    const ktt::ArgumentId bId = tuner->AddArgumentVector<float>(reinterpret_cast<ktt::ComputeBuffer>(B), bufferSizeB,
+        ktt::ArgumentAccessType::ReadOnly, ktt::ArgumentMemoryLocation::Device);
+    const ktt::ArgumentId resultId = tuner->AddArgumentVector<float>(reinterpret_cast<ktt::ComputeBuffer>(C), bufferSizeC,
+        ktt::ArgumentAccessType::ReadOnly, ktt::ArgumentMemoryLocation::Device);
+
+    const ktt::ArgumentId matsize_a_Id = tuner->AddArgumentScalar(matsize_a);
+    const ktt::ArgumentId matsize_b_Id = tuner->AddArgumentScalar(matsize_b);
+    const ktt::ArgumentId matsize_c_Id = tuner->AddArgumentScalar(matsize_c);
+    const ktt::ArgumentId batchId = tuner->AddArgumentScalar(batch);
+	
+	tuner->SetArguments(*kernelDefinition, {aId, bId, resultId, batchId, matsize_a_Id, matsize_b_Id, matsize_c_Id});
+	
+    tuner->RunKernel(*kernel, {}, {ktt::BufferOutputDescriptor(resultId, C)});
+}
+
 void gemm_cpu(void *buffers[], void *func_arg)
 { 
-    //batch size and matrix size can be in func_arg or retrieved from buffers
 
     float* srcA = (float*)STARPU_VECTOR_GET_PTR(buffers[0]);
     float* srcB = (float*)STARPU_VECTOR_GET_PTR(buffers[1]);
     float* result = (float*)STARPU_VECTOR_GET_PTR(buffers[2]);
-
-    //uint32_t batch = STARPU_VECTOR_GET_NX(buffers[0]); 
 
     gemmArgs* arguments = (gemmArgs*)func_arg;
     const int a = arguments->matsize_a;
     const int b = arguments->matsize_b;
     const int c = arguments->matsize_c;
     const int batch = arguments->batch;
-    printf("process: %d %d %d %d\n", a, b, c, batch);
 
     for (int i = 0; i < batch; i++) {
         for (int j = 0; j < c; j++) {
@@ -72,9 +107,6 @@ void gemm_cpu(void *buffers[], void *func_arg)
     }
 }
 
-extern "C" void gemm_batch(void *buffers[], void *_args);
-
-
 struct Codelet {
     starpu_codelet generate;
     starpu_codelet gemm;
@@ -84,7 +116,7 @@ struct Codelet {
 Codelet::Codelet():gemm{0}, generate{0}{
     gemm.where = STARPU_CPU|STARPU_CUDA;
     gemm.cpu_funcs[0] = gemm_cpu;
-    gemm.cuda_funcs[0] = gemm_batch;
+    gemm.cuda_funcs[0] = gemm_cuda;
     gemm.cuda_flags[0] = STARPU_CUDA_ASYNC;
     gemm.nbuffers = 3;
     gemm.modes[0] = STARPU_R;
@@ -109,11 +141,8 @@ int batchcount = 0;
 
 std::atomic<int> running_batches = 0;
 
-
-//right now, the callback function is useless
 void callback_func(void *callback_arg)
 {
-	// struct starpu_task *finished_task = (struct starpu_task*) callback_arg;
     running_batches--;
     std::cout << "Concurrently running batches: " << running_batches << "\n";
 }
@@ -123,6 +152,44 @@ void callback_func(void *callback_arg)
 
 int main(int argc, char **argv)
 {
+    ktt::Tuner GPUtuner(0, 0, ktt::ComputeApi::CUDA);
+    ktt::Tuner CPUtuner(0, 0, ktt::ComputeApi::OpenCL);
+
+    ktt::DimensionVector ndRangeDimensions(0);
+    ktt::DimensionVector workGroupDimensions;
+    ktt::KernelDefinitionId kernelDefinition = GPUtuner.AddKernelDefinitionFromFile("gemm_batch", "../../examples/simple_gemm/gemm_kernel.cu", ndRangeDimensions, workGroupDimensions);//"/home/jaro/umpalumpa/examples/simple_gemm/kernel.cu", "gemm_batch_kernel", ndRangeDimensions, workGroupDimensions);
+
+    const ktt::KernelId kernel = GPUtuner.CreateSimpleKernel("Batch GEMM", kernelDefinition);
+
+    GPUtuner.SetTimeUnit(ktt::TimeUnit::Microseconds);
+
+/*
+    std::vector<ktt::PlatformInfo> platformsCUDA = GPUtuner.GetPlatformInfo();
+
+    for (size_t i = 0; i < platformsCUDA.size(); ++i)
+    {
+        std::cout << platformsCUDA[i].GetString() << std::endl;
+        std::vector<ktt::DeviceInfo> devices = GPUtuner.GetDeviceInfo(static_cast<ktt::PlatformIndex>(i));
+
+        for (const auto& device : devices)
+        {
+            std::cout << device.GetString() << std::endl;
+        }
+    }
+
+    std::vector<ktt::PlatformInfo> platformsOpenCL = CPUtuner.GetPlatformInfo();
+
+    for (size_t i = 0; i < platformsOpenCL.size(); ++i)
+    {
+        std::cout << platformsOpenCL[i].GetString() << std::endl;
+        std::vector<ktt::DeviceInfo> devices = CPUtuner.GetDeviceInfo(static_cast<ktt::PlatformIndex>(i));
+
+        for (const auto& device : devices)
+        {
+            std::cout << device.GetString() << std::endl;
+        }
+    }
+*/
     starpu_init(NULL);
 
     constexpr size_t timeout = 5;
@@ -150,6 +217,11 @@ int main(int argc, char **argv)
             args->matsize_b = 2+(float)(rand())*31 / RAND_MAX;
             args->matsize_c = 2+(float)(rand())*31 / RAND_MAX;
             args->batch = (MAX_BYTES / sizeof(float)) / ((args->matsize_a*args->matsize_b)+(args->matsize_c*args->matsize_a)+(args->matsize_c*args->matsize_b));
+			
+	        args->tuner = &GPUtuner;
+			args->kernel = &kernel;
+		    args->kernelDefinition = &kernelDefinition;
+
             printf("Switching matrix size: A = %i, B = %i, C = %i., batch=%i\n", args->matsize_a, args->matsize_b, args->matsize_c, args->batch);
         }
 
