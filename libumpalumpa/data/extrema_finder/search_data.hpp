@@ -5,10 +5,7 @@
 namespace umpalumpa {
 namespace extrema_finder {
   namespace data {
-    class SearchData : public umpalumpa::data::Payload
-    {
-      using Payload::Payload;
-    };
+    typedef umpalumpa::data::Payload<umpalumpa::data::LogicalDescriptor> SearchData;
   }// namespace data
 }// namespace extrema_finder
 }// namespace umpalumpa

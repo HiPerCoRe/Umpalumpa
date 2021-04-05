@@ -8,9 +8,9 @@ namespace data {
   class PhysicalDescriptor
   {
   public:
-    PhysicalDescriptor(size_t b, DataType dataType)
-      : bytes(b), kbytes(static_cast<float>(b) / 1024), Mbytes(static_cast<float>(b) / 1048576),
-        Gbytes(static_cast<float>(b) / 1073741824), type(dataType){};
+    explicit PhysicalDescriptor(size_t b, DataType dataType)
+      : bytes(b), kbytes(static_cast<float>(b) / 1024), Mbytes(static_cast<float>(b) / (1024 * 1024)),
+        Gbytes(static_cast<float>(b) / (1024 * 1024 * 1024)), type(dataType){};
 
     const size_t bytes;
     const float kbytes;
