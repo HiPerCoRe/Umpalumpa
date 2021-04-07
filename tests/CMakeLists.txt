@@ -7,12 +7,19 @@ message(STATUS "Fetching Google Tests")
 FetchContent_MakeAvailable(googletest)
 
 add_executable(Umpalumpa_Tests)
-target_sources(Umpalumpa_Tests PRIVATE algorithms/extrema_finder_cpu.cpp)
+
+# list of test files
+set(tests algorithms/extrema_finder_cpu.cpp)
+
+if(USE_STARPU)
+  list(APPEND tests algorithms/extrema_finder_starpu.cpp)
+endif()
+
+target_sources(Umpalumpa_Tests PRIVATE ${tests})
 target_link_libraries(
   Umpalumpa_Tests
   PRIVATE project_options
           umpalumpa
-          library_ktt
           gtest_main)
 
 include(GoogleTest)

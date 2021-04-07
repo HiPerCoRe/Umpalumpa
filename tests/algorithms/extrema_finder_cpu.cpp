@@ -32,7 +32,7 @@ TEST(ExtermaFinderCPU, SearchData_Subset)
   const auto ldIn = LogicalDescriptor(sizeIn, sizeIn, "IOTA");
   const auto dt = DataType::kFloat;
   const auto pdIn = PhysicalDescriptor(sizeIn.total * Sizeof(dt) + 13, dt);// add some extra bytes
-  const auto in = SearchData(data.get(), ldIn, pdIn);
+  const auto in = SearchData(data.get(), ldIn, pdIn, "Random data");
 
   for (size_t i = 0; i < sizeIn.total; ++i) { ASSERT_FLOAT_EQ(data[i], i) << " for i=" << i; }
 
@@ -69,7 +69,7 @@ TEST(ExtermaFinderCPU, 1D_batch_noPadd_max_valOnly)
   auto dataOrig = std::unique_ptr<float[]>(new float[sizeIn.total]);
   auto ldIn = LogicalDescriptor(sizeIn, sizeIn, "Random input data");
   auto pdIn = PhysicalDescriptor(sizeIn.total * sizeof(float), DataType::kFloat);
-  auto in = SearchData(data.get(), ldIn, pdIn);
+  auto in = SearchData(data.get(), ldIn, pdIn, "Random data");
 
   GenerateData(data, sizeIn.total);
   memcpy(dataOrig.get(), data.get(), sizeIn.total * sizeof(float));
@@ -79,7 +79,7 @@ TEST(ExtermaFinderCPU, 1D_batch_noPadd_max_valOnly)
   auto values = std::unique_ptr<float[]>(new float[sizeValues.total]);
   auto ldVal = LogicalDescriptor(sizeValues, sizeValues, "Values of the found extremas");
   auto pdVal = PhysicalDescriptor(sizeValues.total * sizeof(float), DataType::kFloat);
-  auto valuesP = Payload(values.get(), ldVal, pdVal);
+  auto valuesP = Payload(values.get(), ldVal, pdVal, "Resulting maxima");
 
   auto searcher = SingleExtremaFinderCPU();
   // make sure the settings is fine
@@ -108,7 +108,7 @@ TEST(ExtermaFinderCPU, 1D_manyBatches_noPadd_max_valOnly)
   auto dataOrig = std::unique_ptr<float[]>(new float[sizeIn.total]);
   auto ldIn = LogicalDescriptor(sizeIn, sizeIn, "Basic data");
   auto pdIn = PhysicalDescriptor(sizeIn.total * sizeof(float), DataType::kFloat);
-  auto in = SearchData(data.get(), ldIn, pdIn);
+  auto in = SearchData(data.get(), ldIn, pdIn, "Random data");
 
   GenerateData(data, sizeIn.total);
   memcpy(dataOrig.get(), data.get(), sizeIn.total * sizeof(float));
@@ -118,7 +118,7 @@ TEST(ExtermaFinderCPU, 1D_manyBatches_noPadd_max_valOnly)
   auto values = std::unique_ptr<float[]>(new float[sizeValues.total]);
   auto ldVal = LogicalDescriptor(sizeValues, sizeValues, "Values of the found extremas");
   auto pdVal = PhysicalDescriptor(sizeValues.total * sizeof(float), DataType::kFloat);
-  auto valuesP = Payload(values.get(), ldVal, pdVal);
+  auto valuesP = Payload(values.get(), ldVal, pdVal, "Result maxima");
 
   auto searcher = SingleExtremaFinderCPU();
 

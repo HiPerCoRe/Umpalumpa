@@ -38,13 +38,13 @@ namespace data {
 
     constexpr Dimensionality getDim() const { return dim; }
 
-    const size_t x;
-    const size_t y;
-    const size_t z;
-    const size_t n;
-    const Dimensionality dim;
-    const size_t single;
-    const size_t total;
+    size_t x;
+    size_t y;
+    size_t z;
+    size_t n;
+    Dimensionality dim;
+    size_t single;
+    size_t total;
   };
 
 }// namespace data
