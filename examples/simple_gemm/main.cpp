@@ -17,9 +17,9 @@ struct gemmArgs {
     int matsize_b;
     int matsize_c;
     int batch;
-	ktt::Tuner* tuner;
-	const ktt::KernelId* kernel;
-	const ktt::KernelDefinitionId* kernelDefinition;
+    ktt::Tuner* tuner;
+    const ktt::KernelId* kernel;
+    const ktt::KernelDefinitionId* kernelDefinition;
 };
 
 
@@ -67,7 +67,7 @@ void gemm_cuda(void *buffers[], void *_args)
     const ktt::ArgumentId bId = tuner->AddArgumentVector<float>(reinterpret_cast<ktt::ComputeBuffer>(B), bufferSizeB,
         ktt::ArgumentAccessType::ReadOnly, ktt::ArgumentMemoryLocation::Device);
     const ktt::ArgumentId resultId = tuner->AddArgumentVector<float>(reinterpret_cast<ktt::ComputeBuffer>(C), bufferSizeC,
-        ktt::ArgumentAccessType::ReadOnly, ktt::ArgumentMemoryLocation::Device);
+        ktt::ArgumentAccessType::WriteOnly, ktt::ArgumentMemoryLocation::Device);
 
     const ktt::ArgumentId matsize_a_Id = tuner->AddArgumentScalar(matsize_a);
     const ktt::ArgumentId matsize_b_Id = tuner->AddArgumentScalar(matsize_b);
@@ -76,7 +76,8 @@ void gemm_cuda(void *buffers[], void *_args)
 	
 	tuner->SetArguments(*kernelDefinition, {aId, bId, resultId, batchId, matsize_a_Id, matsize_b_Id, matsize_c_Id});
 	
-    tuner->RunKernel(*kernel, {}, {ktt::BufferOutputDescriptor(resultId, C)});
+    //tuner->RunKernel(*kernel, {}, {ktt::BufferOutputDescriptor(resultId, C)});
+	tuner->TuneKernelIteration(*kernel, {ktt::BufferOutputDescriptor(resultId, C)});
 }
 
 void gemm_cpu(void *buffers[], void *func_arg)
@@ -161,6 +162,41 @@ int main(int argc, char **argv)
 
     const ktt::KernelId kernel = GPUtuner.CreateSimpleKernel("Batch GEMM", kernelDefinition);
 
+
+
+
+//    GPUtuner.AddParameter(kernel, "SIZE_A", {(size_t)a});
+//    GPUtuner.AddParameter(kernel, "SIZE_B", {(size_t)b});
+//    GPUtuner.AddParameter(kernelId, "SIZE_C", {(size_t)c});
+    GPUtuner.AddParameter(kernel, "GROUP_SIZE_Y", std::vector<uint64_t>{1, 2, 4, 8, 16, 32});
+    GPUtuner.AddParameter(kernel, "GROUP_SIZE_Z", std::vector<uint64_t>{1, 2, 4, 8, 16, 32, 64});
+    GPUtuner.AddParameter(kernel, "CACHING_STRATEGY", std::vector<uint64_t>{0, 1, 2}); /* 0 = implicit caching, 1 = local memory, 2 = private memory */
+    GPUtuner.AddParameter(kernel, "PADD_AA", std::vector<uint64_t>{0, 1});
+    GPUtuner.AddParameter(kernel, "PADD_AB", std::vector<uint64_t>{0, 1});
+//    if (c % 4 == 0)
+        GPUtuner.AddParameter(kernel, "PADD_C", std::vector<uint64_t>{0});
+//    else
+//        tuner.AddParameter(kernelId, "PADD_C", std::vector<uint64_t>{0, c % 4});
+    GPUtuner.AddParameter(kernel, "DIRECT_WRITE", std::vector<uint64_t>{0, 1});
+    GPUtuner.AddParameter(kernel, "UNROLL_K", std::vector<uint64_t>{0, 1});
+
+    auto parallelismConstraint = [](const std::vector<size_t>& v) {return v[0] <= v[1];};
+    GPUtuner.AddConstraint(kernel, {"GROUP_SIZE_Y", "SIZE_B"}, parallelismConstraint);
+    auto paddConstraint = [](const std::vector<size_t>& v) {return (v[0] == 0 && v[1] == 0 && v[2] == 0) || (v[3] > 0);};
+    GPUtuner.AddConstraint(kernel, {"PADD_AA", "PADD_AB", "PADD_C", "CACHING_STRATEGY"}, paddConstraint);
+    auto dwConstraint = [](const std::vector<size_t>& v) {return (v[0] == 1) || (v[1] > 0);};
+    GPUtuner.AddConstraint(kernel, {"DIRECT_WRITE", "CACHING_STRATEGY"}, dwConstraint);
+    auto unrollkConstraint = [](const std::vector<size_t>& v) {return (v[0] == 0) || (v[1] == 2);};
+    GPUtuner.AddConstraint(kernel, {"UNROLL_K", "CACHING_STRATEGY"}, unrollkConstraint);
+#define SHARED_PER_BLOCK (49152/4)
+    auto memConstraint = [](const std::vector<size_t>& v) {size_t a = v[1]; size_t b = v[2]; size_t c = v[3]; return (v[0] == 1 && ((a+v[7])*(b+v[8])+c*a+(1-v[4])*(c*b))*v[6] < SHARED_PER_BLOCK) || (v[0] == 2 && v[5] == 1 && ((a+v[7])*(b+v[8])+(1-v[4])*(c*b))*v[6] < SHARED_PER_BLOCK) || (v[0] == 2 && ((a+v[7])*(b+v[8])+c*a+(1-v[4])*(c*b))*v[6] < SHARED_PER_BLOCK);};
+    GPUtuner.AddConstraint(kernel, {"CACHING_STRATEGY", "SIZE_A", "SIZE_B", "SIZE_C", "DIRECT_WRITE", "GROUP_SIZE_Y", "GROUP_SIZE_Z", "PADD_AA", "PADD_AB"}, memConstraint);
+#define MAX_BLOCK_SIZE 1024
+    auto blockConstraint = [](const std::vector<size_t>&v) {return ((v[0]+v[2])*v[1]*v[3] < MAX_BLOCK_SIZE) && ((v[0]+v[2])*v[1]*v[3] >= 32);};
+    GPUtuner.AddConstraint(kernel, {"SIZE_C", "GROUP_SIZE_Y", "PADD_C", "GROUP_SIZE_Z"}, blockConstraint);
+
+
+
     GPUtuner.SetTimeUnit(ktt::TimeUnit::Microseconds);
 
 /*
@@ -218,9 +254,15 @@ int main(int argc, char **argv)
             args->matsize_c = 2+(float)(rand())*31 / RAND_MAX;
             args->batch = (MAX_BYTES / sizeof(float)) / ((args->matsize_a*args->matsize_b)+(args->matsize_c*args->matsize_a)+(args->matsize_c*args->matsize_b));
 			
-	        args->tuner = &GPUtuner;
+            args->tuner = &GPUtuner;
+
+			ktt::DimensionVector ndRangeDimensions(args->batch);
+            ktt::DimensionVector workGroupDimensions;
+            ktt::KernelDefinitionId kernelDefinition = GPUtuner.AddKernelDefinitionFromFile("gemm_batch", "../../examples/simple_gemm/gemm_kernel.cu", ndRangeDimensions, workGroupDimensions);//"/home/jaro/umpalumpa/examples/simple_gemm/kernel.cu", "gemm_batch_kernel", ndRangeDimensions, workGroupDimensions);
+            const ktt::KernelId kernel = GPUtuner.CreateSimpleKernel("Batch GEMM", kernelDefinition);
+
 			args->kernel = &kernel;
-		    args->kernelDefinition = &kernelDefinition;
+            args->kernelDefinition = &kernelDefinition;
 
             printf("Switching matrix size: A = %i, B = %i, C = %i., batch=%i\n", args->matsize_a, args->matsize_b, args->matsize_c, args->batch);
         }

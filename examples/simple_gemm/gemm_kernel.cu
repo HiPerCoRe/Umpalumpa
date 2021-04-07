@@ -2,14 +2,6 @@
 #define REAL2 float2
 #define REAL4 float4
 
-#define CACHING_STRATEGY 0
-#define GROUP_SIZE_Y 4
-#define GROUP_SIZE_Z 4
-#define PADD_AA 0
-#define PADD_AB 0
-#define PADD_C 0
-#define DIRECT_WRITE 1
-#define UNROLL_K 1
 
 
 
