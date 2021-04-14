@@ -1,3 +1,5 @@
+include(ExternalProject)
+
 # make sure that we have premake
 set(premake ${CMAKE_CURRENT_SOURCE_DIR}/premake5/premake5)
 if(NOT EXISTS ${premake})
@@ -30,3 +32,21 @@ execute_process(COMMAND make -j 4 WORKING_DIRECTORY ${ktt_dir}/Build)
 add_library(library_ktt INTERFACE)
 target_include_directories(library_ktt INTERFACE ${ktt_dir}/Source/)
 target_link_libraries(library_ktt INTERFACE ${ktt_dir}/Build/x86_64_Release/libktt.so)
+
+# create spdlog library
+set(spdlog_dir ${CMAKE_CURRENT_SOURCE_DIR}/spdlog)
+ExternalProject_Add(spdlog_install
+    PREFIX spdlog
+    SOURCE_DIR ${spdlog_dir}
+    CMAKE_ARGS -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+    -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+    -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+    -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
+    -DCMAKE_INSTALL_PREFIX=${spdlog_dir}/install/
+    -DSPDLOG_BUILD_SHARED=OFF
+)
+# create ktt library
+add_library(spdlog INTERFACE)
+add_dependencies(spdlog spdlog_install)
+target_include_directories(spdlog INTERFACE ${spdlog_dir}/install/include)
+target_link_libraries(spdlog INTERFACE ${spdlog_dir}/install/lib/libspdlogd.a)

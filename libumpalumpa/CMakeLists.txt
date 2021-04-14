@@ -17,5 +17,5 @@ endif()
 target_include_directories(umpalumpa PUBLIC ${CMAKE_SOURCE_DIR})
 
 target_sources(umpalumpa PRIVATE ${umpalumpa_sources})
-target_link_libraries(umpalumpa PRIVATE project_options project_warnings)
+target_link_libraries(umpalumpa PRIVATE project_options project_warnings spdlog)
 target_link_libraries(umpalumpa PUBLIC library_starpu)

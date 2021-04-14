@@ -3,3 +3,6 @@
 	url = https://github.com/HiPerCoRe/KTT.git
 	branch = development_2.0
 	ignore = untracked
+[submodule "external/spdlog"]
+	path = external/spdlog
+	url = https://github.com/gabime/spdlog
