@@ -7,30 +7,37 @@
 
 namespace umpalumpa {
 namespace data {
-  template<typename T>
-  class Payload
+  template<typename T> class Payload
   {
 
-    static_assert(std::is_base_of<LogicalDescriptor, T>::value, "T must inherit from Logical Descriptor");
+    static_assert(std::is_base_of<LogicalDescriptor, T>::value,
+      "T must inherit from Logical Descriptor");
+
   public:
-    explicit Payload(void *d, const T &ld, const PhysicalDescriptor &pd)
-      : data(d), info(ld), dataInfo(pd)
+    explicit Payload(void *d, const T &ld, const PhysicalDescriptor &pd, const std::string &desc)
+      : data(d), info(ld), dataInfo(pd), description(desc)
     {}
     virtual ~Payload() = default;
-    void *const data;// constant pointer to non-constant data, type defined by physical and logical descriptor
-    const T info;
-    const PhysicalDescriptor dataInfo;
     bool IsValid() const { return info.IsValid() && IsValidBytes(); }
     Payload Subset(size_t startN, size_t count) const
     {
       assert(this->IsValid());
-      const auto newInfo = info.Subset(startN, count);
+      size_t safeCount = 0;
+      const auto newInfo = info.Subset(safeCount, startN, count);
       const auto offset = info.Offset(0, 0, 0, startN);
 
-      const auto newDataInfo = PhysicalDescriptor(newInfo.Elems() * Sizeof(dataInfo.type), dataInfo.type);
+      const auto newDataInfo =
+        PhysicalDescriptor(newInfo.Elems() * Sizeof(dataInfo.type), dataInfo.type);
       void *newData = reinterpret_cast<char *>(data) + (offset * Sizeof(dataInfo.type));
-      return Payload(newData, newInfo, newDataInfo);
+      const auto suffix = " [" + std::to_string(startN) + ".." + std::to_string(startN + safeCount);
+      return Payload(newData, newInfo, newDataInfo, description + suffix);
     };
+
+    void *
+      data;// constant pointer to non-constant data, type defined by physical and logical descriptor
+     T info;
+     PhysicalDescriptor dataInfo;
+     std::string description;
 
   private:
     bool IsValidBytes() const

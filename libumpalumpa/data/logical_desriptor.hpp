@@ -14,11 +14,11 @@ namespace data {
     {}
     virtual ~LogicalDescriptor() {}
     bool IsValid() const { return paddedSize >= size; }
-    virtual LogicalDescriptor Subset(const size_t startN, const size_t count) const
+    virtual LogicalDescriptor Subset(size_t &safeCount, const size_t startN, const size_t count) const
     {
       assert(this->IsValid());
       assert(startN <= paddedSize.n);
-      const size_t safeCount = std::min(paddedSize.n - startN, count);
+      safeCount = std::min(paddedSize.n - startN, count);
       return LogicalDescriptor(size.CopyFor(safeCount), paddedSize.CopyFor(safeCount), description);
     }
 
@@ -34,9 +34,9 @@ namespace data {
 
     virtual size_t Elems() const { return paddedSize.total; }
 
-    const Size size;
-    const Size paddedSize;
-    const std::string description;
+    Size size;
+    Size paddedSize;
+    std::string description;
   };
 }// namespace data
 }// namespace umpalumpa

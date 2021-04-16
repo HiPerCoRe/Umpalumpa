@@ -12,11 +12,11 @@ namespace data {
       : bytes(b), kbytes(static_cast<float>(b) / 1024), Mbytes(static_cast<float>(b) / (1024 * 1024)),
         Gbytes(static_cast<float>(b) / (1024 * 1024 * 1024)), type(dataType){};
 
-    const size_t bytes;
-    const float kbytes;
-    const float Mbytes;
-    const float Gbytes;
-    const DataType type;
+    size_t bytes;
+    float kbytes;
+    float Mbytes;
+    float Gbytes;
+    DataType type;
   };
 }// namespace data
 }// namespace umpalumpa
