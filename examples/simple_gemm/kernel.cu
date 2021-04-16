@@ -204,7 +204,7 @@ extern "C" void gemm_batch(void *buffers[], void *_args){
     int b = arguments->matsize_b;
     int c = arguments->matsize_c;
     int batch = arguments->batch;
-    printf("generate: %d %d %d %d\n", a, b, c, batch);
+    printf("CUDA processing: %d %d %d %d\n", a, b, c, batch);
 
     unsigned threads_per_block = 64;
     unsigned nblocks = ((batch / GROUP_SIZE_Z) + threads_per_block-1) / threads_per_block;
