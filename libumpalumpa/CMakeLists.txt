@@ -8,7 +8,10 @@ endif()
 set_target_properties(umpalumpa PROPERTIES SOVERSION 0 VERSION 0.0.1)
 
 # list of source files
-set(umpalumpa_sources algorithms/extrema_finder/single_extrema_finder_cpu.cpp)
+set(umpalumpa_sources 
+	utils/system.cpp
+	algorithms/extrema_finder/single_extrema_finder_cpu.cpp 
+	algorithms/extrema_finder/single_extrema_finder_gpu.cpp)
 
 if(USE_STARPU)
   list(APPEND umpalumpa_sources algorithms/extrema_finder/single_extrema_finder_starpu.cpp)
@@ -17,5 +20,5 @@ endif()
 target_include_directories(umpalumpa PUBLIC ${CMAKE_SOURCE_DIR})
 
 target_sources(umpalumpa PRIVATE ${umpalumpa_sources})
-target_link_libraries(umpalumpa PRIVATE project_options project_warnings spdlog)
+target_link_libraries(umpalumpa PRIVATE project_options project_warnings spdlog library_ktt)
 target_link_libraries(umpalumpa PUBLIC library_starpu)

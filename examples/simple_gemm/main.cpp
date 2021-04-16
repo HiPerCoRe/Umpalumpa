@@ -142,7 +142,7 @@ struct Codelet {
 
 Codelet::Codelet():gemm{0}, generate{0}{
     gemm.where = STARPU_CPU|STARPU_CUDA;
-    gemm.cpu_funcs[0] = gemm_cpu;
+    // gemm.cpu_funcs[0] = gemm_cpu;
     gemm.cuda_funcs[0] = gemm_cuda;
     gemm.cuda_flags[0] = STARPU_CUDA_ASYNC;
     gemm.nbuffers = 3;
@@ -354,6 +354,9 @@ int main(int argc, char **argv)
         starpu_data_unregister_submit(matrixA);
         starpu_data_unregister_submit(matrixB);
         starpu_data_unregister_submit(resultBuffer);
+
+        printf("->>>>>>>>>>Yay\n");
+        break;
     }	
 	
     starpu_shutdown();

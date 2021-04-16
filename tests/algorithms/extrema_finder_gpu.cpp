@@ -1,10 +1,9 @@
 #include <gtest/gtest.h>
 
 #include <iostream>
-#include <libumpalumpa/algorithms/extrema_finder/single_extrema_finder_starpu.hpp>
+#include <libumpalumpa/algorithms/extrema_finder/single_extrema_finder_gpu.hpp>
 #include <memory>
 #include <random>
-#include <starpu.h>
 
 using namespace umpalumpa::extrema_finder;
 using namespace umpalumpa::data;
@@ -25,13 +24,15 @@ template<typename T> void PrintData(std::unique_ptr<T> &data, const Size size)
   }
 }
 
-TEST(ExtermaFinderStarPU, 1D_manyBatches_noPadd_max_valOnly)
+
+
+TEST(ExtermaFinderGPU, 1D_batch_noPadd_max_valOnly)
 {
-  auto sizeIn = Size(120, 32, 16, 103);
+  auto sizeIn = Size(10, 1, 1, 3);
   auto settings = Settings(SearchType::kMax, SearchLocation::kEntire, SearchResult::kValue);
   auto data = std::unique_ptr<float[]>(new float[sizeIn.total]);
   auto dataOrig = std::unique_ptr<float[]>(new float[sizeIn.total]);
-  auto ldIn = LogicalDescriptor(sizeIn, sizeIn, "Basic data");
+  auto ldIn = LogicalDescriptor(sizeIn, sizeIn, "Random input data");
   auto pdIn = PhysicalDescriptor(sizeIn.total * sizeof(float), DataType::kFloat);
   auto in = SearchData(data.get(), ldIn, pdIn, "Random data");
 
@@ -43,28 +44,16 @@ TEST(ExtermaFinderStarPU, 1D_manyBatches_noPadd_max_valOnly)
   auto values = std::unique_ptr<float[]>(new float[sizeValues.total]);
   auto ldVal = LogicalDescriptor(sizeValues, sizeValues, "Values of the found extremas");
   auto pdVal = PhysicalDescriptor(sizeValues.total * sizeof(float), DataType::kFloat);
-  auto valuesP = Payload(values.get(), ldVal, pdVal, "Result maxima");
+  auto valuesP = Payload(values.get(), ldVal, pdVal, "Resulting maxima");
 
-  starpu_init(NULL);
+  auto searcher = SingleExtremaFinderGPU();
+  // make sure the settings is fine
+  settings.dryRun = true;
+  ASSERT_TRUE(searcher.Execute({ &valuesP, nullptr }, in, settings));
 
-  auto searcher = SingleExtremaFinderStarPU();
-
-  const size_t batchSize = 7;
-  for (size_t offset = 0; offset < sizeIn.n; offset += batchSize) {
-    auto i = in.Subset(offset, batchSize);
-    auto o = valuesP.Subset(offset, batchSize);
-    // make sure the settings is fine
-    settings.dryRun = true;
-    ASSERT_TRUE(searcher.Execute({ &o, nullptr }, i, settings));
-
-    // make sure the search finished
-    settings.dryRun = false;
-
-    ASSERT_TRUE(searcher.Execute({ &o, nullptr }, i, settings));
-  }
-
-  starpu_shutdown();
-
+  // make sure the search finished
+  settings.dryRun = false;
+  ASSERT_TRUE(searcher.Execute({ &valuesP, nullptr }, in, settings));
   // make sure that we didn't change data
   ASSERT_EQ(0, memcmp(data.get(), dataOrig.get(), sizeIn.total * sizeof(float)));
   // test that we found good maximas
