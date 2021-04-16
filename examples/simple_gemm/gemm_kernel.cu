@@ -5,7 +5,7 @@
 
 
 
-extern "C" __global__ void gemm_batch(const REAL* A, const REAL* B, REAL* C, int n, int SIZE_A, int SIZE_B, int SIZE_C) {
+extern "C" __global__ void gemm_batch(const REAL* A, const REAL* B, REAL* C, int n) {
     int matrix = blockIdx.x*GROUP_SIZE_Z + threadIdx.z;
     int matrixBatch = blockIdx.x*GROUP_SIZE_Z;
     int tx = threadIdx.x;
