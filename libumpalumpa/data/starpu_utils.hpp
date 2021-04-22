@@ -52,7 +52,7 @@ static int copy_any_to_any(void *src_interface,
 {
   auto *src = reinterpret_cast<umpalumpa::data::Payload<T> *>(src_interface);
   auto *dst = reinterpret_cast<umpalumpa::data::Payload<T> *>(dst_interface);
-  *dst = *src;
+  *dst = *src; // FIXME this will invalidate data pointer on dst?
 
   return starpu_interface_copy(reinterpret_cast<uintptr_t>(src->data),
     0,
