@@ -49,4 +49,5 @@ ExternalProject_Add(spdlog_install
 add_library(spdlog INTERFACE)
 add_dependencies(spdlog spdlog_install)
 target_include_directories(spdlog INTERFACE ${spdlog_dir}/install/include)
-target_link_libraries(spdlog INTERFACE ${spdlog_dir}/install/lib/libspdlog.a)
+target_link_libraries(spdlog INTERFACE debug ${spdlog_dir}/install/lib/libspdlogd.a)
+target_link_libraries(spdlog INTERFACE optimized ${spdlog_dir}/install/lib/libspdlog.a)
