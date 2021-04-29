@@ -91,6 +91,7 @@ namespace extrema_finder {
 
       static bool Run(const ResultData &out, const SearchData &in, const Settings &settings)
       {
+        spdlog::info("Strategy1: Entering Run()");
         if (settings.dryRun) return true;
         if (nullptr == in.data || nullptr == out.values->data) return false;
 
@@ -159,7 +160,7 @@ namespace extrema_finder {
         // retrieved argument size.
 
         auto configuration = tuner.CreateConfiguration(kernel, { { "blockSize", threads } });
-
+  spdlog::info("Strategy1: executing kernel");
         tuner.RunKernel(
           kernel, configuration, { ktt::BufferOutputDescriptor(argVals, out.values->data) });
 

@@ -5,8 +5,6 @@ using namespace umpalumpa::data;
 
 #define NAME ExtermaFinderGPU
 
-auto getSearcher() {
-  return SingleExtremaFinderGPU();
-}
+auto getSearcher() { return SingleExtremaFinderGPU(); }
 
 #include <tests/algorithms/extrema_finder_common.hpp>

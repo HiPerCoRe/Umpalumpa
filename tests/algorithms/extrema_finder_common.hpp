@@ -9,6 +9,9 @@
 using namespace umpalumpa::extrema_finder;
 using namespace umpalumpa::data;
 
+
+
+
 template<typename T> void GenerateData(std::unique_ptr<T> &data, size_t elems)
 {
   auto mt = std::mt19937(42);
@@ -25,8 +28,9 @@ template<typename T> void PrintData(std::unique_ptr<T> &data, const Size size)
   }
 }
 
-TEST(NAME, SearchData_Subset)
+TEST_F(NAME, SearchData_Subset)
 {
+  std::cout << "starting test\n";
   const auto sizeIn = Size(3, 5, 7, 11);
   const auto data = std::unique_ptr<float[]>(new float[sizeIn.total]);
   std::iota(data.get(), data.get() + sizeIn.total, 0);
@@ -52,18 +56,19 @@ TEST(NAME, SearchData_Subset)
   }
   // check last iteration
   const auto s = in.Subset(9, batch);
-    // check size
-    ASSERT_EQ(s.info.size, Size(3, 5, 7, 2));
-    const size_t offset = 9 * sizeIn.single;
-    // check that pointer is correct
-    ASSERT_EQ(s.data, data.get() + offset);
-    // check that bytes are correct
-    ASSERT_EQ(s.dataInfo.bytes, sizeIn.single * sizeof(float) * 2);
-
+  // check size
+  ASSERT_EQ(s.info.size, Size(3, 5, 7, 2));
+  const size_t offset = 9 * sizeIn.single;
+  // check that pointer is correct
+  ASSERT_EQ(s.data, data.get() + offset);
+  // check that bytes are correct
+  ASSERT_EQ(s.dataInfo.bytes, sizeIn.single * sizeof(float) * 2);
+  std::cout << "end test\n";
 }
 
-TEST(NAME, 1D_batch_noPadd_max_valOnly)
+TEST_F(NAME, 1D_batch_noPadd_max_valOnly)
 {
+  std::cout << "starting test\n";
   auto sizeIn = Size(10, 1, 1, 3);
   auto settings = Settings(SearchType::kMax, SearchLocation::kEntire, SearchResult::kValue);
   auto data = std::unique_ptr<float[]>(new float[sizeIn.total]);
@@ -99,10 +104,12 @@ TEST(NAME, 1D_batch_noPadd_max_valOnly)
     float trueMax = *std::max_element(first, last);
     ASSERT_FLOAT_EQ(trueMax, values[i]) << " for n=" << i;
   }
+  std::cout << "end test\n";
 }
 
-TEST(NAME, 1D_manyBatches_noPadd_max_valOnly)
+TEST_F(NAME, 1D_manyBatches_noPadd_max_valOnly)
 {
+  std::cout << "starting test\n";
   auto sizeIn = Size(120, 32, 16, 103);
   auto settings = Settings(SearchType::kMax, SearchLocation::kEntire, SearchResult::kValue);
   auto data = std::unique_ptr<float[]>(new float[sizeIn.total]);
@@ -146,6 +153,7 @@ TEST(NAME, 1D_manyBatches_noPadd_max_valOnly)
     float trueMax = *std::max_element(first, last);
     ASSERT_FLOAT_EQ(trueMax, values[i]) << " for n=" << i;
   }
+  std::cout << "end test\n";
 }
 
 
