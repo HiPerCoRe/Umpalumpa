@@ -1,6 +1,7 @@
 #include <libumpalumpa/algorithms/extrema_finder/single_extrema_finder_cuda.hpp>
 #include <libumpalumpa/utils/logger.hpp>
 #include <libumpalumpa/utils/system.hpp>
+#include <cuda.h>
 
 namespace umpalumpa {
 namespace extrema_finder {
@@ -96,6 +97,25 @@ namespace extrema_finder {
       };
     };
   }// namespace
+
+
+  ktt::ComputeApiInitializer SingleExtremaFinderCUDA::createApiInitializer(int deviceOrdinal)
+  {
+    cuInit(0);// FIXME add error handling
+
+    CUdevice device;
+    cuDeviceGet(&device, deviceOrdinal);
+
+    CUcontext context;
+    cuCtxCreate(&context, CU_CTX_SCHED_AUTO, device);
+
+    CUstream stream;
+    cuStreamCreate(&stream, CU_STREAM_DEFAULT);
+
+    // Create compute API initializer which specifies context and streams that will be utilized by
+    // the tuner.
+    return ktt::ComputeApiInitializer(context, std::vector<ktt::ComputeQueue>{ stream });
+  }
 
   bool SingleExtremaFinderCUDA::Init(const ResultData &out,
     const SearchData &in,

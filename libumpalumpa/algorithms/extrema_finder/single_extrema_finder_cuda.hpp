@@ -11,15 +11,16 @@ namespace extrema_finder {
   class SingleExtremaFinderCUDA : public AExtremaFinder
   {
   public:
-    SingleExtremaFinderCUDA(ktt::DeviceIndex deviceIndex)
-      : tuner(0, deviceIndex, ktt::ComputeApi::CUDA){};
+    SingleExtremaFinderCUDA(int deviceOrdinal)
+      : tuner(ktt::ComputeApi::CUDA, createApiInitializer(deviceOrdinal)){};
     bool Init(const ResultData &out, const SearchData &in, const Settings &settings) override;
     bool Execute(const ResultData &out, const SearchData &in, const Settings &settings) override;
 
     struct Strategy
     {
       virtual ~Strategy() = default;
-      virtual bool Init(const ResultData &, const SearchData &, const Settings &s, ktt::Tuner &tuner) = 0;
+      virtual bool
+        Init(const ResultData &, const SearchData &, const Settings &s, ktt::Tuner &tuner) = 0;
       virtual bool Execute(const ResultData &out,
         const SearchData &in,
         const Settings &settings,
@@ -28,12 +29,13 @@ namespace extrema_finder {
 
       struct KernelData
       {
-        ktt::KernelDefinitionId definitionId; ///this should be vector
+        ktt::KernelDefinitionId definitionId;// FIXME this should be a vector
         ktt::KernelId kernelId;
       };
     };
 
   private:
+    ktt::ComputeApiInitializer createApiInitializer(int deviceOrdinal);
     std::unique_ptr<Strategy> strategy;
     ktt::Tuner tuner;
   };
