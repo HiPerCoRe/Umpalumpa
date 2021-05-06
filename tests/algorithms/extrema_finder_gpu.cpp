@@ -9,7 +9,7 @@ using namespace umpalumpa::data;
 class SingleExtremaFinderGPUTest : public ::testing::Test
 {
 public:
-  auto getSearcher() { return SingleExtremaFinderGPU(0); }
+  auto getSearcher() { return SingleExtremaFinderCUDA(0); }
   auto allocate(size_t bytes)
   {
     void *ptr;

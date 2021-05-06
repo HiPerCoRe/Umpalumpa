@@ -8,10 +8,10 @@
 
 namespace umpalumpa {
 namespace extrema_finder {
-  class SingleExtremaFinderGPU : public AExtremaFinder
+  class SingleExtremaFinderCUDA : public AExtremaFinder
   {
   public:
-    SingleExtremaFinderGPU(ktt::DeviceIndex deviceIndex)
+    SingleExtremaFinderCUDA(ktt::DeviceIndex deviceIndex)
       : tuner(0, deviceIndex, ktt::ComputeApi::CUDA){};
     bool Init(const ResultData &out, const SearchData &in, const Settings &settings) override;
     bool Execute(const ResultData &out, const SearchData &in, const Settings &settings) override;

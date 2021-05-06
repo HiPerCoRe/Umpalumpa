@@ -16,7 +16,7 @@ namespace extrema_finder {
       return power;
     }
 
-    struct Strategy1 : public SingleExtremaFinderGPU::Strategy
+    struct Strategy1 : public SingleExtremaFinderCUDA::Strategy
     {
       static constexpr auto kFindMax1D = "findMax1D";
       static constexpr auto kStrategyName = "Strategy1";
@@ -97,7 +97,7 @@ namespace extrema_finder {
     };
   }// namespace
 
-  bool SingleExtremaFinderGPU::Init(const ResultData &out,
+  bool SingleExtremaFinderCUDA::Init(const ResultData &out,
     const SearchData &in,
     const Settings &settings)
   {
@@ -113,7 +113,7 @@ namespace extrema_finder {
     return tryToAdd(std::make_unique<Strategy1>()) || false;
   }
 
-  bool SingleExtremaFinderGPU::Execute(const ResultData &out,
+  bool SingleExtremaFinderCUDA::Execute(const ResultData &out,
     const SearchData &in,
     const Settings &settings)
   {
