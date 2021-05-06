@@ -1,4 +1,4 @@
-#include <libumpalumpa/algorithms/extrema_finder/single_extrema_finder_gpu.hpp>
+#include <libumpalumpa/algorithms/extrema_finder/single_extrema_finder_cuda.hpp>
 #include <libumpalumpa/utils/logger.hpp>
 #include <libumpalumpa/utils/system.hpp>
 
@@ -21,7 +21,7 @@ namespace extrema_finder {
       static constexpr auto kFindMax1D = "findMax1D";
       static constexpr auto kStrategyName = "Strategy1";
       inline static const auto kKernelFile = utils::GetSourceFilePath(
-        "../../../libumpalumpa/algorithms/extrema_finder/single_extrema_finder_gpu_kernels.cu");
+        "../../../libumpalumpa/algorithms/extrema_finder/single_extrema_finder_cuda_kernels.cu");
 
       static constexpr size_t kMaxThreads = 512;
 

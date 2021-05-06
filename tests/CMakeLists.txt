@@ -11,7 +11,7 @@ add_executable(Umpalumpa_Tests)
 # list of test files
 set(tests 
 	#algorithms/extrema_finder_cpu.cpp 
-	algorithms/extrema_finder_gpu.cpp
+	algorithms/extrema_finder_cuda.cpp
 	)
 
 if(USE_STARPU)

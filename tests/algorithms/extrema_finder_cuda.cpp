@@ -1,4 +1,4 @@
-#include <libumpalumpa/algorithms/extrema_finder/single_extrema_finder_gpu.hpp>
+#include <libumpalumpa/algorithms/extrema_finder/single_extrema_finder_cuda.hpp>
 #include <gtest/gtest.h>
 
 #include <cuda_runtime.h>
@@ -6,7 +6,7 @@
 using namespace umpalumpa::extrema_finder;
 using namespace umpalumpa::data;
 
-class SingleExtremaFinderGPUTest : public ::testing::Test
+class SingleExtremaFinderCUDATest : public ::testing::Test
 {
 public:
   auto getSearcher() { return SingleExtremaFinderCUDA(0); }
@@ -19,5 +19,5 @@ public:
 
   void free(void *ptr) { cudaFree(ptr); }
 };
-#define NAME SingleExtremaFinderGPUTest
+#define NAME SingleExtremaFinderCUDATest
 #include <tests/algorithms/extrema_finder_common.hpp>
