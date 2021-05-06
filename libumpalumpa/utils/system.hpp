@@ -16,5 +16,7 @@ namespace utils {
   std::string Canonize(const std::string &p);
 
   std::string Exec(const std::string &cmd);
+
+  std::string GetSourceFilePath(const std::string &relPath);
 }// namespace utils
 }// namespace umpalumpa

@@ -11,19 +11,20 @@ add_executable(Umpalumpa_Tests)
 # list of test files
 set(tests 
 	#algorithms/extrema_finder_cpu.cpp 
-	#algorithms/extrema_finder_gpu.cpp
+	algorithms/extrema_finder_gpu.cpp
 	)
 
 if(USE_STARPU)
-  list(APPEND tests algorithms/extrema_finder_starpu.cpp)
+ # list(APPEND tests algorithms/extrema_finder_starpu.cpp)
 endif()
 
 target_sources(Umpalumpa_Tests PRIVATE ${tests})
+
 target_link_libraries(
   Umpalumpa_Tests
   PRIVATE project_options
           umpalumpa
-          gtest_main)
+          gtest_main ${CUDART_LIBRARY})
 
 include(GoogleTest)
 gtest_discover_tests(Umpalumpa_Tests)

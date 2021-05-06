@@ -35,7 +35,7 @@ namespace extrema_finder {
           : nullptr;
       auto out = ResultData(vals, nullptr);
       auto *in = reinterpret_cast<umpalumpa::extrema_finder::SearchData *>(buffers[0]);
-      auto prg = SingleExtremaFinderGPU();// FIXME the starpu instance has to have its own version
+      auto prg = SingleExtremaFinderGPU(0);// FIXME the starpu instance has to have its own version
                                           // and call that one, otherwise if init() is used
       prg.Execute(out, *in, *settings);
     }

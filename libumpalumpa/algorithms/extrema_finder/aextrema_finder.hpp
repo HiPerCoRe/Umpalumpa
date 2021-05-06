@@ -11,13 +11,14 @@ namespace extrema_finder {
   class AExtremaFinder
   {
   public:
-    virtual bool Init(__attribute__((unused)) const Settings &settings) { return true; };
+    virtual bool Init(const ResultData &out, const SearchData &in, const Settings &settings) = 0;
     virtual bool Execute(const ResultData &out, const SearchData &in, const Settings &settings) = 0;
     virtual void Cleanup(){};
     virtual ~AExtremaFinder() = default;
 
   protected:
-    virtual bool IsValid(const ResultData &out, const SearchData &in, const Settings &settings) const
+    virtual bool
+      IsValid(const ResultData &out, const SearchData &in, const Settings &settings) const
     {
       bool result = true;
       // is input valid?
