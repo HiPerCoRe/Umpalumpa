@@ -34,6 +34,7 @@ namespace extrema_finder {
       };
     };
 
+    void Synchronize();
   private:
     ktt::ComputeApiInitializer createApiInitializer(int deviceOrdinal);
     std::unique_ptr<Strategy> strategy;

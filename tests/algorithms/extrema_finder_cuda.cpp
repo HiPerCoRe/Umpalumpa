@@ -19,7 +19,7 @@ public:
 
   void Free(void *ptr) { cudaFree(ptr); }
 
-  void WaitTillDone(){};
+  void WaitTillDone() { searcher.Synchronize(); };
 
 private:
   SingleExtremaFinderCUDA searcher = SingleExtremaFinderCUDA(0);

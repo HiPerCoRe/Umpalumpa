@@ -1,6 +1,7 @@
 #include <libumpalumpa/algorithms/extrema_finder/single_extrema_finder_cuda.hpp>
 #include <libumpalumpa/system_includes/spdlog.hpp>
 #include <libumpalumpa/utils/system.hpp>
+#include <libumpalumpa/system_includes/cuda_runtime.hpp>
 #include <cuda.h>
 
 namespace umpalumpa {
@@ -85,19 +86,28 @@ namespace extrema_finder {
         tuner.SetLauncher(kernelData.kernelId, [this, &in](ktt::ComputeInterface &interface) {
           const ktt::DimensionVector blockDimensions(threads);
           const ktt::DimensionVector gridDimensions(in.info.size.n);
-          interface.RunKernel(kernelData.definitionId, gridDimensions, blockDimensions);
+          interface.RunKernelAsync(kernelData.definitionId,
+            interface.GetAllQueues().at(0),
+            gridDimensions,
+            blockDimensions);
         });
 
         auto configuration =
           tuner.CreateConfiguration(kernelData.kernelId, { { "blockSize", threads } });
-        tuner.RunKernel(kernelData.kernelId,
-          configuration,
-          { ktt::BufferOutputDescriptor(argVals, out.values->data) });
+        // tuner.RunKernel(kernelData.kernelId,
+        //   configuration,
+        //   { ktt::BufferOutputDescriptor(argVals, out.values->data) });
+        tuner.RunKernel(kernelData.kernelId, configuration, {});
         return true;
       };
     };
   }// namespace
 
+  void SingleExtremaFinderCUDA::Synchronize()
+  {
+    // FIXME implement properly
+    cudaDeviceSynchronize();
+  }
 
   ktt::ComputeApiInitializer SingleExtremaFinderCUDA::createApiInitializer(int deviceOrdinal)
   {
