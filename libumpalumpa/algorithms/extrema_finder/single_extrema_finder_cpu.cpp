@@ -1,7 +1,7 @@
 #include <functional>
 #include <libumpalumpa/algorithms/extrema_finder/single_extrema_finder_cpu.hpp>
 #include <libumpalumpa/algorithms/extrema_finder/single_extrema_finder_cpu_kernels.hpp>
-#include <libumpalumpa/utils/logger.hpp>
+#include <libumpalumpa/system_includes/spdlog.hpp>
 
 namespace umpalumpa {
 namespace extrema_finder {

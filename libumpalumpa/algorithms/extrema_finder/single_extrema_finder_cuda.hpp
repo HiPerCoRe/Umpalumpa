@@ -1,7 +1,7 @@
 #pragma once
 
 #include <libumpalumpa/algorithms/extrema_finder/aextrema_finder.hpp>
-#include <libumpalumpa/utils/ktt.hpp>
+#include <libumpalumpa/system_includes/ktt.hpp>
 #include <vector>
 #include <memory>
 #include <map>
