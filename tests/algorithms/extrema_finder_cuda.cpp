@@ -9,15 +9,20 @@ using namespace umpalumpa::data;
 class SingleExtremaFinderCUDATest : public ::testing::Test
 {
 public:
-  auto getSearcher() { return SingleExtremaFinderCUDA(0); }
-  auto allocate(size_t bytes)
+  auto &GetSearcher() { return searcher; }
+  auto Allocate(size_t bytes)
   {
     void *ptr;
     cudaMallocManaged(&ptr, bytes);
     return ptr;
   }
 
-  void free(void *ptr) { cudaFree(ptr); }
+  void Free(void *ptr) { cudaFree(ptr); }
+
+  void WaitTillDone(){};
+
+private:
+  SingleExtremaFinderCUDA searcher = SingleExtremaFinderCUDA(0);
 };
 #define NAME SingleExtremaFinderCUDATest
 #include <tests/algorithms/extrema_finder_common.hpp>

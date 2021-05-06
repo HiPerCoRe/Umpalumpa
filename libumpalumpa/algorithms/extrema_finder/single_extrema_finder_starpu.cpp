@@ -9,20 +9,21 @@ namespace extrema_finder {
 
   namespace {// to avoid poluting
 
-    // void cpu(void *buffers[], void *func_arg)
-    // {
-    //   auto *settings = reinterpret_cast<Settings *>(func_arg);
-    //   auto *vals =
-    //     (settings->result == SearchResult::kValue)
-    //       ? reinterpret_cast<umpalumpa::data::Payload<umpalumpa::data::LogicalDescriptor> *>(
-    //         buffers[1])
-    //       : nullptr;
-    //   auto out = ResultData(vals, nullptr);
-    //   auto *in = reinterpret_cast<umpalumpa::extrema_finder::SearchData *>(buffers[0]);
-    //   auto prg = SingleExtremaFinderCPU();// FIXME the starpu instance has to have its own version
-    //                                       // and call that one, otherwise if init() is used
-    //   prg.Execute(out, *in, *settings);
-    // }
+    void cpu(void *buffers[], void *func_arg)
+    {
+      auto *settings = reinterpret_cast<Settings *>(func_arg);
+      auto *vals =
+        (settings->result == SearchResult::kValue)
+          ? reinterpret_cast<umpalumpa::data::Payload<umpalumpa::data::LogicalDescriptor> *>(
+            buffers[1])
+          : nullptr;
+      auto out = ResultData(vals, nullptr);
+      auto *in = reinterpret_cast<umpalumpa::extrema_finder::SearchData *>(buffers[0]);
+      auto idx = static_cast<size_t>(starpu_worker_get_devid(
+        starpu_worker_get_id()));// we have N workers, but they might not be numbered from 0
+      auto &alg = SingleExtremaFinderStarPU::Instance().GetCPUAlgorithms().at(idx);
+      alg->Execute(out, *in, *settings);
+    }
 
     void gpu(void *buffers[], void *func_arg)
     {
@@ -36,10 +37,23 @@ namespace extrema_finder {
       auto out = ResultData(vals, nullptr);
       auto *in = reinterpret_cast<umpalumpa::extrema_finder::SearchData *>(buffers[0]);
       auto prg = SingleExtremaFinderCUDA(0);// FIXME the starpu instance has to have its own version
-                                          // and call that one, otherwise if init() is used
+                                            // and call that one, otherwise if init() is used
       prg.Execute(out, *in, *settings);
     }
   }// namespace
+
+  bool SingleExtremaFinderStarPU::Init(const ResultData &out,
+    const SearchData &in,
+    const Settings &settings)
+  {
+    cpuAlgs.clear();
+    for (unsigned i = 0; i < starpu_cpu_worker_get_count(); ++i) {
+      auto w = std::make_unique<SingleExtremaFinderCPU>();
+      if (w->Init(out, in, settings)) { cpuAlgs.emplace_back(std::move(w)); }
+    }
+    spdlog::debug("Initialized {} CPU workers", cpuAlgs.size());
+    return cpuAlgs.size() > 0;
+  }
 
   bool SingleExtremaFinderStarPU::Execute(const ResultData &out,
     const SearchData &in,
@@ -71,9 +85,8 @@ namespace extrema_finder {
     task->cl_arg_size = sizeof(Settings);
     task->cl = [] {
       static starpu_codelet c;
-      c.where = STARPU_CUDA;
-      // c.cpu_funcs[0] = cpu, 
-      c.cuda_funcs[0] = gpu, c.nbuffers = 3;
+      c.where = STARPU_CPU;// ||STARPU_CUDA;
+      c.cpu_funcs[0] = cpu, c.cuda_funcs[0] = gpu, c.nbuffers = 3;
       c.modes[0] = STARPU_R;
       c.modes[1] = STARPU_W;
       c.modes[2] = STARPU_W;

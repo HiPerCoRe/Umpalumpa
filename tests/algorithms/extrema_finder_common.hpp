@@ -66,7 +66,7 @@ TEST_F(NAME, 1D_batch_noPadd_max_valOnly)
 {
   auto sizeIn = Size(10, 1, 1, 3);
   auto settings = Settings(SearchType::kMax, SearchLocation::kEntire, SearchResult::kValue);
-  auto data = reinterpret_cast<float *>(allocate(sizeIn.total * sizeof(float)));
+  auto data = reinterpret_cast<float *>(Allocate(sizeIn.total * sizeof(float)));
   auto dataOrig = std::unique_ptr<float[]>(new float[sizeIn.total]);
   auto ldIn = LogicalDescriptor(sizeIn, sizeIn, "Random input data");
   auto pdIn = PhysicalDescriptor(sizeIn.total * sizeof(float), DataType::kFloat);
@@ -77,13 +77,13 @@ TEST_F(NAME, 1D_batch_noPadd_max_valOnly)
   //   PrintData(data, sizeIn);// FIXME add utility method to payload?
 
   auto sizeValues = Size(1, 1, 1, sizeIn.n);
-  auto values = reinterpret_cast<float *>(allocate(sizeValues.total * sizeof(float)));
+  auto values = reinterpret_cast<float *>(Allocate(sizeValues.total * sizeof(float)));
   auto ldVal = LogicalDescriptor(sizeValues, sizeValues, "Values of the found extremas");
   auto pdVal = PhysicalDescriptor(sizeValues.total * sizeof(float), DataType::kFloat);
   auto valuesP = Payload(values, ldVal, pdVal, "Resulting maxima");
   auto out = ResultData(&valuesP, nullptr);
 
-  auto searcher = getSearcher();
+  auto &searcher = GetSearcher();
   searcher.Init(out, in, settings);
   // make sure the settings is fine
   settings.dryRun = true;
@@ -93,6 +93,9 @@ TEST_F(NAME, 1D_batch_noPadd_max_valOnly)
   // make sure the search finished
   settings.dryRun = false;
   ASSERT_TRUE(searcher.Execute(out, in, settings));
+
+  WaitTillDone();
+
   // make sure that we didn't change data
   ASSERT_EQ(0, memcmp(data, dataOrig.get(), sizeIn.total * sizeof(float)));
   // test that we found good maximas
@@ -102,15 +105,15 @@ TEST_F(NAME, 1D_batch_noPadd_max_valOnly)
     float trueMax = *std::max_element(first, last);
     ASSERT_FLOAT_EQ(trueMax, values[i]) << " for n=" << i;
   }
-  free(data);
-  free(values);
+  Free(data);
+  Free(values);
 }
 
 TEST_F(NAME, 1D_manyBatches_noPadd_max_valOnly)
 {
   auto sizeIn = Size(120, 32, 16, 103);
   auto settings = Settings(SearchType::kMax, SearchLocation::kEntire, SearchResult::kValue);
-  auto data = reinterpret_cast<float *>(allocate(sizeIn.total * sizeof(float)));
+  auto data = reinterpret_cast<float *>(Allocate(sizeIn.total * sizeof(float)));
   auto dataOrig = std::unique_ptr<float[]>(new float[sizeIn.total]);
   auto ldIn = LogicalDescriptor(sizeIn, sizeIn, "Basic data");
   auto pdIn = PhysicalDescriptor(sizeIn.total * sizeof(float), DataType::kFloat);
@@ -121,12 +124,12 @@ TEST_F(NAME, 1D_manyBatches_noPadd_max_valOnly)
   //   PrintData(data, sizeIn);// FIXME add utility method to payload?
 
   auto sizeValues = Size(1, 1, 1, sizeIn.n);
-  auto values = reinterpret_cast<float *>(allocate(sizeValues.total * sizeof(float)));
+  auto values = reinterpret_cast<float *>(Allocate(sizeValues.total * sizeof(float)));
   auto ldVal = LogicalDescriptor(sizeValues, sizeValues, "Values of the found extremas");
   auto pdVal = PhysicalDescriptor(sizeValues.total * sizeof(float), DataType::kFloat);
   auto valuesP = Payload(values, ldVal, pdVal, "Result maxima");
 
-  auto searcher = getSearcher();
+  auto &searcher = GetSearcher();
 
   const size_t batchSize = 7;
   bool isFirstIter = true;
@@ -148,6 +151,8 @@ TEST_F(NAME, 1D_manyBatches_noPadd_max_valOnly)
     ASSERT_TRUE(searcher.Execute(out, i, settings));
   }
 
+  WaitTillDone();
+
   // make sure that we didn't change data
   ASSERT_EQ(0, memcmp(data, dataOrig.get(), sizeIn.total * sizeof(float)));
   // test that we found good maximas
@@ -158,8 +163,8 @@ TEST_F(NAME, 1D_manyBatches_noPadd_max_valOnly)
     ASSERT_FLOAT_EQ(trueMax, values[i]) << " for n=" << i;
   }
 
-  free(values);
-  free(data);
+  Free(values);
+  Free(data);
 }
 
 

@@ -15,7 +15,7 @@ set(tests
 	)
 
 if(USE_STARPU)
- # list(APPEND tests algorithms/extrema_finder_starpu.cpp)
+   list(APPEND tests algorithms/extrema_finder_starpu.cpp)
 endif()
 
 target_sources(Umpalumpa_Tests PRIVATE ${tests})

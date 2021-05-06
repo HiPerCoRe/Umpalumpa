@@ -1,26 +1,24 @@
 #include <libumpalumpa/algorithms/extrema_finder/single_extrema_finder_starpu.hpp>
 #include <starpu.h>
-#include <iostream>
 #include <gtest/gtest.h>
 using namespace umpalumpa::extrema_finder;
 using namespace umpalumpa::data;
 
-
-auto getSearcher() { return SingleExtremaFinderStarPU(); }
-
 class SingleExtremaFinderStarPUTest : public ::testing::Test
 {
-  void SetUp() override
+public:
+  auto &GetSearcher() { return SingleExtremaFinderStarPU::Instance(); }
+  void SetUp() override { STARPU_CHECK_RETURN_VALUE(starpu_init(NULL), "StarPU init"); }
+
+  void TearDown() override { starpu_shutdown(); }
+
+  void WaitTillDone()
   {
-    std::cout << "SetUp()\n";
-    starpu_init(NULL);
+    STARPU_CHECK_RETURN_VALUE(starpu_task_wait_for_all(), "Waiting for all tasks");
   }
 
-  void TearDown() override
-  {
-    std::cout << "TearDown()\n";
-    starpu_shutdown();
-  }
+  auto Allocate(size_t bytes) { return malloc(bytes); }
+  auto Free(void *ptr) { free(ptr); }
 };
 #define NAME SingleExtremaFinderStarPUTest
 #include <tests/algorithms/extrema_finder_common.hpp>
