@@ -24,6 +24,9 @@ namespace extrema_finder {
     bool Execute(const ResultData &out, const SearchData &in, const Settings &settings) override;
 
     const auto &GetCPUAlgorithms() { return cpuAlgs; }
+    const auto &GetCUDAAlgorithms() { return cudaAlgs; }
+
+    void Synchronize();
 
   private:
     SingleExtremaFinderStarPU() = default;
@@ -31,6 +34,7 @@ namespace extrema_finder {
     inline static const std::string taskName = "Single Extrema Finder";
 
     std::vector<std::unique_ptr<AExtremaFinder>> cpuAlgs;
+    std::vector<std::unique_ptr<AExtremaFinder>> cudaAlgs;
   };
 }// namespace extrema_finder
 }// namespace umpalumpa

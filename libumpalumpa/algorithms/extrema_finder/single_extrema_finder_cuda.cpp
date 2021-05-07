@@ -1,7 +1,6 @@
 #include <libumpalumpa/algorithms/extrema_finder/single_extrema_finder_cuda.hpp>
 #include <libumpalumpa/system_includes/spdlog.hpp>
 #include <libumpalumpa/utils/system.hpp>
-#include <libumpalumpa/system_includes/cuda_runtime.hpp>
 #include <cuda.h>
 
 namespace umpalumpa {
@@ -98,6 +97,9 @@ namespace extrema_finder {
         //   configuration,
         //   { ktt::BufferOutputDescriptor(argVals, out.values->data) });
         tuner.RunKernel(kernelData.kernelId, configuration, {});
+
+        tuner.SynchronizeDevice(); // FIXME remove
+
         return true;
       };
     };
@@ -105,8 +107,7 @@ namespace extrema_finder {
 
   void SingleExtremaFinderCUDA::Synchronize()
   {
-    // FIXME implement properly
-    cudaDeviceSynchronize();
+    tuner.SynchronizeDevice();
   }
 
   ktt::ComputeApiInitializer SingleExtremaFinderCUDA::createApiInitializer(int deviceOrdinal)

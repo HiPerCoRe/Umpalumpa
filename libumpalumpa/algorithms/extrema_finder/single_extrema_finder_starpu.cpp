@@ -36,10 +36,12 @@ namespace extrema_finder {
           : nullptr;
       auto out = ResultData(vals, nullptr);
       auto *in = reinterpret_cast<umpalumpa::extrema_finder::SearchData *>(buffers[0]);
-      auto prg = SingleExtremaFinderCUDA(0);// FIXME the starpu instance has to have its own version
-      // and call that one, otherwise if init() is used
-      prg.Init(out, *in, *settings);
-      prg.Execute(out, *in, *settings);
+      auto idx = static_cast<size_t>(starpu_worker_get_devid(
+        starpu_worker_get_id()));// we have N workers, but they might not be numbered from 0
+      auto &alg = SingleExtremaFinderStarPU::Instance().GetCUDAAlgorithms().at(idx);
+      alg->Execute(out, *in, *settings);
+
+      // FIXME call alg->synch()
     }
   }// namespace
 
@@ -47,14 +49,29 @@ namespace extrema_finder {
     const SearchData &in,
     const Settings &settings)
   {
+    // FIXME refactor to avoid code duplication
     cpuAlgs.clear();
     for (unsigned i = 0; i < starpu_cpu_worker_get_count(); ++i) {
       auto w = std::make_unique<SingleExtremaFinderCPU>();
       if (w->Init(out, in, settings)) { cpuAlgs.emplace_back(std::move(w)); }
     }
     spdlog::debug("Initialized {} CPU workers", cpuAlgs.size());
+
+    cudaAlgs.clear();
+    for (unsigned i = 0; i < starpu_cuda_worker_get_count(); ++i) {
+      auto w = std::make_unique<SingleExtremaFinderCUDA>(i); // FIXME check that it's the right device index
+      if (w->Init(out, in, settings)) { cudaAlgs.emplace_back(std::move(w)); }
+    }
+    spdlog::debug("Initialized {} CUDA workers", cudaAlgs.size());
+
     return cpuAlgs.size() > 0;
   }
+
+void SingleExtremaFinderStarPU::Synchronize() {
+  for (auto &a : cudaAlgs) {
+    reinterpret_cast<SingleExtremaFinderCUDA*>(a.get())->Synchronize();
+  }
+}
 
   bool SingleExtremaFinderStarPU::Execute(const ResultData &out,
     const SearchData &in,
@@ -86,7 +103,7 @@ namespace extrema_finder {
     task->cl_arg_size = sizeof(Settings);
     task->cl = [] {
       static starpu_codelet c;
-      c.where = STARPU_CUDA;
+      c.where = STARPU_CUDA | STARPU_CPU;
       c.cpu_funcs[0] = cpu;
       c.cuda_funcs[0] = gpu;
       c.nbuffers = 3;
@@ -99,7 +116,7 @@ namespace extrema_finder {
     task->name = this->taskName.c_str();
     STARPU_CHECK_RETURN_VALUE(starpu_task_submit(task), "starpu_task_submit %s", this->taskName);
     starpu_data_unregister_submit(hIn);
-    starpu_data_unregister(hVal);
+    starpu_data_unregister(hVal); // This will move data to CPU -> there should be some better way how to do it
     starpu_data_unregister_submit(hLoc);
     return true;
   }

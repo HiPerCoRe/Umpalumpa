@@ -15,6 +15,7 @@ public:
   void WaitTillDone()
   {
     STARPU_CHECK_RETURN_VALUE(starpu_task_wait_for_all(), "Waiting for all tasks");
+    GetSearcher().Synchronize();
   }
 
   auto Allocate(size_t bytes) { return malloc(bytes); }
