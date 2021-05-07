@@ -33,11 +33,10 @@ namespace data {
       return Payload(newData, newInfo, newDataInfo, description + suffix);
     };
 
-    void *
-      data;// constant pointer to non-constant data, type defined by physical and logical descriptor
-     T info;
-     PhysicalDescriptor dataInfo;
-     std::string description;
+    void *data;// constant pointer to non-constant data, type defined by other descriptors
+    T info;
+    PhysicalDescriptor dataInfo;
+    std::string description;
 
   private:
     bool IsValidBytes() const

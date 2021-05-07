@@ -17,7 +17,7 @@ template<typename T> void GenerateData(T *data, size_t elems)
   for (size_t i = 0; i < elems; ++i) { data[i] = dist(mt); }
 }
 
-template<typename T> void PrintData(std::unique_ptr<T> &data, const Size size)
+template<typename T> void PrintData(T *data, const Size size)
 {
   for (size_t n = 0; n < size.n; ++n) {
     size_t offset = n * size.single;
@@ -99,11 +99,11 @@ TEST_F(NAME, 1D_batch_noPadd_max_valOnly)
   // make sure that we didn't change data
   ASSERT_EQ(0, memcmp(data, dataOrig.get(), sizeIn.total * sizeof(float)));
   // test that we found good maximas
-  for (int i = 0; i < sizeValues.n; ++i) {
-    auto first = data + (sizeIn.single * i);
+  for (int n = 0; n < sizeValues.n; ++n) {
+    auto first = data + (sizeIn.single * n);
     auto last = first + sizeIn.single;
     float trueMax = *std::max_element(first, last);
-    ASSERT_FLOAT_EQ(trueMax, values[i]) << " for n=" << i;
+    ASSERT_FLOAT_EQ(trueMax, values[n]) << " for n=" << n;
   }
   Free(data);
   Free(values);

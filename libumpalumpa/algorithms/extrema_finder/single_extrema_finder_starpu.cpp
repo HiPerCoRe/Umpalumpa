@@ -37,7 +37,8 @@ namespace extrema_finder {
       auto out = ResultData(vals, nullptr);
       auto *in = reinterpret_cast<umpalumpa::extrema_finder::SearchData *>(buffers[0]);
       auto prg = SingleExtremaFinderCUDA(0);// FIXME the starpu instance has to have its own version
-                                            // and call that one, otherwise if init() is used
+      // and call that one, otherwise if init() is used
+      prg.Init(out, *in, *settings);
       prg.Execute(out, *in, *settings);
     }
   }// namespace
@@ -85,8 +86,10 @@ namespace extrema_finder {
     task->cl_arg_size = sizeof(Settings);
     task->cl = [] {
       static starpu_codelet c;
-      c.where = STARPU_CPU;// ||STARPU_CUDA;
-      c.cpu_funcs[0] = cpu, c.cuda_funcs[0] = gpu, c.nbuffers = 3;
+      c.where = STARPU_CUDA;
+      c.cpu_funcs[0] = cpu;
+      c.cuda_funcs[0] = gpu;
+      c.nbuffers = 3;
       c.modes[0] = STARPU_R;
       c.modes[1] = STARPU_W;
       c.modes[2] = STARPU_W;
@@ -96,7 +99,7 @@ namespace extrema_finder {
     task->name = this->taskName.c_str();
     STARPU_CHECK_RETURN_VALUE(starpu_task_submit(task), "starpu_task_submit %s", this->taskName);
     starpu_data_unregister_submit(hIn);
-    starpu_data_unregister_submit(hVal);
+    starpu_data_unregister(hVal);
     starpu_data_unregister_submit(hLoc);
     return true;
   }
