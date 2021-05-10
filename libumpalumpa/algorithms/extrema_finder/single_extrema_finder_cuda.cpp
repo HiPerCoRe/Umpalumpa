@@ -96,9 +96,9 @@ namespace extrema_finder {
         // tuner.RunKernel(kernelData.kernelId,
         //   configuration,
         //   { ktt::BufferOutputDescriptor(argVals, out.values->data) });
-        tuner.RunKernel(kernelData.kernelId, configuration, {});
+        tuner.Run(kernelData.kernelId, configuration, {});
 
-        tuner.SynchronizeDevice(); // FIXME remove
+        tuner.Synchronize(); // FIXME remove
 
         return true;
       };
@@ -107,7 +107,7 @@ namespace extrema_finder {
 
   void SingleExtremaFinderCUDA::Synchronize()
   {
-    tuner.SynchronizeDevice();
+    tuner.Synchronize();
   }
 
   ktt::ComputeApiInitializer SingleExtremaFinderCUDA::createApiInitializer(int deviceOrdinal)

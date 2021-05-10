@@ -94,13 +94,13 @@ void gemm_cuda(void *buffers[], void *_args)
 	
 	if (tuningStep)
 	{
-		tuner->TuneKernelIteration(*kernel, {ktt::BufferOutputDescriptor(resultId, C)});
+		tuner->TuneIteration(*kernel, {ktt::BufferOutputDescriptor(resultId, C)});
 		printf("TUNING\n");
 	}
 	else
 	{
 		auto bestConfig = tuner->GetBestConfiguration(*kernel);
-		tuner->RunKernel(*kernel, {bestConfig}, {ktt::BufferOutputDescriptor(resultId, C)});
+		tuner->Run(*kernel, {bestConfig}, {ktt::BufferOutputDescriptor(resultId, C)});
 		printf("RUNNING\n");
 	}
 	
