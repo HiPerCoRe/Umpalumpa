@@ -22,19 +22,17 @@ namespace extrema_finder {
 
     bool Init(const ResultData &out, const SearchData &in, const Settings &settings) override;
     bool Execute(const ResultData &out, const SearchData &in, const Settings &settings) override;
-
-    const auto &GetCPUAlgorithms() { return cpuAlgs; }
-    const auto &GetCUDAAlgorithms() { return cudaAlgs; }
-
-    void Synchronize();
+    void Synchronize(){
+      // don't do anything. Each task is synchronized, now it's StarPU's problem
+      // consider calling starpu_task_wait_for_all() instead
+    };
 
   private:
     SingleExtremaFinderStarPU() = default;
     ~SingleExtremaFinderStarPU() = default;
     inline static const std::string taskName = "Single Extrema Finder";
 
-    std::vector<std::unique_ptr<AExtremaFinder>> cpuAlgs;
-    std::vector<std::unique_ptr<AExtremaFinder>> cudaAlgs;
+    std::vector<std::unique_ptr<AExtremaFinder>> algs;
   };
 }// namespace extrema_finder
 }// namespace umpalumpa

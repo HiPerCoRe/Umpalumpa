@@ -8,40 +8,52 @@ namespace umpalumpa {
 namespace extrema_finder {
 
   namespace {// to avoid poluting
-
-    void cpu(void *buffers[], void *func_arg)
+    struct ExecuteArgs
     {
-      auto *settings = reinterpret_cast<Settings *>(func_arg);
+      Settings settings;
+      const std::vector<std::unique_ptr<AExtremaFinder>> *algs;
+    };
+
+    void Codelet(void *buffers[], void *func_arg)
+    {
+      auto *args = reinterpret_cast<ExecuteArgs *>(func_arg);
       auto *vals =
-        (settings->result == SearchResult::kValue)
+        (args->settings.result == SearchResult::kValue)
           ? reinterpret_cast<umpalumpa::data::Payload<umpalumpa::data::LogicalDescriptor> *>(
             buffers[1])
           : nullptr;
       auto out = ResultData(vals, nullptr);
       auto *in = reinterpret_cast<umpalumpa::extrema_finder::SearchData *>(buffers[0]);
-      auto idx = static_cast<size_t>(starpu_worker_get_devid(
-        starpu_worker_get_id()));// we have N workers, but they might not be numbered from 0
-      auto &alg = SingleExtremaFinderStarPU::Instance().GetCPUAlgorithms().at(idx);
-      alg->Execute(out, *in, *settings);
+      auto &alg = args->algs->at(static_cast<size_t>(starpu_worker_get_id()));
+      alg->Execute(out, *in, args->settings);
+      alg->Synchronize();// this codelet is run asynchronously, but we have to wait till it's done
+                         // to be able to use starpu task synchronization properly
     }
 
-    void gpu(void *buffers[], void *func_arg)
+    struct InitArgs
     {
-      spdlog::info("SingleExtremaFinderStarPU: Entering GPU codelet");
-      auto *settings = reinterpret_cast<Settings *>(func_arg);
-      auto *vals =
-        (settings->result == SearchResult::kValue)
-          ? reinterpret_cast<umpalumpa::data::Payload<umpalumpa::data::LogicalDescriptor> *>(
-            buffers[1])
-          : nullptr;
-      auto out = ResultData(vals, nullptr);
-      auto *in = reinterpret_cast<umpalumpa::extrema_finder::SearchData *>(buffers[0]);
-      auto idx = static_cast<size_t>(starpu_worker_get_devid(
-        starpu_worker_get_id()));// we have N workers, but they might not be numbered from 0
-      auto &alg = SingleExtremaFinderStarPU::Instance().GetCUDAAlgorithms().at(idx);
-      alg->Execute(out, *in, *settings);
+      const ResultData &out;
+      const SearchData &in;
+      const Settings &settings;
+      std::vector<std::unique_ptr<AExtremaFinder>> &algs;
+    };
 
-      // FIXME call alg->synch()
+    void CpuInit(void *args)
+    {
+      auto *a = reinterpret_cast<InitArgs *>(args);
+      auto alg = std::make_unique<SingleExtremaFinderCPU>();
+      if (alg->Init(a->out, a->in, a->settings)) {
+        a->algs[static_cast<size_t>(starpu_worker_get_id())] = std::move(alg);
+      }
+    }
+
+    void CudaInit(void *args)
+    {
+      auto *a = reinterpret_cast<InitArgs *>(args);
+      auto alg = std::make_unique<SingleExtremaFinderCUDA>(starpu_cuda_get_local_stream());
+      if (alg->Init(a->out, a->in, a->settings)) {
+        a->algs[static_cast<size_t>(starpu_worker_get_id())] = std::move(alg);
+      }
     }
   }// namespace
 
@@ -49,29 +61,19 @@ namespace extrema_finder {
     const SearchData &in,
     const Settings &settings)
   {
-    // FIXME refactor to avoid code duplication
-    cpuAlgs.clear();
-    for (unsigned i = 0; i < starpu_cpu_worker_get_count(); ++i) {
-      auto w = std::make_unique<SingleExtremaFinderCPU>();
-      if (w->Init(out, in, settings)) { cpuAlgs.emplace_back(std::move(w)); }
-    }
-    spdlog::debug("Initialized {} CPU workers", cpuAlgs.size());
+    algs.clear();
+    algs.resize(starpu_worker_get_count());
+    auto init = [out, in, settings, this](void (*func)(void *), uint32_t where) {
+      InitArgs args = { out, in, settings, algs };
+      starpu_execute_on_each_worker(func, &args, where);
+    };
 
-    cudaAlgs.clear();
-    for (unsigned i = 0; i < starpu_cuda_worker_get_count(); ++i) {
-      auto w = std::make_unique<SingleExtremaFinderCUDA>(i); // FIXME check that it's the right device index
-      if (w->Init(out, in, settings)) { cudaAlgs.emplace_back(std::move(w)); }
-    }
-    spdlog::debug("Initialized {} CUDA workers", cudaAlgs.size());
-
-    return cpuAlgs.size() > 0;
+    init(CpuInit, STARPU_CPU);
+    init(CudaInit, STARPU_CUDA);
+    spdlog::info("{} worker(s) initialized",
+      std::count_if(algs.begin(), algs.end(), [](const auto &i) { return i != nullptr; }));
+    return (algs.size()) > 0;
   }
-
-void SingleExtremaFinderStarPU::Synchronize() {
-  for (auto &a : cudaAlgs) {
-    reinterpret_cast<SingleExtremaFinderCUDA*>(a.get())->Synchronize();
-  }
-}
 
   bool SingleExtremaFinderStarPU::Execute(const ResultData &out,
     const SearchData &in,
@@ -99,13 +101,13 @@ void SingleExtremaFinderStarPU::Synchronize() {
     task->handles[0] = hIn;
     task->handles[1] = hVal;
     task->handles[2] = hLoc;
-    task->cl_arg = new Settings(settings);
-    task->cl_arg_size = sizeof(Settings);
+    task->cl_arg = new ExecuteArgs{ settings, &algs };
+    task->cl_arg_size = sizeof(ExecuteArgs);
     task->cl = [] {
       static starpu_codelet c;
       c.where = STARPU_CUDA | STARPU_CPU;
-      c.cpu_funcs[0] = cpu;
-      c.cuda_funcs[0] = gpu;
+      c.cpu_funcs[0] = Codelet;
+      c.cuda_funcs[0] = Codelet;
       c.nbuffers = 3;
       c.modes[0] = STARPU_R;
       c.modes[1] = STARPU_W;
@@ -115,9 +117,9 @@ void SingleExtremaFinderStarPU::Synchronize() {
 
     task->name = this->taskName.c_str();
     STARPU_CHECK_RETURN_VALUE(starpu_task_submit(task), "starpu_task_submit %s", this->taskName);
-    starpu_data_unregister_submit(hIn);
-    starpu_data_unregister(hVal); // This will move data to CPU -> there should be some better way how to do it
-    starpu_data_unregister_submit(hLoc);
+    starpu_data_unregister_submit(hIn);// unregister data at leasure
+    starpu_data_unregister(hVal);// copy results back to home node
+    starpu_data_unregister(hLoc);// copy results back to home node
     return true;
   }
 }// namespace extrema_finder

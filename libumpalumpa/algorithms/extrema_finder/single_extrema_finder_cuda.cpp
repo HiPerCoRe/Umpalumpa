@@ -1,7 +1,7 @@
 #include <libumpalumpa/algorithms/extrema_finder/single_extrema_finder_cuda.hpp>
 #include <libumpalumpa/system_includes/spdlog.hpp>
 #include <libumpalumpa/utils/system.hpp>
-#include <cuda.h>
+#include <libumpalumpa/utils/cuda.hpp>
 
 namespace umpalumpa {
 namespace extrema_finder {
@@ -93,43 +93,36 @@ namespace extrema_finder {
 
         auto configuration =
           tuner.CreateConfiguration(kernelData.kernelId, { { "blockSize", threads } });
-        // tuner.RunKernel(kernelData.kernelId,
-        //   configuration,
-        //   { ktt::BufferOutputDescriptor(argVals, out.values->data) });
         tuner.Run(kernelData.kernelId, configuration, {});
-
-        tuner.Synchronize(); // FIXME remove
-
         return true;
       };
     };
   }// namespace
 
-  void SingleExtremaFinderCUDA::Synchronize()
-  {
-    tuner.Synchronize();
-  }
+  void SingleExtremaFinderCUDA::Synchronize() { tuner.Synchronize(); }
 
   ktt::ComputeApiInitializer SingleExtremaFinderCUDA::createApiInitializer(int deviceOrdinal)
   {
-    cuInit(0);// FIXME add error handling
-    CUstream stream;
-    cuStreamCreate(&stream, CU_STREAM_DEFAULT);
-    return createApiInitializer(deviceOrdinal, stream);
-  }
-
-  ktt::ComputeApiInitializer SingleExtremaFinderCUDA::createApiInitializer(int deviceOrdinal,
-    CUstream stream)
-  {
-    cuInit(0);// FIXME add error handling
+    CudaErrchk(cuInit(0));
     CUdevice device;
-    cuDeviceGet(&device, deviceOrdinal);
+    CudaErrchk(cuDeviceGet(&device, deviceOrdinal));
     CUcontext context;
     cuCtxCreate(&context, CU_CTX_SCHED_AUTO, device);
+    CUstream stream;
+    CudaErrchk(cuStreamCreate(&stream, CU_STREAM_DEFAULT));
+    return ktt::ComputeApiInitializer(context, std::vector<ktt::ComputeQueue>{ stream });
+  }
+
+  ktt::ComputeApiInitializer SingleExtremaFinderCUDA::createApiInitializer(CUstream stream)
+  {
+    CudaErrchk(cuInit(0));
+    CUcontext context;
+    CudaErrchk(cuStreamGetCtx(stream, &context));
     // Create compute API initializer which specifies context and streams that will be utilized by
     // the tuner.
     return ktt::ComputeApiInitializer(context, std::vector<ktt::ComputeQueue>{ stream });
   }
+
 
   bool SingleExtremaFinderCUDA::Init(const ResultData &out,
     const SearchData &in,

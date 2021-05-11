@@ -13,8 +13,8 @@ namespace extrema_finder {
   class SingleExtremaFinderCUDA : public AExtremaFinder
   {
   public:
-    explicit SingleExtremaFinderCUDA(int deviceOrdinal, CUstream stream)
-      : tuner(ktt::ComputeApi::CUDA, createApiInitializer(deviceOrdinal, stream)){};
+    explicit SingleExtremaFinderCUDA(CUstream stream)
+      : tuner(ktt::ComputeApi::CUDA, createApiInitializer(stream)){};
     explicit SingleExtremaFinderCUDA(int deviceOrdinal)
       : tuner(ktt::ComputeApi::CUDA, createApiInitializer(deviceOrdinal)){};
     bool Init(const ResultData &out, const SearchData &in, const Settings &settings) override;
@@ -42,7 +42,7 @@ namespace extrema_finder {
 
   private:
     ktt::ComputeApiInitializer createApiInitializer(int deviceOrdinal);
-    ktt::ComputeApiInitializer createApiInitializer(int deviceOrdinal, CUstream stream);
+    ktt::ComputeApiInitializer createApiInitializer(CUstream stream);
     std::unique_ptr<Strategy> strategy;
     ktt::Tuner tuner;
   };
