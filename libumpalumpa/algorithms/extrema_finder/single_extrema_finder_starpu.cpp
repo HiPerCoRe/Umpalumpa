@@ -63,13 +63,11 @@ namespace extrema_finder {
   {
     algs.clear();
     algs.resize(starpu_worker_get_count());
-    auto init = [out, in, settings, this](void (*func)(void *), uint32_t where) {
-      InitArgs args = { out, in, settings, algs };
-      starpu_execute_on_each_worker(func, &args, where);
-    };
-
-    init(CpuInit, STARPU_CPU);
-    init(CudaInit, STARPU_CUDA);
+    InitArgs args = { out, in, settings, algs };
+    starpu_execute_on_each_worker(CpuInit, &args, STARPU_CPU);
+    starpu_execute_on_each_worker(
+      CudaInit, &args, STARPU_CUDA);// FIXME if one of the workers is not initialized, then we
+                                    // should prevent starpu from running execute() on it
     spdlog::info("{} worker(s) initialized",
       std::count_if(algs.begin(), algs.end(), [](const auto &i) { return i != nullptr; }));
     return (algs.size()) > 0;
