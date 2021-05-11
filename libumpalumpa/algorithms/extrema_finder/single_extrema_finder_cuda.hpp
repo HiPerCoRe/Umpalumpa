@@ -6,12 +6,16 @@
 #include <memory>
 #include <map>
 
+typedef struct CUstream_st *CUstream;
+
 namespace umpalumpa {
 namespace extrema_finder {
   class SingleExtremaFinderCUDA : public AExtremaFinder
   {
   public:
-    SingleExtremaFinderCUDA(int deviceOrdinal)
+    explicit SingleExtremaFinderCUDA(int deviceOrdinal, CUstream stream)
+      : tuner(ktt::ComputeApi::CUDA, createApiInitializer(deviceOrdinal, stream)){};
+    explicit SingleExtremaFinderCUDA(int deviceOrdinal)
       : tuner(ktt::ComputeApi::CUDA, createApiInitializer(deviceOrdinal)){};
     bool Init(const ResultData &out, const SearchData &in, const Settings &settings) override;
     bool Execute(const ResultData &out, const SearchData &in, const Settings &settings) override;
@@ -35,8 +39,10 @@ namespace extrema_finder {
     };
 
     void Synchronize();
+
   private:
     ktt::ComputeApiInitializer createApiInitializer(int deviceOrdinal);
+    ktt::ComputeApiInitializer createApiInitializer(int deviceOrdinal, CUstream stream);
     std::unique_ptr<Strategy> strategy;
     ktt::Tuner tuner;
   };

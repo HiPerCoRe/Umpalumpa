@@ -113,16 +113,19 @@ namespace extrema_finder {
   ktt::ComputeApiInitializer SingleExtremaFinderCUDA::createApiInitializer(int deviceOrdinal)
   {
     cuInit(0);// FIXME add error handling
-
-    CUdevice device;
-    cuDeviceGet(&device, deviceOrdinal);
-
-    CUcontext context;
-    cuCtxCreate(&context, CU_CTX_SCHED_AUTO, device);
-
     CUstream stream;
     cuStreamCreate(&stream, CU_STREAM_DEFAULT);
+    return createApiInitializer(deviceOrdinal, stream);
+  }
 
+  ktt::ComputeApiInitializer SingleExtremaFinderCUDA::createApiInitializer(int deviceOrdinal,
+    CUstream stream)
+  {
+    cuInit(0);// FIXME add error handling
+    CUdevice device;
+    cuDeviceGet(&device, deviceOrdinal);
+    CUcontext context;
+    cuCtxCreate(&context, CU_CTX_SCHED_AUTO, device);
     // Create compute API initializer which specifies context and streams that will be utilized by
     // the tuner.
     return ktt::ComputeApiInitializer(context, std::vector<ktt::ComputeQueue>{ stream });
