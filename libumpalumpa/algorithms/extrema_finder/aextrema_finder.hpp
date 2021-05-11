@@ -14,6 +14,8 @@ namespace extrema_finder {
     virtual bool Init(const ResultData &out, const SearchData &in, const Settings &settings) = 0;
     virtual bool Execute(const ResultData &out, const SearchData &in, const Settings &settings) = 0;
     virtual void Cleanup(){};
+    virtual void Synchronize() = 0;
+
     virtual ~AExtremaFinder() = default;
 
   protected:
