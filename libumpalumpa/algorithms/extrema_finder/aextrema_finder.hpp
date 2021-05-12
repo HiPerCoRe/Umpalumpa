@@ -22,16 +22,15 @@ namespace extrema_finder {
     virtual bool
       IsValid(const ResultData &out, const SearchData &in, const Settings &settings) const
     {
-      bool result = true;
       // is input valid?
-      result = result && (settings.dryRun || (nullptr != in.data));
+      bool result = nullptr != in.data;
       result = result && in.IsValid();
 
       if (settings.result == SearchResult::kValue) {
         // is output valid?
         result = result && (nullptr != out.values);
         result = result && (out.values->IsValid());
-        result = result && (settings.dryRun || (nullptr != out.values->data));
+        result = result && (nullptr != out.values->data);
         // is the type correct?
         result = result && (in.dataInfo.type == out.values->dataInfo.type);
         // we need to have enough space for results

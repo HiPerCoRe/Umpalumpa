@@ -21,11 +21,8 @@ namespace extrema_finder {
 
       std::string GetName() const override final { return kStrategyName; }
 
-      bool Execute(const ResultData &out,
-        const SearchData &in,
-        const Settings &settings) override final
+      bool Execute(const ResultData &out, const SearchData &in, const Settings &) override final
       {
-        if (settings.dryRun) return true;
         if (nullptr == in.data || nullptr == out.values->data) return false;
         FindSingleExtremaValXDCPU(reinterpret_cast<float *>(out.values->data),
           reinterpret_cast<float *>(in.data),

@@ -1,10 +1,11 @@
-#ifndef TESTS_ALGORITHMS_EXTREMA_FINDER_COMMON
-#define TESTS_ALGORITHMS_EXTREMA_FINDER_COMMON
+#pragma once
+
 #include <gtest/gtest.h>
 
 #include <iostream>
 #include <memory>
 #include <random>
+#include <fcntl.h>
 
 using namespace umpalumpa::extrema_finder;
 using namespace umpalumpa::data;
@@ -15,6 +16,13 @@ template<typename T> void GenerateData(T *data, size_t elems)
   auto mt = std::mt19937(42);
   auto dist = std::normal_distribution<float>((float)0, (float)1);
   for (size_t i = 0; i < elems; ++i) { data[i] = dist(mt); }
+}
+
+template<typename T>
+void FillRandomBytes(T *dst, size_t bytes)
+{
+  int fd = open("/dev/urandom", O_RDONLY);
+  read(fd, dst, bytes);
 }
 
 template<typename T> void PrintData(T *data, const Size size)
@@ -84,14 +92,9 @@ TEST_F(NAME, 1D_batch_noPadd_max_valOnly)
   auto out = ResultData(&valuesP, nullptr);
 
   auto &searcher = GetSearcher();
-  searcher.Init(out, in, settings);
-  // make sure the settings is fine
-  settings.dryRun = true;
-
-  ASSERT_TRUE(searcher.Execute(out, in, settings));
+  searcher.Init(out, in.CopyNoData(), settings);
 
   // make sure the search finished
-  settings.dryRun = false;
   ASSERT_TRUE(searcher.Execute(out, in, settings));
 
   WaitTillDone();
@@ -111,16 +114,15 @@ TEST_F(NAME, 1D_batch_noPadd_max_valOnly)
 
 TEST_F(NAME, 1D_manyBatches_noPadd_max_valOnly)
 {
-  auto sizeIn = Size(120, 32, 16, 103);
+  auto sizeIn = Size(120, 173, 150, 1030);
+  std::cout << "This test will need at least " << sizeIn.total * sizeof(float) / 1048576 << " MB" << std::endl;
   auto settings = Settings(SearchType::kMax, SearchLocation::kEntire, SearchResult::kValue);
   auto data = reinterpret_cast<float *>(Allocate(sizeIn.total * sizeof(float)));
-  auto dataOrig = std::unique_ptr<float[]>(new float[sizeIn.total]);
   auto ldIn = LogicalDescriptor(sizeIn, sizeIn, "Basic data");
   auto pdIn = PhysicalDescriptor(sizeIn.total * sizeof(float), DataType::kFloat);
   auto in = SearchData(data, ldIn, pdIn, "Random data");
 
-  GenerateData(data, sizeIn.total);
-  memcpy(dataOrig.get(), data, sizeIn.total * sizeof(float));
+  FillRandomBytes(data, sizeIn.total * sizeof(float));
   //   PrintData(data, sizeIn);// FIXME add utility method to payload?
 
   auto sizeValues = Size(1, 1, 1, sizeIn.n);
@@ -131,7 +133,7 @@ TEST_F(NAME, 1D_manyBatches_noPadd_max_valOnly)
 
   auto &searcher = GetSearcher();
 
-  const size_t batchSize = 7;
+  const size_t batchSize = 134;
   bool isFirstIter = true;
   for (size_t offset = 0; offset < sizeIn.n; offset += batchSize) {
     auto i = in.Subset(offset, batchSize);
@@ -139,22 +141,13 @@ TEST_F(NAME, 1D_manyBatches_noPadd_max_valOnly)
     auto out = ResultData(&o, nullptr);
     if (isFirstIter) {
       isFirstIter = false;
-      searcher.Init(out, i, settings);
+      searcher.Init(out, i.CopyNoData(), settings);
     }
-    // make sure the settings is fine
-    settings.dryRun = true;
-    ASSERT_TRUE(searcher.Execute(out, i, settings));
-
-    // make sure the search finished
-    settings.dryRun = false;
-
     ASSERT_TRUE(searcher.Execute(out, i, settings));
   }
 
   WaitTillDone();
 
-  // make sure that we didn't change data
-  ASSERT_EQ(0, memcmp(data, dataOrig.get(), sizeIn.total * sizeof(float)));
   // test that we found good maximas
   for (int i = 0; i < sizeValues.n; ++i) {
     auto first = data + (sizeIn.single * i);
@@ -166,6 +159,3 @@ TEST_F(NAME, 1D_manyBatches_noPadd_max_valOnly)
   Free(values);
   Free(data);
 }
-
-
-#endif /* TESTS_ALGORITHMS_EXTREMA_FINDER_COMMON */

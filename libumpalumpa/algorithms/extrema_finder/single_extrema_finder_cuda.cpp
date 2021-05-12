@@ -57,10 +57,9 @@ namespace extrema_finder {
 
       bool Execute(const ResultData &out,
         const SearchData &in,
-        const Settings &settings,
+        const Settings &,
         ktt::Tuner &tuner) override final
       {
-        if (settings.dryRun) return true;
         if ((nullptr == in.data) || (nullptr == out.values->data)) return false;
 
         // prepare input data

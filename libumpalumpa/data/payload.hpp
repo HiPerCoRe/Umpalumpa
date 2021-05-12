@@ -33,6 +33,12 @@ namespace data {
       return Payload(newData, newInfo, newDataInfo, description + suffix);
     };
 
+    Payload CopyNoData() const {
+      auto copy(*this);
+      copy.data = nullptr;
+      return copy;
+    }
+
     void *data;// constant pointer to non-constant data, type defined by other descriptors
     T info;
     PhysicalDescriptor dataInfo;

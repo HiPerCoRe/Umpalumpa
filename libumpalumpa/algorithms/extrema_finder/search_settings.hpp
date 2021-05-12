@@ -18,7 +18,6 @@ namespace extrema_finder {
     const SearchType type;
     const SearchLocation location;
     const SearchResult result;
-    bool dryRun;
     static constexpr int version = 1;
   };
 
