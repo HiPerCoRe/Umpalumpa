@@ -7,7 +7,7 @@ using namespace umpalumpa::data;
 class SingleExtremaFinderStarPUTest : public ::testing::Test
 {
 public:
-  auto &GetSearcher() { return SingleExtremaFinderStarPU::Instance(); }
+  auto &GetSearcher() { return searcher; }
   void SetUp() override { STARPU_CHECK_RETURN_VALUE(starpu_init(NULL), "StarPU init"); }
 
   void TearDown() override { starpu_shutdown(); }
@@ -19,6 +19,9 @@ public:
 
   auto Allocate(size_t bytes) { return malloc(bytes); }
   auto Free(void *ptr) { free(ptr); }
+
+private:
+  SingleExtremaFinderStarPU searcher;
 };
 #define NAME SingleExtremaFinderStarPUTest
 #include <tests/algorithms/extrema_finder_common.hpp>
