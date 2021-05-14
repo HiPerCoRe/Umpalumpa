@@ -99,10 +99,11 @@ namespace extrema_finder {
     task->handles[0] = hIn;
     task->handles[1] = hVal;
     task->handles[2] = hLoc;
+    task->workerids = CreateWorkerMask(task->workerids_len, algs);
     task->cl_arg = new ExecuteArgs{ settings, &algs };
     task->cl_arg_size = sizeof(ExecuteArgs);
     task->cl = [] {
-      static starpu_codelet c;
+      static starpu_codelet c = {};
       c.where = STARPU_CUDA | STARPU_CPU;
       c.cpu_funcs[0] = Codelet;
       c.cuda_funcs[0] = Codelet;

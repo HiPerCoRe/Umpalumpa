@@ -8,6 +8,24 @@
 #pragma GCC system_header
 #include <starpu.h>
 
+
+template<typename T> uint32_t *CreateWorkerMask(unsigned &count, const T &col)
+{
+  // how many 32b numbers do we need to mask all workers
+  const size_t len = (starpu_worker_get_count() / 32) + 1;
+  // create and zero-out the mask
+  auto *mask = reinterpret_cast<uint32_t *>(calloc(len, sizeof(uint32_t)));
+  count = 0;
+  for (size_t i = 0; i < col.size(); ++i) {
+    if (col[i]) {
+      // set the corresponding bit to 1
+      mask[i / 32] |= (1 << (i % 32));
+      ++count;
+    }
+  }
+  return mask;
+}
+
 template<typename T>
 static void payload_register_data_handle(starpu_data_handle_t handle,
   unsigned home_node,
@@ -85,10 +103,10 @@ template<typename T> static uint32_t payload_footprint(starpu_data_handle_t hand
   return starpu_hash_crc32c_be(interface->info.Elems(), 0);
 }
 
-template<typename T> 
-static int payload_compare(void *data_interface_a, void *data_interface_b) {
- auto *payload_a = reinterpret_cast<umpalumpa::data::Payload<T> *>(data_interface_a);
- auto *payload_b = reinterpret_cast<umpalumpa::data::Payload<T> *>(data_interface_b);
+template<typename T> static int payload_compare(void *data_interface_a, void *data_interface_b)
+{
+  auto *payload_a = reinterpret_cast<umpalumpa::data::Payload<T> *>(data_interface_a);
+  auto *payload_b = reinterpret_cast<umpalumpa::data::Payload<T> *>(data_interface_b);
 
   return (payload_a->info.Elems() == payload_b->info.Elems());
 }
