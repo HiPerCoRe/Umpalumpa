@@ -92,7 +92,7 @@ TEST_F(NAME, 1D_batch_noPadd_max_valOnly)
   auto out = ResultData(&valuesP, nullptr);
 
   auto &searcher = GetSearcher();
-  searcher.Init(out, in.CopyNoData(), settings);
+  searcher.Init(out, in.CopyWithoutData(), settings);
 
   // make sure the search finished
   ASSERT_TRUE(searcher.Execute(out, in, settings));
@@ -141,7 +141,7 @@ TEST_F(NAME, 1D_manyBatches_noPadd_max_valOnly)
     auto out = ResultData(&o, nullptr);
     if (isFirstIter) {
       isFirstIter = false;
-      searcher.Init(out, i.CopyNoData(), settings);
+      searcher.Init(out, i.CopyWithoutData(), settings);
     }
     ASSERT_TRUE(searcher.Execute(out, i, settings));
   }

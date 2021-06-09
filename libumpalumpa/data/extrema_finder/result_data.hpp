@@ -1,6 +1,7 @@
 #pragma once
 
 #include <libumpalumpa/data/payload.hpp>
+#include <libumpalumpa/data/logical_desriptor.hpp>
 
 namespace umpalumpa {
 namespace extrema_finder {

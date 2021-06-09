@@ -1,27 +1,36 @@
 #pragma once
 
-#include <libumpalumpa/data/logical_desriptor.hpp>
+#include <string>
 #include <libumpalumpa/data/physical_desriptor.hpp>
 #include <cassert>
-#include <type_traits>
 
 namespace umpalumpa {
 namespace data {
   template<typename T> class Payload
   {
-
-    static_assert(std::is_base_of<LogicalDescriptor, T>::value,
-      "T must inherit from Logical Descriptor");
-
   public:
     explicit Payload(void *d, const T &ld, const PhysicalDescriptor &pd, const std::string &desc)
       : data(d), info(ld), dataInfo(pd), description(desc)
     {}
-    virtual ~Payload() = default;
-    bool IsValid() const { return info.IsValid() && IsValidBytes(); }
-    Payload Subset(size_t startN, size_t count) const
+
+    explicit Payload(const T &ld, const std::string &desc)
+      : data(nullptr), info(ld), dataInfo(), description(desc + suffixEmpty)
+    {}
+
+    bool IsValid() const
     {
-      assert(this->IsValid());
+      // info and dataInfo must be always valid
+      bool result = info.IsValid() && dataInfo.IsValid();
+      if (IsEmpty()) return result;
+      // it has some data, check the size
+      return (result && HasValidBytes());
+    }
+
+    bool IsEmpty() const { return (nullptr == data) && (dataInfo.IsEmpty()); }
+
+    Payload Subset(size_t startN, size_t count) const// FIXME refactor
+    {
+      assert(!IsEmpty());
       size_t safeCount = 0;
       const auto newInfo = info.Subset(safeCount, startN, count);
       const auto offset = info.Offset(0, 0, 0, startN);
@@ -33,10 +42,10 @@ namespace data {
       return Payload(newData, newInfo, newDataInfo, description + suffix);
     };
 
-    Payload CopyNoData() const {
-      auto copy(*this);
-      copy.data = nullptr;
-      return copy;
+    Payload CopyWithoutData() const
+    {
+      return Payload(
+        nullptr, info, PhysicalDescriptor(0, dataInfo.type), description + suffixEmpty);
     }
 
     void *data;// constant pointer to non-constant data, type defined by other descriptors
@@ -45,7 +54,8 @@ namespace data {
     std::string description;
 
   private:
-    bool IsValidBytes() const
+    static auto constexpr suffixEmpty = " [empty]";
+    bool HasValidBytes() const// FIXME refactor
     {
       return ((nullptr == data) && (0 == dataInfo.bytes))
              || (dataInfo.bytes >= (info.paddedSize.total * Sizeof(dataInfo.type)));

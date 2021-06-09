@@ -4,6 +4,7 @@ namespace umpalumpa {
 namespace data {
 
   enum class DataType {
+    kVoid,
     kFloat,
     kDouble,
   };
@@ -11,6 +12,8 @@ namespace data {
   static size_t Sizeof(DataType t)
   {
     switch (t) {
+    case DataType::kVoid:
+      return 0;
     case DataType::kFloat:
       return sizeof(float);
     case DataType::kDouble:

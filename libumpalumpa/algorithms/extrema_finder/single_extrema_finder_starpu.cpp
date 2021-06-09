@@ -99,7 +99,7 @@ namespace extrema_finder {
     task->handles[0] = hIn;
     task->handles[1] = hVal;
     task->handles[2] = hLoc;
-    task->workerids = CreateWorkerMask(task->workerids_len, algs);
+    task->workerids = CreateWorkerMask(task->workerids_len, algs); // FIXME bug in the StarPU? If the mask is completely 0, codelet is being invoked anyway
     task->cl_arg = new ExecuteArgs{ settings, &algs };
     task->cl_arg_size = sizeof(ExecuteArgs);
     task->cl = [] {
