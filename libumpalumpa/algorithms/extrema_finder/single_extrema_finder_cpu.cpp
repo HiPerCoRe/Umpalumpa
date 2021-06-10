@@ -11,22 +11,26 @@ namespace extrema_finder {
     {
       static constexpr auto kStrategyName = "Strategy1";
 
-      bool Init(const ResultData &, const SearchData &in, const Settings &s) override final
+      bool Init(const AExtremaFinder::ResultData &,
+        const AExtremaFinder::SearchData &in,
+        const Settings &s) override final
       {
-        return (s.version == 1) && (in.info.size == in.info.paddedSize)
+        return (s.version == 1) && (in.data.info.size == in.data.info.paddedSize)
                && (s.location == SearchLocation::kEntire) && (s.type == SearchType::kMax)
                && (s.result == SearchResult::kValue)
-               && (in.dataInfo.type == umpalumpa::data::DataType::kFloat);
+               && (in.data.dataInfo.type == umpalumpa::data::DataType::kFloat);
       }
 
       std::string GetName() const override final { return kStrategyName; }
 
-      bool Execute(const ResultData &out, const SearchData &in, const Settings &) override final
+      bool Execute(const AExtremaFinder::ResultData &out,
+        const AExtremaFinder::SearchData &in,
+        const Settings &) override final
       {
-        if (nullptr == in.data || nullptr == out.values->data) return false;
+        if (in.data.IsEmpty() || !out.values || out.values->IsEmpty()) return false;
         FindSingleExtremaValXDCPU(reinterpret_cast<float *>(out.values->data),
-          reinterpret_cast<float *>(in.data),
-          in.info.size,
+          reinterpret_cast<float *>(in.data.data),
+          in.data.info.size,
           std::greater<float>());
         return true;
       }

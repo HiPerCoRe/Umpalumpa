@@ -17,23 +17,22 @@ namespace extrema_finder {
     void Codelet(void *buffers[], void *func_arg)
     {
       auto *args = reinterpret_cast<ExecuteArgs *>(func_arg);
-      auto *vals =
-        (args->settings.result == SearchResult::kValue)
-          ? reinterpret_cast<umpalumpa::data::Payload<umpalumpa::data::LogicalDescriptor> *>(
-            buffers[1])
-          : nullptr;
-      auto out = ResultData(vals, nullptr);
-      auto *in = reinterpret_cast<umpalumpa::extrema_finder::SearchData *>(buffers[0]);
+      auto *valsP = (args->settings.result == SearchResult::kValue)
+                      ? reinterpret_cast<AExtremaFinder::ResultData::type *>(buffers[1])
+                      : nullptr;
+      auto out = AExtremaFinder::ResultData(*valsP, std::nullopt);
+      auto *inP = reinterpret_cast<AExtremaFinder::SearchData::type *>(buffers[0]);
+      auto in = AExtremaFinder::SearchData(*inP);
       auto &alg = args->algs->at(static_cast<size_t>(starpu_worker_get_id()));
-      alg->Execute(out, *in, args->settings);
+      alg->Execute(out, in, args->settings);
       alg->Synchronize();// this codelet is run asynchronously, but we have to wait till it's done
                          // to be able to use starpu task synchronization properly
     }
 
     struct InitArgs
     {
-      const ResultData &out;
-      const SearchData &in;
+      const AExtremaFinder::ResultData &out;
+      const AExtremaFinder::SearchData &in;
       const Settings &settings;
       std::vector<std::unique_ptr<AExtremaFinder>> &algs;
     };
@@ -78,18 +77,20 @@ namespace extrema_finder {
     const Settings &settings)
   {
     starpu_data_handle_t hIn = { 0 };
-    starpu_payload_register(&hIn, STARPU_MAIN_RAM, const_cast<SearchData &>(in));
-    starpu_data_set_name(hIn, in.description.c_str());
+    starpu_payload_register(&hIn, STARPU_MAIN_RAM, in.data);
+    starpu_data_set_name(hIn, in.data.description.c_str());
 
     starpu_data_handle_t hVal = { 0 };
-    if (nullptr != out.values) {
-      starpu_payload_register(&hVal, STARPU_MAIN_RAM, *out.values);
+    if (out.values) {
+      starpu_payload_register(&hVal, STARPU_MAIN_RAM, out.values.value());
       starpu_data_set_name(hVal, out.values->description.c_str());
+    } else {
+      starpu_void_data_register(&hVal);
     }
 
     starpu_data_handle_t hLoc = { 0 };
-    if (nullptr != out.locations) {
-      starpu_payload_register(&hLoc, STARPU_MAIN_RAM, *out.locations);
+    if (out.locations) {
+      starpu_payload_register(&hLoc, STARPU_MAIN_RAM, out.locations.value());
       starpu_data_set_name(hLoc, out.locations->description.c_str());
     } else {
       starpu_void_data_register(&hLoc);
@@ -99,7 +100,8 @@ namespace extrema_finder {
     task->handles[0] = hIn;
     task->handles[1] = hVal;
     task->handles[2] = hLoc;
-    task->workerids = CreateWorkerMask(task->workerids_len, algs); // FIXME bug in the StarPU? If the mask is completely 0, codelet is being invoked anyway
+    task->workerids = CreateWorkerMask(task->workerids_len,
+      algs);// FIXME bug in the StarPU? If the mask is completely 0, codelet is being invoked anyway
     task->cl_arg = new ExecuteArgs{ settings, &algs };
     task->cl_arg_size = sizeof(ExecuteArgs);
     task->cl = [] {

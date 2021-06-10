@@ -18,8 +18,7 @@ template<typename T> void GenerateData(T *data, size_t elems)
   for (size_t i = 0; i < elems; ++i) { data[i] = dist(mt); }
 }
 
-template<typename T>
-void FillRandomBytes(T *dst, size_t bytes)
+template<typename T> void FillRandomBytes(T *dst, size_t bytes)
 {
   int fd = open("/dev/urandom", O_RDONLY);
   read(fd, dst, bytes);
@@ -42,7 +41,7 @@ TEST_F(NAME, SearchData_Subset)
   const auto ldIn = LogicalDescriptor(sizeIn, sizeIn, "IOTA");
   const auto dt = DataType::kFloat;
   const auto pdIn = PhysicalDescriptor(sizeIn.total * Sizeof(dt) + 13, dt);// add some extra bytes
-  const auto in = SearchData(data.get(), ldIn, pdIn, "Random data");
+  const auto in = AExtremaFinder::SearchData(Payload(data.get(), ldIn, pdIn, "Random data"));
 
   for (size_t i = 0; i < sizeIn.total; ++i) { ASSERT_FLOAT_EQ(data[i], i) << " for i=" << i; }
 
@@ -50,7 +49,7 @@ TEST_F(NAME, SearchData_Subset)
   const size_t full_batches = sizeIn.n / batch;
   for (size_t i = 0; i < full_batches; ++i) {
     const size_t startN = i * batch;
-    const auto s = in.Subset(startN, batch);
+    const auto s = in.data.Subset(startN, batch);
     // check size
     ASSERT_EQ(s.info.size, Size(3, 5, 7, batch)) << " for i=" << i;
     const size_t offset = startN * sizeIn.single;
@@ -60,7 +59,7 @@ TEST_F(NAME, SearchData_Subset)
     ASSERT_EQ(s.dataInfo.bytes, sizeIn.single * sizeof(float) * batch) << " for i=" << i;
   }
   // check last iteration
-  const auto s = in.Subset(9, batch);
+  const auto s = in.data.Subset(9, batch);
   // check size
   ASSERT_EQ(s.info.size, Size(3, 5, 7, 2));
   const size_t offset = 9 * sizeIn.single;
@@ -78,7 +77,7 @@ TEST_F(NAME, 1D_batch_noPadd_max_valOnly)
   auto dataOrig = std::unique_ptr<float[]>(new float[sizeIn.total]);
   auto ldIn = LogicalDescriptor(sizeIn, sizeIn, "Random input data");
   auto pdIn = PhysicalDescriptor(sizeIn.total * sizeof(float), DataType::kFloat);
-  auto in = SearchData(data, ldIn, pdIn, "Random data");
+  auto in = AExtremaFinder::SearchData(Payload(data, ldIn, pdIn, "Random data"));
 
   GenerateData(data, sizeIn.total);
   memcpy(dataOrig.get(), data, sizeIn.total * sizeof(float));
@@ -89,10 +88,10 @@ TEST_F(NAME, 1D_batch_noPadd_max_valOnly)
   auto ldVal = LogicalDescriptor(sizeValues, sizeValues, "Values of the found extremas");
   auto pdVal = PhysicalDescriptor(sizeValues.total * sizeof(float), DataType::kFloat);
   auto valuesP = Payload(values, ldVal, pdVal, "Resulting maxima");
-  auto out = ResultData(&valuesP, nullptr);
+  auto out = AExtremaFinder::ResultData(valuesP, std::nullopt);
 
   auto &searcher = GetSearcher();
-  searcher.Init(out, in.CopyWithoutData(), settings);
+  ASSERT_TRUE(searcher.Init(out, in, settings));// including data, on purpose
 
   // make sure the search finished
   ASSERT_TRUE(searcher.Execute(out, in, settings));
@@ -115,12 +114,13 @@ TEST_F(NAME, 1D_batch_noPadd_max_valOnly)
 TEST_F(NAME, 1D_manyBatches_noPadd_max_valOnly)
 {
   auto sizeIn = Size(120, 173, 150, 1030);
-  std::cout << "This test will need at least " << sizeIn.total * sizeof(float) / 1048576 << " MB" << std::endl;
+  std::cout << "This test will need at least " << sizeIn.total * sizeof(float) / 1048576 << " MB"
+            << std::endl;
   auto settings = Settings(SearchType::kMax, SearchLocation::kEntire, SearchResult::kValue);
   auto data = reinterpret_cast<float *>(Allocate(sizeIn.total * sizeof(float)));
   auto ldIn = LogicalDescriptor(sizeIn, sizeIn, "Basic data");
   auto pdIn = PhysicalDescriptor(sizeIn.total * sizeof(float), DataType::kFloat);
-  auto in = SearchData(data, ldIn, pdIn, "Random data");
+  auto inP = Payload(data, ldIn, pdIn, "Random data");
 
   FillRandomBytes(data, sizeIn.total * sizeof(float));
   //   PrintData(data, sizeIn);// FIXME add utility method to payload?
@@ -136,14 +136,17 @@ TEST_F(NAME, 1D_manyBatches_noPadd_max_valOnly)
   const size_t batchSize = 134;
   bool isFirstIter = true;
   for (size_t offset = 0; offset < sizeIn.n; offset += batchSize) {
-    auto i = in.Subset(offset, batchSize);
+    auto i = inP.Subset(offset, batchSize);
+    auto in = AExtremaFinder::SearchData(i);
     auto o = valuesP.Subset(offset, batchSize);
-    auto out = ResultData(&o, nullptr);
+    auto out = AExtremaFinder::ResultData(o, std::nullopt);
     if (isFirstIter) {
       isFirstIter = false;
-      searcher.Init(out, i.CopyWithoutData(), settings);
+      auto tmpOut = AExtremaFinder::ResultData(o.CopyWithoutData(), std::nullopt);
+      auto tmpIn = AExtremaFinder::SearchData(i.CopyWithoutData());
+      ASSERT_TRUE(searcher.Init(tmpOut, tmpIn, settings));
     }
-    ASSERT_TRUE(searcher.Execute(out, i, settings));
+    ASSERT_TRUE(searcher.Execute(out, in, settings));
   }
 
   WaitTillDone();

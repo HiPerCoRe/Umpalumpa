@@ -128,14 +128,17 @@ static struct starpu_data_interface_ops payload_ops = {
 template<typename T>
 void starpu_payload_register(starpu_data_handle_t *handle,
   unsigned home_node,
-  umpalumpa::data::Payload<T> &payload)
+  const umpalumpa::data::Payload<T> &payload)
 {
   if (payload_ops<T>.interfaceid == STARPU_UNKNOWN_INTERFACE_ID) {
     payload_ops<T>.interfaceid =
       static_cast<starpu_data_interface_id>(starpu_data_interface_get_next_id());
   }
 
-  starpu_data_register(handle, home_node, &payload, &payload_ops<T>);
+  starpu_data_register(handle,
+    home_node,
+    static_cast<void *>(const_cast<umpalumpa::data::Payload<T> *>(&payload)),
+    &payload_ops<T>);
 }
 
 
