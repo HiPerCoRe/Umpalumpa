@@ -45,6 +45,8 @@ namespace data {
     const auto &GetHandle() const { return handle; }
     const auto &GetPayload() const { return payload; }
 
+    typedef Payload<T> PayloadType;
+
   private:
     starpu_data_handle_t handle;
     const Payload<T> payload;

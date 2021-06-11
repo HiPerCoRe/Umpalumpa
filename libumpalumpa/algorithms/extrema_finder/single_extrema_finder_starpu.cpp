@@ -76,55 +76,17 @@ namespace extrema_finder {
     const SearchData &in,
     const Settings &settings)
   {
-    starpu_data_handle_t hIn = { 0 };
-    starpu_payload_register(&hIn, STARPU_MAIN_RAM, in.data);
-    starpu_data_set_name(hIn, in.data.description.c_str());
-
-    starpu_data_handle_t hVal = { 0 };
-    if (out.values) {
-      starpu_payload_register(&hVal, STARPU_MAIN_RAM, out.values.value());
-      starpu_data_set_name(hVal, out.values->description.c_str());
-    } else {
-      starpu_void_data_register(&hVal);
-    }
-
-    starpu_data_handle_t hLoc = { 0 };
-    if (out.locations) {
-      starpu_payload_register(&hLoc, STARPU_MAIN_RAM, out.locations.value());
-      starpu_data_set_name(hLoc, out.locations->description.c_str());
-    } else {
-      starpu_void_data_register(&hLoc);
-    }
-
-    struct starpu_task *task = starpu_task_create();
-    task->handles[0] = hIn;
-    task->handles[1] = hVal;
-    task->handles[2] = hLoc;
-    task->workerids = CreateWorkerMask(task->workerids_len,
-      algs);// FIXME bug in the StarPU? If the mask is completely 0, codelet is being invoked anyway
-    task->cl_arg = new ExecuteArgs{ settings, &algs };
-    task->cl_arg_size = sizeof(ExecuteArgs);
-    task->cl = [] {
-      static starpu_codelet c = {};
-      c.where = STARPU_CUDA | STARPU_CPU;
-      c.cpu_funcs[0] = Codelet;
-      c.cuda_funcs[0] = Codelet;
-      c.nbuffers = 3;
-      c.modes[0] = STARPU_R;
-      c.modes[1] = STARPU_W;
-      c.modes[2] = STARPU_W;
-      return &c;
-    }();
-
-    task->name = this->taskName.c_str();
-    STARPU_CHECK_RETURN_VALUE(starpu_task_submit(task), "starpu_task_submit %s", this->taskName);
-    starpu_data_unregister_submit(hIn);// unregister data at leasure
-    starpu_data_unregister(hVal);// copy results back to home node
-    starpu_data_unregister(hLoc);// copy results back to home node
-    return true;
+    using ResultType = data::StarpuPayload<ResultData::type::type>;
+    auto oVal = std::make_unique<ResultType>(out.values.value());
+    auto oLoc =
+      std::make_unique<ResultType>(ResultType::PayloadType(out.values.value().info, "Locations"));
+    auto o = StarpuResultData(std::move(oVal), std::move(oLoc));
+    using LocalSearchType = data::StarpuPayload<SearchData::type::type>;
+    auto i = StarpuSearchData(std::make_unique<LocalSearchType>(in.data));
+    return Execute(o, i, settings);
   }
 
-    bool SingleExtremaFinderStarPU::Execute(const StarpuResultData &out,
+  bool SingleExtremaFinderStarPU::Execute(const StarpuResultData &out,
     const StarpuSearchData &in,
     const Settings &settings)
   {

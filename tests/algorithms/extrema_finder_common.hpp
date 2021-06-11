@@ -136,19 +136,16 @@ TEST_F(NAME, 1D_manyBatches_noPadd_max_valOnly)
   const size_t batchSize = 134;
   bool isFirstIter = true;
   for (size_t offset = 0; offset < sizeIn.n; offset += batchSize) {
-    auto i = std::make_unique<StarpuPayload<AExtremaFinder::SearchData::type::type>>(
-      inP.Subset(offset, batchSize));
-    auto in = SingleExtremaFinderStarPU::StarpuSearchData(std::move(i));
-    auto o = std::make_unique<StarpuPayload<AExtremaFinder::ResultData::type::type>>(
-      valuesP.Subset(offset, batchSize));
-    auto oLoc = std::make_unique<StarpuPayload<AExtremaFinder::ResultData::type::type>>(
-      Payload<AExtremaFinder::ResultData::type::type>(o->GetPayload().info, "Locations"));
-    auto out = SingleExtremaFinderStarPU::StarpuResultData(std::move(o), std::move(oLoc));
+    auto i = inP.Subset(offset, batchSize);
+    auto in = AExtremaFinder::SearchData(std::move(i));
+    auto o = valuesP.Subset(offset, batchSize);
+    auto out = AExtremaFinder::ResultData(std::move(o), std::nullopt);
+
     if (isFirstIter) {
       isFirstIter = false;
-      auto tmpOut = AExtremaFinder::ResultData(
-        out.values.value()->GetPayload().CopyWithoutData(), std::nullopt);
-      auto tmpIn = AExtremaFinder::SearchData(in.data->GetPayload().CopyWithoutData());
+      auto tmpOut = AExtremaFinder::ResultData(o.CopyWithoutData(), std::nullopt);
+      auto tmpIn = AExtremaFinder::SearchData(i.CopyWithoutData());
+
       ASSERT_TRUE(searcher.Init(tmpOut, tmpIn, settings));
     }
     ASSERT_TRUE(searcher.Execute(out, in, settings));
