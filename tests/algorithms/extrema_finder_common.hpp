@@ -136,14 +136,14 @@ TEST_F(NAME, 1D_manyBatches_noPadd_max_valOnly)
   const size_t batchSize = 134;
   bool isFirstIter = true;
   for (size_t offset = 0; offset < sizeIn.n; offset += batchSize) {
-    auto i = inP.Subset(offset, batchSize);
-    auto in = AExtremaFinder::SearchData(i);
+    auto i = std::make_unique<StarpuPayload<LogicalDescriptor>>(inP.Subset(offset, batchSize));
+    auto in = SingleExtremaFinderStarPU::StarpuSearchData(std::move(i));
     auto o = valuesP.Subset(offset, batchSize);
     auto out = AExtremaFinder::ResultData(o, std::nullopt);
     if (isFirstIter) {
       isFirstIter = false;
       auto tmpOut = AExtremaFinder::ResultData(o.CopyWithoutData(), std::nullopt);
-      auto tmpIn = AExtremaFinder::SearchData(i.CopyWithoutData());
+      auto tmpIn = AExtremaFinder::SearchData(in.data.get()->GetPayload().CopyWithoutData());
       ASSERT_TRUE(searcher.Init(tmpOut, tmpIn, settings));
     }
     ASSERT_TRUE(searcher.Execute(out, in, settings));

@@ -22,7 +22,7 @@ namespace extrema_finder {
                       : nullptr;
       auto out = AExtremaFinder::ResultData(*valsP, std::nullopt);
       auto *inP = reinterpret_cast<AExtremaFinder::SearchData::type *>(buffers[0]);
-      auto in = AExtremaFinder::SearchData(*inP);
+      auto in = AExtremaFinder::SearchData(std::move(*inP));
       auto &alg = args->algs->at(static_cast<size_t>(starpu_worker_get_id()));
       alg->Execute(out, in, args->settings);
       alg->Synchronize();// this codelet is run asynchronously, but we have to wait till it's done
@@ -123,5 +123,54 @@ namespace extrema_finder {
     starpu_data_unregister(hLoc);// copy results back to home node
     return true;
   }
+
+    bool SingleExtremaFinderStarPU::Execute(const ResultData &out,
+    const StarpuSearchData &in,
+    const Settings &settings)
+  {
+    starpu_data_handle_t hVal = { 0 };
+    if (out.values) {
+      starpu_payload_register(&hVal, STARPU_MAIN_RAM, out.values.value());
+      starpu_data_set_name(hVal, out.values->description.c_str());
+    } else {
+      starpu_void_data_register(&hVal);
+    }
+
+    starpu_data_handle_t hLoc = { 0 };
+    if (out.locations) {
+      starpu_payload_register(&hLoc, STARPU_MAIN_RAM, out.locations.value());
+      starpu_data_set_name(hLoc, out.locations->description.c_str());
+    } else {
+      starpu_void_data_register(&hLoc);
+    }
+
+    struct starpu_task *task = starpu_task_create();
+    task->handles[0] = in.data.get()->GetHandle();
+    task->handles[1] = hVal;
+    task->handles[2] = hLoc;
+    task->workerids = CreateWorkerMask(task->workerids_len,
+      algs);// FIXME bug in the StarPU? If the mask is completely 0, codelet is being invoked anyway
+    task->cl_arg = new ExecuteArgs{ settings, &algs };
+    task->cl_arg_size = sizeof(ExecuteArgs);
+    task->cl = [] {
+      static starpu_codelet c = {};
+      c.where = STARPU_CUDA | STARPU_CPU;
+      c.cpu_funcs[0] = Codelet;
+      c.cuda_funcs[0] = Codelet;
+      c.nbuffers = 3;
+      c.modes[0] = STARPU_R;
+      c.modes[1] = STARPU_W;
+      c.modes[2] = STARPU_W;
+      return &c;
+    }();
+
+    task->name = this->taskName.c_str();
+    STARPU_CHECK_RETURN_VALUE(starpu_task_submit(task), "starpu_task_submit %s", this->taskName);
+    starpu_data_unregister(hVal);// copy results back to home node
+    starpu_data_unregister(hLoc);// copy results back to home node
+    return true;
+  }
+
+
 }// namespace extrema_finder
 }// namespace umpalumpa

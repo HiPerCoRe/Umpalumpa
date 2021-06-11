@@ -22,7 +22,7 @@ namespace extrema_finder {
 
     template<typename T> struct SearchDataWrapper
     {
-      SearchDataWrapper(const T &d) : data(d) {}
+      SearchDataWrapper(T &&d) : data(std::move(d)) {}
       const T data;
       typedef T type;
     };

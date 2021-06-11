@@ -1,6 +1,7 @@
 #pragma once
 
 #include <libumpalumpa/algorithms/extrema_finder/aextrema_finder.hpp>
+#include <libumpalumpa/data/starpu_payload.hpp>
 #include <vector>
 #include <memory>
 
@@ -15,6 +16,11 @@ namespace extrema_finder {
       // don't do anything. Each task is synchronized, now it's StarPU's problem
       // consider calling starpu_task_wait_for_all() instead
     };
+
+    using StarpuSearchData =
+      SearchDataWrapper<std::unique_ptr<data::StarpuPayload<umpalumpa::data::LogicalDescriptor>>>;
+
+    bool Execute(const ResultData &out, const StarpuSearchData &in, const Settings &settings);
 
   private:
     inline static const std::string taskName = "Single Extrema Finder";
