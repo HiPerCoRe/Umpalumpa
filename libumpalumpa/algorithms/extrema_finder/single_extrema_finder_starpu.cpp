@@ -124,30 +124,14 @@ namespace extrema_finder {
     return true;
   }
 
-    bool SingleExtremaFinderStarPU::Execute(const ResultData &out,
+    bool SingleExtremaFinderStarPU::Execute(const StarpuResultData &out,
     const StarpuSearchData &in,
     const Settings &settings)
   {
-    starpu_data_handle_t hVal = { 0 };
-    if (out.values) {
-      starpu_payload_register(&hVal, STARPU_MAIN_RAM, out.values.value());
-      starpu_data_set_name(hVal, out.values->description.c_str());
-    } else {
-      starpu_void_data_register(&hVal);
-    }
-
-    starpu_data_handle_t hLoc = { 0 };
-    if (out.locations) {
-      starpu_payload_register(&hLoc, STARPU_MAIN_RAM, out.locations.value());
-      starpu_data_set_name(hLoc, out.locations->description.c_str());
-    } else {
-      starpu_void_data_register(&hLoc);
-    }
-
     struct starpu_task *task = starpu_task_create();
-    task->handles[0] = in.data.get()->GetHandle();
-    task->handles[1] = hVal;
-    task->handles[2] = hLoc;
+    task->handles[0] = in.data->GetHandle();
+    task->handles[1] = out.values.value()->GetHandle();
+    task->handles[2] = out.locations.value()->GetHandle();
     task->workerids = CreateWorkerMask(task->workerids_len,
       algs);// FIXME bug in the StarPU? If the mask is completely 0, codelet is being invoked anyway
     task->cl_arg = new ExecuteArgs{ settings, &algs };
@@ -166,8 +150,6 @@ namespace extrema_finder {
 
     task->name = this->taskName.c_str();
     STARPU_CHECK_RETURN_VALUE(starpu_task_submit(task), "starpu_task_submit %s", this->taskName);
-    starpu_data_unregister(hVal);// copy results back to home node
-    starpu_data_unregister(hLoc);// copy results back to home node
     return true;
   }
 

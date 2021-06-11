@@ -17,10 +17,13 @@ namespace extrema_finder {
       // consider calling starpu_task_wait_for_all() instead
     };
 
-    using StarpuSearchData =
-      SearchDataWrapper<std::unique_ptr<data::StarpuPayload<umpalumpa::data::LogicalDescriptor>>>;
+    using StarpuResultData =
+      ResultDataWrapper<std::unique_ptr<data::StarpuPayload<ResultData::type::type>>>;
 
-    bool Execute(const ResultData &out, const StarpuSearchData &in, const Settings &settings);
+    using StarpuSearchData =
+      SearchDataWrapper<std::unique_ptr<data::StarpuPayload<SearchData::type::type>>>;
+
+    bool Execute(const StarpuResultData &out, const StarpuSearchData &in, const Settings &settings);
 
   private:
     inline static const std::string taskName = "Single Extrema Finder";

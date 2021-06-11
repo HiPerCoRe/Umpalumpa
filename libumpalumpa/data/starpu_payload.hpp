@@ -15,13 +15,15 @@ namespace data {
 
     StarpuPayload(const Payload<T> &p) : handle{ 0 }, payload(p)
     {
-      starpu_payload_register(&handle,
-        STARPU_MAIN_RAM,// FIXME this should be taken from the payload
-        p);
+      if (payload.IsEmpty()) {
+        starpu_void_data_register(&handle);
+      } else {
+        starpu_payload_register(&handle,
+          STARPU_MAIN_RAM,// FIXME this should be taken from the payload
+          payload);
+      }
       starpu_data_set_name(handle, p.description.c_str());
     }
-
-    StarpuPayload() : handle{ 0 }, payload{} { starpu_void_data_register(&handle); }
 
     ~StarpuPayload()
     {

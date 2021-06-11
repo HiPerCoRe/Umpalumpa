@@ -12,12 +12,21 @@ namespace extrema_finder {
   protected:
     template<typename T> struct ResultDataWrapper
     {
-      ResultDataWrapper(const std::optional<T> &vals, const std::optional<T> &locs)
-        : values(vals), locations(locs)
+      ResultDataWrapper(std::optional<T> &&vals, std::optional<T> &&locs)
+        : values(std::move(vals)), locations(std::move(locs))
       {}
       const std::optional<T> values;
       const std::optional<T> locations;
       typedef T type;
+
+      static ResultDataWrapper ValuesOnly(T &&v)
+      {
+        return ResultDataWrapper(std::move(v), std::nullopt);
+      }
+      static ResultDataWrapper LocationsOnly(T &&l)
+      {
+        return ResultDataWrapper(std::nullopt, std::move(l));
+      }
     };
 
     template<typename T> struct SearchDataWrapper
