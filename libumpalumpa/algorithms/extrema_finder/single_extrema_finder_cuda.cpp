@@ -46,7 +46,7 @@ namespace extrema_finder {
           const ktt::DimensionVector blockDimensions(threads);
           const ktt::DimensionVector gridDimensions(in.data.info.size.n);
           kernelData.definitionId = tuner.AddKernelDefinitionFromFile(
-            kFindMax1D, kKernelFile, gridDimensions, blockDimensions);
+            kFindMax1D, kKernelFile, gridDimensions, blockDimensions, {});
           kernelData.kernelId = tuner.CreateSimpleKernel(kFindMax1D, kernelData.definitionId);
           tuner.AddParameter(kernelData.kernelId, "blockSize", std::vector<uint64_t>{ threads });
         }

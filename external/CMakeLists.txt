@@ -45,7 +45,7 @@ ExternalProject_Add(spdlog_install
     -DCMAKE_INSTALL_PREFIX=${spdlog_dir}/install/
     -DSPDLOG_BUILD_SHARED=OFF
 )
-# create ktt library
+# create spdlog library
 add_library(spdlog INTERFACE)
 add_dependencies(spdlog spdlog_install)
 target_include_directories(spdlog INTERFACE ${spdlog_dir}/install/include)

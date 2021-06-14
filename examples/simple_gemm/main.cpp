@@ -188,7 +188,11 @@ int main(int argc, char **argv)
 
     ktt::DimensionVector ndRangeDimensions(batch);
     ktt::DimensionVector workGroupDimensions;
-    ktt::KernelDefinitionId kernelDefinition = GPUtuner.AddKernelDefinitionFromFile("gemm_batch", "../../examples/simple_gemm/gemm_kernel.cu", ndRangeDimensions, workGroupDimensions);//"/home/jaro/umpalumpa/examples/simple_gemm/kernel.cu", "gemm_batch_kernel", ndRangeDimensions, workGroupDimensions);
+    ktt::KernelDefinitionId kernelDefinition = GPUtuner.AddKernelDefinitionFromFile("gemm_batch",
+      "../../examples/simple_gemm/gemm_kernel.cu",
+      ndRangeDimensions,
+      workGroupDimensions, {});//"/home/jaro/umpalumpa/examples/simple_gemm/kernel.cu",
+                           //"gemm_batch_kernel", ndRangeDimensions, workGroupDimensions);
 
     const ktt::KernelId kernel = GPUtuner.CreateSimpleKernel("Batch GEMM", kernelDefinition);
 
