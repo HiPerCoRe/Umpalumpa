@@ -10,18 +10,15 @@ namespace data {
   template<typename T> class StarpuPayload
   {
   public:
+    StarpuPayload &operator=(const StarpuPayload &) = delete;
     StarpuPayload(const StarpuPayload &) =
       delete;// copy prevented to avoid multiple handles to same data; consider using smart pointer
 
     StarpuPayload(const Payload<T> &p) : handle{ 0 }, payload(p)
     {
-      if (payload.IsEmpty()) {
-        starpu_void_data_register(&handle);
-      } else {
-        starpu_payload_register(&handle,
-          STARPU_MAIN_RAM,// FIXME this should be taken from the payload
-          payload);
-      }
+      starpu_payload_register(&handle,
+        STARPU_MAIN_RAM,// FIXME this should be taken from the payload
+        payload);
       starpu_data_set_name(handle, p.description.c_str());
     }
 

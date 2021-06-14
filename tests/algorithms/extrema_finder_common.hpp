@@ -88,7 +88,7 @@ TEST_F(NAME, 1D_batch_noPadd_max_valOnly)
   auto ldVal = LogicalDescriptor(sizeValues, sizeValues, "Values of the found extremas");
   auto pdVal = PhysicalDescriptor(sizeValues.total * sizeof(float), DataType::kFloat);
   auto valuesP = Payload(values, ldVal, pdVal, "Resulting maxima");
-  auto out = AExtremaFinder::ResultData(valuesP, std::nullopt);
+  auto out = AExtremaFinder::ResultData::ValuesOnly(valuesP);
 
   auto &searcher = GetSearcher();
   ASSERT_TRUE(searcher.Init(out, in, settings));// including data, on purpose
@@ -139,11 +139,11 @@ TEST_F(NAME, 1D_manyBatches_noPadd_max_valOnly)
     auto i = inP.Subset(offset, batchSize);
     auto in = AExtremaFinder::SearchData(std::move(i));
     auto o = valuesP.Subset(offset, batchSize);
-    auto out = AExtremaFinder::ResultData(std::move(o), std::nullopt);
+    auto out = AExtremaFinder::ResultData::ValuesOnly(std::move(o));
 
     if (isFirstIter) {
       isFirstIter = false;
-      auto tmpOut = AExtremaFinder::ResultData(o.CopyWithoutData(), std::nullopt);
+      auto tmpOut = AExtremaFinder::ResultData::ValuesOnly(o.CopyWithoutData());
       auto tmpIn = AExtremaFinder::SearchData(i.CopyWithoutData());
 
       ASSERT_TRUE(searcher.Init(tmpOut, tmpIn, settings));

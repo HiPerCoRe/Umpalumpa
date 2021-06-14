@@ -27,8 +27,10 @@ namespace extrema_finder {
         const AExtremaFinder::SearchData &in,
         const Settings &) override final
       {
-        if (in.data.IsEmpty() || !out.values || out.values->IsEmpty()) return false;
-        FindSingleExtremaValXDCPU(reinterpret_cast<float *>(out.values->data),
+        if (!in.data.IsValid() || in.data.IsEmpty() || !out.values.IsValid()
+            || out.values.IsEmpty())
+          return false;
+        FindSingleExtremaValXDCPU(reinterpret_cast<float *>(out.values.data),
           reinterpret_cast<float *>(in.data.data),
           in.data.info.size,
           std::greater<float>());

@@ -60,7 +60,9 @@ namespace extrema_finder {
         const Settings &,
         ktt::Tuner &tuner) override final
       {
-        if (in.data.IsEmpty() || !out.values || out.values->IsEmpty()) return false;
+        if (!in.data.IsValid() || in.data.IsEmpty() || !out.values.IsValid()
+            || out.values.IsEmpty())
+          return false;
 
         // prepare input data
         auto argIn = tuner.AddArgumentVector<float>(in.data.data,
@@ -69,8 +71,8 @@ namespace extrema_finder {
           ktt::ArgumentMemoryLocation::Unified);
 
         // prepare output data
-        auto argVals = tuner.AddArgumentVector<float>(out.values->data,
-          out.values->info.size.total,
+        auto argVals = tuner.AddArgumentVector<float>(out.values.data,
+          out.values.info.size.total,
           ktt::ArgumentAccessType::WriteOnly,
           ktt::ArgumentMemoryLocation::Unified);
 

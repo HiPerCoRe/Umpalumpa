@@ -17,8 +17,20 @@ namespace extrema_finder {
       // consider calling starpu_task_wait_for_all() instead
     };
 
-    using StarpuResultData =
-      ResultDataWrapper<std::unique_ptr<data::StarpuPayload<ResultData::type::type>>>;
+
+    struct StarpuResultData final
+      : ResultDataWrapper<std::unique_ptr<data::StarpuPayload<ResultData::type::type>>>
+    {
+      using ptrType = data::StarpuPayload<ResultData::type::type>;
+      StarpuResultData(type &&vals, type &&locs)
+        : ResultDataWrapper(std::move(vals), std::move(locs))
+      {}
+
+      StarpuResultData(const ResultData &d)
+        : StarpuResultData(std::make_unique<ptrType>(d.values),
+          std::make_unique<ptrType>(d.locations))
+      {}
+    };
 
     using StarpuSearchData =
       SearchDataWrapper<std::unique_ptr<data::StarpuPayload<SearchData::type::type>>>;

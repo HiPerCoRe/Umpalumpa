@@ -17,10 +17,9 @@ namespace extrema_finder {
     void Codelet(void *buffers[], void *func_arg)
     {
       auto *args = reinterpret_cast<ExecuteArgs *>(func_arg);
-      auto *valsP = (args->settings.result == SearchResult::kValue)
-                      ? reinterpret_cast<AExtremaFinder::ResultData::type *>(buffers[1])
-                      : nullptr;
-      auto out = AExtremaFinder::ResultData(*valsP, std::nullopt);
+      auto *valsP = reinterpret_cast<AExtremaFinder::ResultData::type *>(buffers[1]);
+      auto *locsP = reinterpret_cast<AExtremaFinder::ResultData::type *>(buffers[2]);
+      auto out = AExtremaFinder::ResultData(std::move(*valsP), std::move(*locsP));
       auto *inP = reinterpret_cast<AExtremaFinder::SearchData::type *>(buffers[0]);
       auto in = AExtremaFinder::SearchData(std::move(*inP));
       auto &alg = args->algs->at(static_cast<size_t>(starpu_worker_get_id()));
@@ -76,14 +75,14 @@ namespace extrema_finder {
     const SearchData &in,
     const Settings &settings)
   {
-    using ResultType = data::StarpuPayload<ResultData::type::type>;
-    auto oVal = std::make_unique<ResultType>(out.values.value());
-    auto oLoc =
-      std::make_unique<ResultType>(ResultType::PayloadType(out.values.value().info, "Locations"));
-    auto o = StarpuResultData(std::move(oVal), std::move(oLoc));
     using LocalSearchType = data::StarpuPayload<SearchData::type::type>;
     auto i = StarpuSearchData(std::make_unique<LocalSearchType>(in.data));
-    return Execute(o, i, settings);
+    auto o = StarpuResultData(out);
+    auto res = Execute(o, i, settings);
+    // assume that results are requested
+    o.values->Unregister();
+    o.locations->Unregister();
+    return res;
   }
 
   bool SingleExtremaFinderStarPU::Execute(const StarpuResultData &out,
@@ -92,8 +91,8 @@ namespace extrema_finder {
   {
     struct starpu_task *task = starpu_task_create();
     task->handles[0] = in.data->GetHandle();
-    task->handles[1] = out.values.value()->GetHandle();
-    task->handles[2] = out.locations.value()->GetHandle();
+    task->handles[1] = out.values->GetHandle();
+    task->handles[2] = out.locations->GetHandle();
     task->workerids = CreateWorkerMask(task->workerids_len,
       algs);// FIXME bug in the StarPU? If the mask is completely 0, codelet is being invoked anyway
     task->cl_arg = new ExecuteArgs{ settings, &algs };

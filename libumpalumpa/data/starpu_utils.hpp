@@ -45,9 +45,12 @@ static starpu_ssize_t payload_allocate_data_on_node(void *data_interface, unsign
 {
   auto *interface = reinterpret_cast<umpalumpa::data::Payload<T> *>(data_interface);
 
-  starpu_ssize_t requested_memory = interface->dataInfo.bytes;
-  void *data = reinterpret_cast<void *>(starpu_malloc_on_node(node, requested_memory));
-  if (nullptr == data) return -ENOMEM;
+  starpu_ssize_t requested_memory = interface->IsEmpty() ? 0 : interface->dataInfo.bytes;
+  void *data = nullptr;
+  if (0 != requested_memory) {
+    data = reinterpret_cast<void *>(starpu_malloc_on_node(node, requested_memory));
+    if (nullptr == data) return -ENOMEM;
+  }
   /* update the data properly in consequence */
   interface->data = data;
   return requested_memory;
@@ -56,8 +59,10 @@ static starpu_ssize_t payload_allocate_data_on_node(void *data_interface, unsign
 template<typename T> static void payload_free_data_on_node(void *data_interface, unsigned node)
 {
   auto *interface = reinterpret_cast<umpalumpa::data::Payload<T> *>(data_interface);
-  starpu_free_on_node(
-    node, reinterpret_cast<uintptr_t>(interface->data), interface->dataInfo.bytes);
+  if (!interface->IsEmpty()) {
+    starpu_free_on_node(
+      node, reinterpret_cast<uintptr_t>(interface->data), interface->dataInfo.bytes);
+  }
   interface->data = nullptr;
 }
 
@@ -70,10 +75,8 @@ static int copy_any_to_any(void *src_interface,
 {
   auto *src = reinterpret_cast<umpalumpa::data::Payload<T> *>(src_interface);
   auto *dst = reinterpret_cast<umpalumpa::data::Payload<T> *>(dst_interface);
-  // auto tmp = dst->data;
-  // *dst = *src;
-  // dst->data = tmp;
 
+  if (src->IsEmpty()) return 0; // nothing to do
   return starpu_interface_copy(reinterpret_cast<uintptr_t>(src->data),
     0,
     src_node,
