@@ -4,5 +4,5 @@ if(USE_STARPU)
     simple_gemm
     PRIVATE project_options
             # project_warnings
-            library_ktt library_starpu)
+            umpalumpa)
 endif()
