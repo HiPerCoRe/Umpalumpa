@@ -24,7 +24,7 @@ target_link_libraries(
   Umpalumpa_Tests
   PRIVATE project_options
           umpalumpa
-          gtest_main ${CUDART_LIBRARY})
+          gtest_main)
 
 include(GoogleTest)
 gtest_discover_tests(Umpalumpa_Tests)
