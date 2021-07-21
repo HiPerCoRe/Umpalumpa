@@ -9,6 +9,7 @@ namespace data {
   class LogicalDescriptor
   {
   public:
+  // fixme say that padded size is size + padding
     explicit LogicalDescriptor(const Size &s, const Size &padded, const std::string &desc)
       : size(s), paddedSize(padded), description(desc)
     {}
@@ -34,9 +35,10 @@ namespace data {
 
     virtual size_t Elems() const { return paddedSize.total; }
 
+    // fixme these should be private + getters / setters
     Size size;
     Size paddedSize;
-    std::string description;
+    std::string description; // this is probably not needed
   };
 }// namespace data
 }// namespace umpalumpa

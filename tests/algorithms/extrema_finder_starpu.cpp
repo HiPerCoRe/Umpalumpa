@@ -17,7 +17,7 @@ public:
     STARPU_CHECK_RETURN_VALUE(starpu_task_wait_for_all(), "Waiting for all tasks");
   }
 
-  auto Allocate(size_t bytes)
+  auto Allocate(size_t bytes) // FIXME auto *Allocate()
   {
     void *ptr = nullptr;
     starpu_malloc(&ptr, bytes);

@@ -16,6 +16,7 @@ namespace data {
       return Dimensionality::k1Dim;
     }
 
+  // FIXME ensure that nobody creates size like x=1 y=2 ... (either exception here or check in IsValid() or both, preferably exception here)
     explicit Size(size_t xSize, size_t ySize, size_t zSize, size_t nSize)
       : x(xSize), y(ySize), z(zSize), n(nSize), dim(GetDim(xSize, ySize, zSize)), single(xSize * ySize * zSize),
         total(xSize * ySize * zSize * nSize)
@@ -38,6 +39,7 @@ namespace data {
 
     constexpr Dimensionality getDim() const { return dim; }
 
+  // these should be private + getters
     size_t x;
     size_t y;
     size_t z;

@@ -111,7 +111,7 @@ TEST_F(NAME, 1D_batch_noPadd_max_valOnly)
   Free(values);
 }
 
-TEST_F(NAME, 1D_manyBatches_noPadd_max_valOnly)
+TEST_F(NAME, 3D_manyBatches_noPadd_max_valOnly)
 {
   auto sizeIn = Size(120, 173, 150, 1030);
   std::cout << "This test will need at least " << sizeIn.total * sizeof(float) / 1048576 << " MB"
@@ -144,7 +144,7 @@ TEST_F(NAME, 1D_manyBatches_noPadd_max_valOnly)
     if (isFirstIter) {
       isFirstIter = false;
       auto tmpOut = AExtremaFinder::ResultData::ValuesOnly(o.CopyWithoutData());
-      auto tmpIn = AExtremaFinder::SearchData(i.CopyWithoutData());
+      auto tmpIn = AExtremaFinder::SearchData(i.CopyWithoutData()); // CopyWithoutData() should be done within StarPU (or Init() methods of specific algorithms)
 
       ASSERT_TRUE(searcher.Init(tmpOut, tmpIn, settings));
     }

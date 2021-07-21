@@ -9,6 +9,7 @@ namespace data {
   template<typename T> class Payload
   {
   public:
+  // add documentation, especially that we don't manage data
     explicit Payload(void *d, const T &ld, const PhysicalDescriptor &pd, const std::string &desc)
       : data(d), info(ld), dataInfo(pd), description(desc)
     {}
@@ -28,10 +29,11 @@ namespace data {
 
     bool IsEmpty() const { return (nullptr == data) && (dataInfo.IsEmpty()); }
 
+  // FIXME  it might be useful to have subset which takes e.g. a vector of possitions that we want to get
     Payload Subset(size_t startN, size_t count) const// FIXME refactor
     {
       assert(!IsEmpty());
-      size_t safeCount = 0;
+      size_t safeCount = 0; // change name to something more reasonable
       const auto newInfo = info.Subset(safeCount, startN, count);
       const auto offset = info.Offset(0, 0, 0, startN);
 
@@ -48,6 +50,7 @@ namespace data {
         nullptr, info, PhysicalDescriptor(0, dataInfo.type), description + suffixEmpty);
     }
 
+    // these shouold be private + getters / setters
     void *data;// constant pointer to non-constant data, type defined by other descriptors
     T info;
     PhysicalDescriptor dataInfo;

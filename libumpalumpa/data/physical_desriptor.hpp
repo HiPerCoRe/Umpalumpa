@@ -8,6 +8,7 @@ namespace data {
   class PhysicalDescriptor
   {
   public:
+  // FIXME this should hold the data pointer, Payload should call some getter from here to get them
     explicit PhysicalDescriptor(size_t b, DataType dataType)
       : bytes(b), kbytes(static_cast<float>(b) / 1024),
         Mbytes(static_cast<float>(b) / (1024 * 1024)),
@@ -15,7 +16,9 @@ namespace data {
 
     explicit PhysicalDescriptor() : PhysicalDescriptor(0, DataType::kVoid){};
 
+    // these shouold be private + getters
     size_t bytes;
+    // fixme it would be cheaper to compute these on demand
     float kbytes;
     float Mbytes;
     float Gbytes;

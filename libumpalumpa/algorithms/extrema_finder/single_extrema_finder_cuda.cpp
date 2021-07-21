@@ -94,7 +94,8 @@ namespace extrema_finder {
 
         auto configuration =
           tuner.CreateConfiguration(kernelData.kernelId, { { "blockSize", threads } });
-        tuner.Run(kernelData.kernelId, configuration, {});
+        tuner.Run(kernelData.kernelId, configuration, {}); // run is blocking call
+        // arguments shall be removed once the run is done
         return true;
       };
     };

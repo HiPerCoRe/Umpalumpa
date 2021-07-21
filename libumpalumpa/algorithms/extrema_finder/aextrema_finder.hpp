@@ -41,8 +41,8 @@ namespace extrema_finder {
       }
     };
     using SearchData = SearchDataWrapper<data::Payload<data::LogicalDescriptor>>;
-    virtual bool Init(const ResultData &out, const SearchData &in, const Settings &settings) = 0;
-    virtual bool Execute(const ResultData &out, const SearchData &in, const Settings &settings) = 0;
+    virtual bool Init(const ResultData &out, const SearchData &in, const Settings &settings) = 0; // FIXME add nodiscard?
+    virtual bool Execute(const ResultData &out, const SearchData &in, const Settings &settings) = 0; // setting is probably useless here, save it in Init()
     virtual void Cleanup(){};
     virtual void Synchronize() = 0;
 
@@ -50,7 +50,7 @@ namespace extrema_finder {
 
   protected:
     virtual bool
-      IsValid(const ResultData &out, const SearchData &in, const Settings &settings) const
+      IsValid(const ResultData &out, const SearchData &in, const Settings &settings) const // move to cpp
     {
       // is input valid?
       bool result = in.data.IsValid() && !in.data.IsEmpty();

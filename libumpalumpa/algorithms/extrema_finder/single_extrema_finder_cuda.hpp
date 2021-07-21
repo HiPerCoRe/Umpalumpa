@@ -36,6 +36,7 @@ namespace extrema_finder {
         ktt::KernelDefinitionId definitionId;// FIXME this should be a vector
         ktt::KernelId kernelId;
       };
+      // FIXME add std::vector ktt arguments that shall be deteled in.e.g destructor or synchronize() method
     };
 
     void Synchronize();

@@ -18,7 +18,7 @@ namespace extrema_finder {
     const SearchType type;
     const SearchLocation location;
     const SearchResult result;
-    static constexpr int version = 1;
+    static constexpr int version = 1; // FIXME add documentation that this must increase if we change settings
   };
 
 }// namespace extrema_finder

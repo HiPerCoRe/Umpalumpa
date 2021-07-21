@@ -103,7 +103,7 @@ template<typename T> static uint32_t payload_footprint(starpu_data_handle_t hand
   auto *interface = reinterpret_cast<umpalumpa::data::Payload<T> *>(
     starpu_data_get_interface_on_node(handle, STARPU_MAIN_RAM));
 
-  return starpu_hash_crc32c_be(interface->info.Elems(), 0);
+  return starpu_hash_crc32c_be(interface->info.Elems(), 0); // FIXME use total? check documentation
 }
 
 template<typename T> static int payload_compare(void *data_interface_a, void *data_interface_b)
@@ -111,7 +111,7 @@ template<typename T> static int payload_compare(void *data_interface_a, void *da
   auto *payload_a = reinterpret_cast<umpalumpa::data::Payload<T> *>(data_interface_a);
   auto *payload_b = reinterpret_cast<umpalumpa::data::Payload<T> *>(data_interface_b);
 
-  return (payload_a->info.Elems() == payload_b->info.Elems());
+  return (payload_a->info.Elems() == payload_b->info.Elems()); // FXIME compare total()? check documentation
 }
 
 template<typename T>
