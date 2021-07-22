@@ -10,12 +10,13 @@ add_executable(Umpalumpa_Tests)
 
 # list of test files
 set(tests 
-	algorithms/extrema_finder_cpu.cpp 
-	algorithms/extrema_finder_cuda.cpp
+  #	algorithms/extrema_finder_cpu.cpp 
+  algorithms/fourier_transformation/fft_cuda.cpp
+  # algorithms/extrema_finder_cuda.cpp
 	)
 
 if(USE_STARPU)
-   list(APPEND tests algorithms/extrema_finder_starpu.cpp)
+  #list(APPEND tests algorithms/extrema_finder_starpu.cpp)
 endif()
 
 target_sources(Umpalumpa_Tests PRIVATE ${tests})
