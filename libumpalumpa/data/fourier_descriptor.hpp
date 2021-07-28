@@ -11,7 +11,7 @@ namespace data {
   public:
   // fixme say that padded size is size + padding
     explicit FourierDescriptor(const Size &s, const Size &padded)
-      : size(s), paddedSize(padded), frequencyDomainSize(size.x / 2 + 1, size.y, size.z, size.n)// TODO: need to somehow add description of how the data are padded
+      : size(s), paddedSize(padded), frequencyDomainSize(size.x / 2 + 1, size.y, size.z, size.n), frequencyDomainSizePadded(frequencyDomainSize)// TODO: need to somehow add description of how the data are padded
     {}
     virtual ~FourierDescriptor() {}
     bool IsValid() const { return paddedSize >= size; }
@@ -39,6 +39,7 @@ namespace data {
     Size size;
     Size paddedSize;
     Size frequencyDomainSize;
+    Size frequencyDomainSizePadded;
     bool isSpatial; // FIXME: should be enum (can use the direction.hpp)
     bool isCentered; // FIXME: change to enum
     bool isNormalized; // FIXME: change to enum

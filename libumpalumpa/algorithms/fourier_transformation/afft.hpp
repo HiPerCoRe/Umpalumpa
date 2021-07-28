@@ -1,6 +1,6 @@
 #pragma once
 
-#include "libumpalumpa/data/logical_desriptor.hpp"
+#include "libumpalumpa/data/fourier_descriptor.hpp"
 #include "libumpalumpa/data/payload.hpp"
 #include <libumpalumpa/algorithms/fourier_transformation/settings.hpp>
 
@@ -20,9 +20,15 @@ namespace fourier_transformation {
       return settings;
     }
 
+    void SetSettings(const Settings& settings) {
+      this->settings = settings;
+    }
+
+    // FIXME IsValid needs to check the data type (either float or double)
+
   public:
-    using ResultData = DataWrapper<data::Payload<data::LogicalDescriptor>>;// FIXME LogicalDescriptor just for testing
-    using InputData = DataWrapper<data::Payload<data::LogicalDescriptor>>;// FIXME LogicalDescriptor just for testing
+    using ResultData = DataWrapper<data::Payload<data::FourierDescriptor>>;
+    using InputData = DataWrapper<data::Payload<data::FourierDescriptor>>;
     virtual bool Init(const ResultData &out, const InputData &in, const Settings &settings) = 0;
     virtual bool Execute(const ResultData &out, const InputData &in) = 0;
     virtual void Cleanup(){};

@@ -12,6 +12,9 @@ namespace fourier_transformation {
     Locality GetLocality() const { return locality; }
     Direction GetDirection() const { return direction; }
 
+    bool IsForward() const { return direction == Direction::kForward; }
+    bool IsOutOfPlace() const { return locality == Locality::kOutOfPlace; }
+
     int GetVersion() const { return version; }
 
     Settings CreateInverse() const {

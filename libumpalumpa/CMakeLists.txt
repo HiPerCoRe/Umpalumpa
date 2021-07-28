@@ -12,7 +12,8 @@ set(umpalumpa_sources
 	utils/system.cpp
 	utils/cuda.cpp
 	algorithms/extrema_finder/single_extrema_finder_cpu.cpp 
-	algorithms/extrema_finder/single_extrema_finder_cuda.cpp)
+	algorithms/extrema_finder/single_extrema_finder_cuda.cpp
+  algorithms/fourier_transformation/fft_cuda.hpp)
 
 if(USE_STARPU)
   list(APPEND umpalumpa_sources algorithms/extrema_finder/single_extrema_finder_starpu.cpp)
