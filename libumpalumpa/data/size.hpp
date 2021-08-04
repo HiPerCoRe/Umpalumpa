@@ -37,7 +37,7 @@ namespace data {
     constexpr bool operator<=(const Size &other) const { return !(other < *this); }
     constexpr bool operator>=(const Size &other) const { return !(*this < other); }
 
-    constexpr Dimensionality getDim() const { return dim; }
+    constexpr Dimensionality GetDim() const { return dim; }
 
   // these should be private + getters
     size_t x;

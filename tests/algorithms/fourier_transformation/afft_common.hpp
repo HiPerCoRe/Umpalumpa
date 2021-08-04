@@ -16,9 +16,13 @@ using namespace umpalumpa::data;
 
 template<typename T> void PrintData(T *data, const Size size)
 {
+  ASSERT_EQ(size.GetDim(), Dimensionality::k2Dim);
   for (size_t n = 0; n < size.n; ++n) {
     size_t offset = n * size.single;
-    for (size_t i = 0; i < size.single; ++i) { printf("%+.3f\t", data[offset + i]); }
+    for (size_t y = 0; y < size.y; ++y) {
+      for (size_t x = 0; x < size.x; ++x) { printf("%+.3f\t", data[offset + y * size.x + x]); }
+      std::cout << "\n";
+    }
     std::cout << "\n";
   }
 }
@@ -26,9 +30,16 @@ template<typename T> void PrintData(T *data, const Size size)
 template <>
 void PrintData(std::complex<float> *data, const Size size)
 {
+  ASSERT_EQ(size.GetDim(), Dimensionality::k2Dim);
   for (size_t n = 0; n < size.n; ++n) {
     size_t offset = n * size.single;
-    for (size_t i = 0; i < size.single; ++i) { printf("%+.3f, %+.3f\t", data[offset + i].real(), data[offset + i].imag()); }
+    for (size_t y = 0; y < size.y; ++y) {
+      for (size_t x = 0; x < size.x; ++x) {
+        auto v = data[offset + y * size.x + x];
+        printf("(%+.3f,%+.3f)\t", v.real(), v.imag() );
+      }
+      std::cout << "\n";
+    }
     std::cout << "\n";
   }
 }
@@ -48,10 +59,10 @@ void testFFTInpulseOrigin(AFFT::ResultData &out, AFFT::InputData &in, const Sett
   ft.Execute(out, in);
   ft.Synchronize();
 
-  PrintData((std::complex<float>*)out.data.data, out.data.info.size);
+  PrintData((std::complex<float>*)out.data.data, out.data.info.frequencyDomainSizePadded);
 
   float delta = 0.00001f;
-  for (size_t i = 0; i < in.data.info.paddedSize.total; ++i) {
+  for (size_t i = 0; i < out.data.info.frequencyDomainSizePadded.total; ++i) {
     // ... will result in constant real value, and no imag value
     auto *tmp = reinterpret_cast<std::complex<float>*>(out.data.data);
     ASSERT_NEAR(1, tmp[i].real(), delta) << " at " << i;
@@ -77,12 +88,12 @@ TEST_F(NAME, test_1)
   //auto *in = calloc(pdIn.bytes, 1); // FIXME should be pre-allocated before the test, and should be reused in more 
   auto inP = AFFT::InputData(Payload(in, ldIn, pdIn, "Input data"));
 
-  PhysicalDescriptor pdOut(inP.data.info.frequencyDomainSizePadded.total * 2 * sizeof(float), DataType::kFloat);
-  FourierDescriptor ldOut(inP.data.info.frequencyDomainSize, inP.data.info.frequencyDomainSizePadded);
+  FourierDescriptor ldOut(ldIn); // copy, because they describe the same data
+  PhysicalDescriptor pdOut(ldOut.frequencyDomainSizePadded.total * 2 * sizeof(float), DataType::kFloat);
 
   void *out;
   if (settings.IsOutOfPlace()) {
-    out = Allocate(pdIn.bytes);
+    out = Allocate(pdOut.bytes);
     //CudaErrchk(cudaMemset(out, 0, pdIn.bytes))
     //out = calloc(pdOut.bytes, 1);
   } else {

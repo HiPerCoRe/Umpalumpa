@@ -37,7 +37,7 @@ namespace fourier_transformation {
     }
 
     void Synchronize() override {
-
+      CudaErrchk(cudaDeviceSynchronize()); //FIXME synchronize the correct KTT stream
     }
 
   private:
@@ -66,7 +66,7 @@ namespace fourier_transformation {
         type = (in.data.dataInfo.type == data::DataType::kFloat) ? CUFFT_C2R : CUFFT_Z2D;
       }
 
-      int rank = ToInt(fd.paddedSize.getDim());
+      int rank = ToInt(fd.paddedSize.GetDim());
       int offset = 3 - rank;
 
       function(rank, &n[offset], nullptr,
