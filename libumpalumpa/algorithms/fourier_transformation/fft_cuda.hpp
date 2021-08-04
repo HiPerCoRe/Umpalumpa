@@ -19,6 +19,7 @@ namespace fourier_transformation {
       SetSettings(settings);
 
       CudaErrchk(cufftCreate(&plan));
+      setupPlan(in, settings);
 
       return true;
     }
@@ -27,6 +28,7 @@ namespace fourier_transformation {
       // TODO create methods for comparing this InputData with Init InputData
       auto direction = (GetSettings().IsForward() ? CUFFT_FORWARD : CUFFT_INVERSE);
       CudaErrchk(cufftXtExec(plan, in.data.data, out.data.data, direction));
+      //CudaErrchk(cufftExecR2C(plan, (cufftReal*)in.data.data, (cufftComplex*)out.data.data));
       return true;
     }
 
@@ -71,7 +73,7 @@ namespace fourier_transformation {
           1, idist, nullptr, 1, odist, type, fd.paddedSize.n);
     }
 
-    void createPlan(const InputData &in, const Settings &settings) {
+    void setupPlan(const InputData &in, const Settings &settings) {
       if (in.data.info.paddedSize.total > std::numeric_limits<int>::max()) {
         throw std::length_error("Too many elements for Fourier Transformation. "
             "It would cause int overflow in the cuda kernel. Try to decrease batch size");

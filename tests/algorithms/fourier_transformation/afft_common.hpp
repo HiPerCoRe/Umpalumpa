@@ -14,6 +14,25 @@
 using namespace umpalumpa::fourier_transformation;
 using namespace umpalumpa::data;
 
+template<typename T> void PrintData(T *data, const Size size)
+{
+  for (size_t n = 0; n < size.n; ++n) {
+    size_t offset = n * size.single;
+    for (size_t i = 0; i < size.single; ++i) { printf("%+.3f\t", data[offset + i]); }
+    std::cout << "\n";
+  }
+}
+
+template <>
+void PrintData(std::complex<float> *data, const Size size)
+{
+  for (size_t n = 0; n < size.n; ++n) {
+    size_t offset = n * size.single;
+    for (size_t i = 0; i < size.single; ++i) { printf("%+.3f, %+.3f\t", data[offset + i].real(), data[offset + i].imag()); }
+    std::cout << "\n";
+  }
+}
+
 void testFFTInpulseOrigin(AFFT::ResultData &out, AFFT::InputData &in, const Settings &settings) {
 
   for (size_t n = 0; n < in.data.info.size.n; ++n) {
@@ -21,11 +40,15 @@ void testFFTInpulseOrigin(AFFT::ResultData &out, AFFT::InputData &in, const Sett
     *(reinterpret_cast<float*>(in.data.data) + n * in.data.info.paddedSize.single) = 1.f;
   }
 
+  PrintData((float*)in.data.data, in.data.info.size);
+
   auto ft = FFTCUDA();
 
   ft.Init(out, in, settings);
   ft.Execute(out, in);
   ft.Synchronize();
+
+  PrintData((std::complex<float>*)out.data.data, out.data.info.size);
 
   float delta = 0.00001f;
   for (size_t i = 0; i < in.data.info.paddedSize.total; ++i) {
@@ -43,12 +66,15 @@ TEST_F(NAME, test_1)
   Direction direction = Direction::kForward;
   Settings settings(locality, direction);
 
-  Size size(10, 20, 30, 5);
+  Size size(5, 5, 1, 1);
 
   PhysicalDescriptor pdIn(size.total * sizeof(float), DataType::kFloat);
   FourierDescriptor ldIn(size, size);
 
-  auto *in = calloc(pdIn.bytes, 1); // FIXME should be pre-allocated before the test, and should be reused in more 
+  void *in = Allocate(pdIn.bytes);
+  memset(in, 0, pdIn.bytes);
+  //CudaErrchk(cudaMemset(in, 0, pdIn.bytes))
+  //auto *in = calloc(pdIn.bytes, 1); // FIXME should be pre-allocated before the test, and should be reused in more 
   auto inP = AFFT::InputData(Payload(in, ldIn, pdIn, "Input data"));
 
   PhysicalDescriptor pdOut(inP.data.info.frequencyDomainSizePadded.total * 2 * sizeof(float), DataType::kFloat);
@@ -56,7 +82,9 @@ TEST_F(NAME, test_1)
 
   void *out;
   if (settings.IsOutOfPlace()) {
-    out = calloc(pdOut.bytes, 1);
+    out = Allocate(pdIn.bytes);
+    //CudaErrchk(cudaMemset(out, 0, pdIn.bytes))
+    //out = calloc(pdOut.bytes, 1);
   } else {
     out = in;
   }
@@ -65,8 +93,8 @@ TEST_F(NAME, test_1)
 
   testFFTInpulseOrigin(outP, inP, settings);
 
-  free(in);
+  Free(in);
   if ((void*)in != (void*)out) {
-    free(out);
+    Free(out);
   }
 }
