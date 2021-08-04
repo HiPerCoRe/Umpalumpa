@@ -13,10 +13,12 @@ namespace fourier_transformation {
   {
   public:
     bool Init(const ResultData &out, const InputData &in, const Settings &settings) override {
+      if (IsInitialized()) {
+        CudaErrchk(cufftDestroy(plan));
+      }
       SetSettings(settings);
-      CudaErrchk(cufftDestroy(plan));
 
-      cufftCreate(&plan);
+      CudaErrchk(cufftCreate(&plan));
 
       return true;
     }
@@ -30,6 +32,10 @@ namespace fourier_transformation {
 
     void Cleanup() override {
       CudaErrchk(cufftDestroy(plan));
+    }
+
+    void Synchronize() override {
+
     }
 
   private:

@@ -4,6 +4,7 @@ project(umpalumpa LANGUAGES CUDA CXX C)
 
 find_library(CUDART_LIBRARY cudart ${CMAKE_CUDA_IMPLICIT_LINK_DIRECTORIES})
 find_library(CUDA_LIBRARY cuda ${CMAKE_CUDA_IMPLICIT_LINK_DIRECTORIES})
+find_library(CUDAFFT_LIBRARY cufft ${CMAKE_CUDA_IMPLICIT_LINK_DIRECTORIES})
 
 # set build types, general compile options etc
 include(cmake/StandardProjectSettings.cmake)
