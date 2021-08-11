@@ -14,7 +14,7 @@
 using namespace umpalumpa::fourier_transformation;
 using namespace umpalumpa::data;
 
-TEST_F(NAME, test_1)
+TEST_F(NAME, InpulseOriginForward)
 {
   Locality locality = Locality::kOutOfPlace;
   Direction direction = Direction::kForward;
@@ -46,6 +46,45 @@ TEST_F(NAME, test_1)
   auto outP = AFFT::ResultData(Payload(out, ldOut, pdOut, "Result data"));
 
   testFFTInpulseOrigin(outP, inP, settings);
+
+  Free(in);
+  if ((void*)in != (void*)out) {
+    Free(out);
+  }
+}
+
+TEST_F(NAME, InpulseOriginInverse)
+{
+  Locality locality = Locality::kOutOfPlace;
+  Direction direction = Direction::kInverse;
+  Settings settings(locality, direction);
+
+  Size size(5, 5, 1, 1);
+
+  PhysicalDescriptor pdIn(size.total * 2 * sizeof(float), DataType::kFloat);
+  FourierDescriptor ldIn(size, size, FourierDescriptor::FourierSpaceDescriptor());
+
+  void *in = Allocate(pdIn.bytes);
+  memset(in, 0, pdIn.bytes);
+  //CudaErrchk(cudaMemset(in, 0, pdIn.bytes))
+  //auto *in = calloc(pdIn.bytes, 1); // FIXME should be pre-allocated before the test, and should be reused in more 
+  auto inP = AFFT::InputData(Payload(in, ldIn, pdIn, "Input data"));
+
+  FourierDescriptor ldOut(size, size); // copy, because they describe the same data
+  PhysicalDescriptor pdOut(ldOut.GetPaddedSize().total * sizeof(float), DataType::kFloat);
+
+  void *out;
+  if (settings.IsOutOfPlace()) {
+    out = Allocate(pdOut.bytes);
+    //CudaErrchk(cudaMemset(out, 0, pdIn.bytes))
+    //out = calloc(pdOut.bytes, 1);
+  } else {
+    out = in;
+  }
+
+  auto outP = AFFT::ResultData(Payload(out, ldOut, pdOut, "Result data"));
+
+  testIFFTInpulseOrigin(outP, inP, settings);
 
   Free(in);
   if ((void*)in != (void*)out) {
