@@ -12,6 +12,17 @@ namespace fourier_transformation {
   class FFTCUDA : public AFFT
   {
   public:
+    explicit FFTCUDA(CUstream stream) : stream(stream) {}
+      
+    explicit FFTCUDA(int deviceOrdinal) {
+        CudaErrchk(cuInit(0));
+        CUdevice device;
+        CudaErrchk(cuDeviceGet(&device, deviceOrdinal));
+        CUcontext context;// FIXME test that stream is created on the correct device
+        cuCtxCreate(&context, CU_CTX_SCHED_AUTO, device);
+        CudaErrchk(cuStreamCreate(&stream, CU_STREAM_DEFAULT));
+    }
+      
     bool Init(const ResultData &out, const InputData &in, const Settings &settings) override {
       if (IsInitialized()) {
         CudaErrchk(cufftDestroy(plan));
@@ -42,6 +53,7 @@ namespace fourier_transformation {
 
   private:
     cufftHandle plan;
+    CUstream stream;
 
     //TODO move definitions into .cpp file
     template<typename F>
