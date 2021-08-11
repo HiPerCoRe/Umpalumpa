@@ -60,33 +60,33 @@ namespace fourier_transformation {
     void manyHelper(const InputData &in, const Settings &settings, F function) {
       auto &fd = in.data.info;
       auto n = std::array<int, 3>{
-        static_cast<int>(fd.paddedSize.z),
-        static_cast<int>(fd.paddedSize.y),
-        static_cast<int>(fd.paddedSize.x)};
+        static_cast<int>(fd.GetPaddedSpatialSize().z),
+        static_cast<int>(fd.GetPaddedSpatialSize().y),
+        static_cast<int>(fd.GetPaddedSpatialSize().x)};
       int idist;
       int odist;
       cufftType type;
 
       if (settings.IsForward()) {
-        idist = fd.paddedSize.single;
-        odist = fd.frequencyDomainSize.single;
+        idist = fd.GetPaddedSpatialSize().single;
+        odist = fd.GetFrequencySize().single;
         // We know that data type is either float or double (validated before)
         type = (in.data.dataInfo.type == data::DataType::kFloat) ? CUFFT_R2C : CUFFT_D2Z;
       } else {
-        idist = fd.frequencyDomainSizePadded.single;
-        odist = fd.paddedSize.single;
+        idist = fd.GetPaddedFrequencySize().single;
+        odist = fd.GetPaddedSpatialSize().single;
         type = (in.data.dataInfo.type == data::DataType::kFloat) ? CUFFT_C2R : CUFFT_Z2D;
       }
 
-      int rank = ToInt(fd.paddedSize.GetDim());
+      int rank = ToInt(fd.GetPaddedSpatialSize().GetDim());
       int offset = 3 - rank;
 
       function(rank, &n[offset], nullptr,
-          1, idist, nullptr, 1, odist, type, fd.paddedSize.n);
+          1, idist, nullptr, 1, odist, type, fd.GetPaddedSpatialSize().n);
     }
 
     void setupPlan(const InputData &in, const Settings &settings) {
-      if (in.data.info.paddedSize.total > std::numeric_limits<int>::max()) {
+      if (in.data.info.GetPaddedSpatialSize().total > std::numeric_limits<int>::max()) {
         throw std::length_error("Too many elements for Fourier Transformation. "
             "It would cause int overflow in the cuda kernel. Try to decrease batch size");
       }

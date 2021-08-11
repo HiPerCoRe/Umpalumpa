@@ -31,8 +31,8 @@ TEST_F(NAME, test_1)
   //auto *in = calloc(pdIn.bytes, 1); // FIXME should be pre-allocated before the test, and should be reused in more 
   auto inP = AFFT::InputData(Payload(in, ldIn, pdIn, "Input data"));
 
-  FourierDescriptor ldOut(ldIn); // copy, because they describe the same data
-  PhysicalDescriptor pdOut(ldOut.frequencyDomainSizePadded.total * 2 * sizeof(float), DataType::kFloat);
+  FourierDescriptor ldOut(size, size, FourierDescriptor::FourierSpaceDescriptor()); // copy, because they describe the same data
+  PhysicalDescriptor pdOut(ldOut.GetPaddedSize().total * 2 * sizeof(float), DataType::kFloat);
 
   void *out;
   if (settings.IsOutOfPlace()) {

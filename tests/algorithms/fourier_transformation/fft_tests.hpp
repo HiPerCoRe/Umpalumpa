@@ -14,12 +14,12 @@ class FFT_Tests
   public:
     void testFFTInpulseOrigin(AFFT::ResultData &out, AFFT::InputData &in, const Settings &settings) {
 
-      for (size_t n = 0; n < in.data.info.size.n; ++n) {
+      for (size_t n = 0; n < in.data.info.GetSize().n; ++n) {
         // impulse at the origin ...
-        *(reinterpret_cast<float*>(in.data.data) + n * in.data.info.paddedSize.single) = 1.f;
+        *(reinterpret_cast<float*>(in.data.data) + n * in.data.info.GetPaddedSize().single) = 1.f;
       }
 
-      PrintData((float*)in.data.data, in.data.info.size);
+      PrintData((float*)in.data.data, in.data.info.GetSize());
 
       auto &ft = GetTransformer();
 
@@ -27,10 +27,10 @@ class FFT_Tests
       ft.Execute(out, in);
       ft.Synchronize();
 
-      PrintData((std::complex<float>*)out.data.data, out.data.info.frequencyDomainSizePadded);
+      PrintData((std::complex<float>*)out.data.data, out.data.info.GetPaddedSize());
 
       float delta = 0.00001f;
-      for (size_t i = 0; i < out.data.info.frequencyDomainSizePadded.total; ++i) {
+      for (size_t i = 0; i < out.data.info.GetPaddedSize().total; ++i) {
         // ... will result in constant real value, and no imag value
         auto *tmp = reinterpret_cast<std::complex<float>*>(out.data.data);
         ASSERT_NEAR(1, tmp[i].real(), delta) << " at " << i;
