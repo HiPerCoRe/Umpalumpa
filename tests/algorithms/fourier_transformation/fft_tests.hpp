@@ -78,6 +78,34 @@ class FFT_Tests
       }
     }
 
+    void testFFTInpulseShifted(AFFT::ResultData &out, AFFT::InputData &in, const Settings &settings) {
+
+      for (size_t n = 0; n < in.data.info.GetSize().n; ++n) {
+        // impulse at the origin ...
+        *(reinterpret_cast<float*>(in.data.data) + n * in.data.info.GetPaddedSize().single + 1) = 1.f;
+      }
+
+      PrintData((float*)in.data.data, in.data.info.GetSize());
+
+      auto &ft = GetTransformer();
+
+      ft.Init(out, in, settings);
+      ft.Execute(out, in);
+      ft.Synchronize();
+
+      PrintData((std::complex<float>*)out.data.data, out.data.info.GetPaddedSize());
+
+      float delta = 0.00001f;
+      for (size_t i = 0; i < out.data.info.GetPaddedSize().total; ++i) {
+        // ... will result in constant magnitude
+        auto *tmp = reinterpret_cast<std::complex<float>*>(out.data.data);
+        auto re = tmp[i].real();
+        auto im = tmp[i].imag();
+        auto mag = re * re + im * im;
+        ASSERT_NEAR(1.f, std::sqrt(mag), delta) << " at " << i;
+      }
+    }
+
   protected:
     template<typename T> void PrintData(T *data, const Size size)
     {
