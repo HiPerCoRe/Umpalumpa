@@ -30,13 +30,15 @@ class FFT_Tests
 {
   public:
     void testFFTInpulseOrigin(AFFT::ResultData &out, AFFT::InputData &in, const Settings &settings) {
+      auto *inData = reinterpret_cast<float*>(in.data.data);
+      auto *outData = reinterpret_cast<std::complex<float>*>(out.data.data);
 
       for (size_t n = 0; n < in.data.info.GetSize().n; ++n) {
         // impulse at the origin ...
-        *(reinterpret_cast<float*>(in.data.data) + n * in.data.info.GetPaddedSize().single) = 1.f;
+        inData[n * in.data.info.GetPaddedSize().single] = 1.f;
       }
 
-      PrintData((float*)in.data.data, in.data.info.GetSize());
+      PrintData(inData, in.data.info.GetSize());
 
       auto &ft = GetTransformer();
 
@@ -44,25 +46,26 @@ class FFT_Tests
       ft.Execute(out, in);
       ft.Synchronize();
 
-      PrintData((std::complex<float>*)out.data.data, out.data.info.GetPaddedSize());
+      PrintData(outData, out.data.info.GetPaddedSize());
 
       float delta = 0.00001f;
       for (size_t i = 0; i < out.data.info.GetPaddedSize().total; ++i) {
         // ... will result in constant real value, and no imag value
-        auto *tmp = reinterpret_cast<std::complex<float>*>(out.data.data);
-        ASSERT_NEAR(1, tmp[i].real(), delta) << " at " << i;
-        ASSERT_NEAR(0, tmp[i].imag(), delta) << " at " << i;
+        ASSERT_NEAR(1, outData[i].real(), delta) << " at " << i;
+        ASSERT_NEAR(0, outData[i].imag(), delta) << " at " << i;
       }
     }
 
     void testIFFTInpulseOrigin(AFFT::ResultData &out, AFFT::InputData &in, const Settings &settings) {
+      auto *inData = reinterpret_cast<std::complex<float>*>(in.data.data);
+      auto *outData = reinterpret_cast<float*>(out.data.data);
 
       for (size_t n = 0; n < in.data.info.GetPaddedSize().single; ++n) {
         // impulse at the origin ...
-        *(reinterpret_cast<std::complex<float>*>(in.data.data) + n) = {1.f, 0};
+        inData[n] = {1.f, 0};
       }
 
-      PrintData((std::complex<float>*)in.data.data, in.data.info.GetPaddedSize());
+      PrintData(inData, in.data.info.GetPaddedSize());
 
       auto &ft = GetTransformer();
 
@@ -70,7 +73,7 @@ class FFT_Tests
       ft.Execute(out, in);
       ft.Synchronize();
 
-      PrintData((float*)out.data.data, out.data.info.GetSize());
+      PrintData(outData, out.data.info.GetSize());
 
       float delta = 0.00001f;
       for (size_t n = 0; n < out.data.info.GetSize().n; ++n) {
@@ -80,14 +83,13 @@ class FFT_Tests
           for (size_t y = 0; y < out.data.info.GetSize().y; ++y) {
             for (size_t x = 0; x < out.data.info.GetSize().x; ++x) {
               size_t index = offset + z * out.data.info.GetSize().x * out.data.info.GetSize().y + y * out.data.info.GetSize().x + x;
-              auto *tmp = reinterpret_cast<float*>(out.data.data);
               // output is not normalized, so normalize it to make the the test more stable
               if (index == offset) {
                 // ... will result in impulse at the origin ...
-                ASSERT_NEAR(1.f, tmp[index] / out.data.info.GetSize().single, delta) << "at " << index;
+                ASSERT_NEAR(1.f, outData[index] / out.data.info.GetSize().single, delta) << "at " << index;
               } else {
                 // ... and zeros elsewhere
-                ASSERT_NEAR(0.f, tmp[index] / out.data.info.GetSize().single, delta) << "at " << index;
+                ASSERT_NEAR(0.f, outData[index] / out.data.info.GetSize().single, delta) << "at " << index;
               }
             }
           }
@@ -96,13 +98,15 @@ class FFT_Tests
     }
 
     void testFFTInpulseShifted(AFFT::ResultData &out, AFFT::InputData &in, const Settings &settings) {
+      auto *inData = reinterpret_cast<float*>(in.data.data);
+      auto *outData = reinterpret_cast<std::complex<float>*>(out.data.data);
 
       for (size_t n = 0; n < in.data.info.GetSize().n; ++n) {
         // impulse at the origin ...
-        *(reinterpret_cast<float*>(in.data.data) + n * in.data.info.GetPaddedSize().single + 1) = 1.f;
+        inData[n * in.data.info.GetPaddedSize().single + 1] = 1.f;
       }
 
-      PrintData((float*)in.data.data, in.data.info.GetSize());
+      PrintData(inData, in.data.info.GetSize());
 
       auto &ft = GetTransformer();
 
@@ -110,20 +114,21 @@ class FFT_Tests
       ft.Execute(out, in);
       ft.Synchronize();
 
-      PrintData((std::complex<float>*)out.data.data, out.data.info.GetPaddedSize());
+      PrintData(outData, out.data.info.GetPaddedSize());
 
       float delta = 0.00001f;
       for (size_t i = 0; i < out.data.info.GetPaddedSize().total; ++i) {
         // ... will result in constant magnitude
-        auto *tmp = reinterpret_cast<std::complex<float>*>(out.data.data);
-        auto re = tmp[i].real();
-        auto im = tmp[i].imag();
+        auto re = outData[i].real();
+        auto im = outData[i].imag();
         auto mag = re * re + im * im;
         ASSERT_NEAR(1.f, std::sqrt(mag), delta) << " at " << i;
       }
     }
 
     void testFFTIFFT(AFFT::ResultData &out, AFFT::InputData &in, const Settings &settings) {
+      auto *inData = reinterpret_cast<float*>(in.data.data);
+      auto *outData = reinterpret_cast<std::complex<float>*>(out.data.data);
       auto &inverseIn = out;
       auto &inverseOut = in;
 
@@ -131,7 +136,7 @@ class FFT_Tests
       GenerateData(ref, in.data.info.GetPaddedSize().total);
       memcpy(in.data.data, ref, in.data.info.GetPaddedSize().total * sizeof(float));
 
-      PrintData((float*)in.data.data, in.data.info.GetPaddedSize());
+      PrintData(inData, in.data.info.GetPaddedSize());
 
       auto &ft = GetTransformer();
 
@@ -140,13 +145,13 @@ class FFT_Tests
       ft.Execute(out, in);
       ft.Synchronize();
 
-      PrintData((std::complex<float>*)out.data.data, out.data.info.GetPaddedSize());
+      PrintData(outData, out.data.info.GetPaddedSize());
 
       ft.Init(inverseOut, inverseIn, settings.CreateInverse());
       ft.Execute(inverseOut, inverseIn);
       ft.Synchronize();
 
-      PrintData((float*)in.data.data, in.data.info.GetPaddedSize());
+      PrintData(inData, in.data.info.GetPaddedSize());
 
       float delta = 0.00001f;
       for (size_t n = 0; n < inverseOut.data.info.GetSize().n; ++n) {
@@ -156,8 +161,7 @@ class FFT_Tests
           for (size_t y = 0; y < inverseOut.data.info.GetSize().y; ++y) {
             for (size_t x = 0; x < inverseOut.data.info.GetSize().x; ++x) {
               size_t index = offset + z * inverseOut.data.info.GetSize().x * inverseOut.data.info.GetSize().y + y * inverseOut.data.info.GetSize().x + x;
-              auto *tmp = reinterpret_cast<float*>(inverseOut.data.data);
-              ASSERT_NEAR(ref[index], tmp[index] / inverseOut.data.info.GetSize().single, delta) << "at " << index;
+              ASSERT_NEAR(ref[index], inData[index] / inverseOut.data.info.GetSize().single, delta) << "at " << index;
             }
           }
         }
