@@ -11,18 +11,20 @@ using namespace umpalumpa::data;
 class FFTCUDATest : public ::testing::Test, public FFT_Tests
 {
 public:
-  auto Allocate(size_t bytes)
-  {
+  void *Allocate(size_t bytes) override {
     void *ptr;
     CudaErrchk(cudaMallocManaged(&ptr, bytes));
     return ptr;
   }
 
-  void Free(void *ptr) { cudaFree(ptr); }
+  void Free(void *ptr) override { cudaFree(ptr); }
+
+  // CANNOT return "Free" method, because of the destruction order
+  FreeFunction GetFree() override { return [](void *ptr){ CudaErrchk(cudaFree(ptr));}; }
 
   FFTCUDA &GetTransformer() override { return transformer; }
 
-private:
+protected:
   FFTCUDA transformer = FFTCUDA(0);
 };
 #define NAME FFTCUDATest
