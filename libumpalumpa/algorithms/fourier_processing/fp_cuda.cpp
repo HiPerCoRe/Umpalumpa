@@ -13,6 +13,11 @@ namespace fourier_processing {
       // Crop, Normalize, Filter, Center
       static constexpr auto kTMP = "scaleFFT2DKernel";
       static constexpr auto kStrategyName = "Strategy1";
+      // c++ is sometimes difficult :(
+      // TODO?? constexpr string concatenation:
+      // https://stackoverflow.com/questions/28708497/constexpr-to-concatenate-two-or-more-char-strings
+      //static constexpr auto kProjectRoot = "../../..";
+      static constexpr auto kIncludePath = "-I../../..";
       inline static const auto kKernelFile = utils::GetSourceFilePath(
         "../../../libumpalumpa/algorithms/fourier_processing/fp_cuda_kernels.cu");
       // FIXME how to set/tune this via KTT (filip)
@@ -52,6 +57,7 @@ namespace fourier_processing {
           tuner.AddParameter(kernelData.kernelId, "applyFilter", std::vector<uint64_t>{ s.GetApplyFilter() });
           tuner.AddParameter(kernelData.kernelId, "normalize", std::vector<uint64_t>{ s.GetNormalize() });
           tuner.AddParameter(kernelData.kernelId, "center", std::vector<uint64_t>{ s.GetCenter() });
+          tuner.SetCompilerOptions(kIncludePath);
         }
         return canProcess;
       }
@@ -85,16 +91,19 @@ namespace fourier_processing {
         //  ktt::ArgumentAccessType::WriteOnly,// FIXME these information should be stored in the physical descriptor
         //  ktt::ArgumentMemoryLocation::Unified);// ^
 
-        auto noOfImages = tuner.AddArgumentScalar(in.data.info.GetSize().n);
-        auto inX = tuner.AddArgumentScalar(in.data.info.GetSize().x);
-        auto inY = tuner.AddArgumentScalar(in.data.info.GetSize().y);
-        auto outX = tuner.AddArgumentScalar(out.data.info.GetSize().x);
-        auto outY = tuner.AddArgumentScalar(out.data.info.GetSize().y);
-        auto filter = tuner.AddArgumentScalar(nullptr);
+        //auto noOfImages = tuner.AddArgumentScalar(in.data.info.GetSize().n);
+        //auto inX = tuner.AddArgumentScalar(in.data.info.GetSize().x);
+        //auto inY = tuner.AddArgumentScalar(in.data.info.GetSize().y);
+        auto inSize = tuner.AddArgumentScalar(in.data.info.GetSize());
+        //auto outX = tuner.AddArgumentScalar(out.data.info.GetSize().x);
+        //auto outY = tuner.AddArgumentScalar(out.data.info.GetSize().y);
+        auto outSize = tuner.AddArgumentScalar(out.data.info.GetSize());
+        auto filter = tuner.AddArgumentScalar(size_t(0));// instead of nullptr, KTT is not happy with pointers in scalar arguments
         auto normFactor = tuner.AddArgumentScalar(1.f / static_cast<float>(in.data.info.GetSize().single));
 
         tuner.SetArguments(kernelData.definitionIds.front(),
-            { argIn, argOut, noOfImages, inX, inY, outX, outY, filter, normFactor });
+            { argIn, argOut, inSize, outSize, filter, normFactor });
+            //{ argIn, argOut, noOfImages, inX, inY, outX, outY, filter, normFactor });
 
         // update grid dimension to properly react to batch size
         tuner.SetLauncher(kernelData.kernelId, [this, &out](ktt::ComputeInterface &interface) {

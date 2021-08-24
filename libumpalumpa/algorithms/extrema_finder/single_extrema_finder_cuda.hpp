@@ -39,7 +39,7 @@ namespace extrema_finder {
       // FIXME add std::vector ktt arguments that shall be deteled in.e.g destructor or synchronize() method
     };
 
-    void Synchronize();
+    void Synchronize() override;
 
   private:
     ktt::ComputeApiInitializer createApiInitializer(int deviceOrdinal);
