@@ -33,6 +33,14 @@ namespace data {
       return (n * paddedSize.single + z * (paddedSize.x * paddedSize.y) + y * (paddedSize.x) + x);
     }
 
+    inline const auto &GetPaddedSize() const {
+      return paddedSize;
+    }
+
+    inline const auto &GetSize() const {
+      return size;
+    }
+
     virtual size_t Elems() const { return paddedSize.total; }
 
     // fixme these should be private + getters / setters

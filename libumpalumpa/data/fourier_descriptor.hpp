@@ -57,8 +57,8 @@ namespace data {
     explicit FourierDescriptor(const Size &s, const Size &padded)
       : size(s), paddedSize(padded), frequencyDomainSize(ComputeFrequencySize(s)), frequencyDomainSizePadded(frequencyDomainSize), isSpatial(true)// TODO: need to somehow add description of how the data are padded
     {}
-    explicit FourierDescriptor(const Size &s, const Size &padded, const FourierSpaceDescriptor &fsd)
-      : size(s), paddedSize(padded), frequencyDomainSize(ComputeFrequencySize(s)), frequencyDomainSizePadded(frequencyDomainSize), isSpatial(false), fsd(fsd)// TODO: need to somehow add description of how the data are padded
+    explicit FourierDescriptor(const Size &s, const Size &padded, const FourierSpaceDescriptor &d)
+      : size(s), paddedSize(padded), frequencyDomainSize(ComputeFrequencySize(s)), frequencyDomainSizePadded(frequencyDomainSize), isSpatial(false), fsd(d)// TODO: need to somehow add description of how the data are padded
     {}
     virtual ~FourierDescriptor() {}
     bool IsValid() const { return paddedSize >= size; }
@@ -91,8 +91,8 @@ namespace data {
     bool isSpatial; // FIXME: should be enum (can use the direction.hpp)
     std::optional<FourierSpaceDescriptor> fsd;
 
-    Size ComputeFrequencySize(const Size &size) {
-      return Size(size.x / 2 + 1, size.y, size.z, size.n);
+    Size ComputeFrequencySize(const Size &s) {
+      return Size(s.x / 2 + 1, s.y, s.z, s.n);
     }
   };
 }// namespace data

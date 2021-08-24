@@ -62,7 +62,7 @@ namespace data {
     bool HasValidBytes() const// FIXME refactor
     {
       return ((nullptr == data) && (0 == dataInfo.bytes))
-             || (dataInfo.bytes >= (info.paddedSize.total * Sizeof(dataInfo.type)));
+             || (dataInfo.bytes >= (info.GetPaddedSize().total * Sizeof(dataInfo.type)));
     }
   };
 }// namespace data
