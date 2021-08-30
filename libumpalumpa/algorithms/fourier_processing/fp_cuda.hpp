@@ -18,8 +18,8 @@ namespace fourier_processing {
     explicit FP_CUDA(int deviceOrdinal)
       : tuner(ktt::ComputeApi::CUDA, createApiInitializer(deviceOrdinal)){};
 
-    virtual bool Init(const OutputData &out, const InputData &in, const Settings &settings) = 0;
-    virtual bool Execute(const OutputData &out, const InputData &in) = 0;
+    virtual bool Init(const OutputData &out, const InputData &in, const Settings &settings) override;
+    virtual bool Execute(const OutputData &out, const InputData &in) override;
 
     struct Strategy
     {
@@ -40,7 +40,7 @@ namespace fourier_processing {
       };
     };
 
-    void Synchronize();
+    void Synchronize() override;
 
   private:
     ktt::ComputeApiInitializer createApiInitializer(int deviceOrdinal);

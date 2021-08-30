@@ -17,7 +17,8 @@ namespace fourier_processing {
       // TODO?? constexpr string concatenation:
       // https://stackoverflow.com/questions/28708497/constexpr-to-concatenate-two-or-more-char-strings
       //static constexpr auto kProjectRoot = "../../..";
-      static constexpr auto kIncludePath = "-I../../..";
+      //static constexpr auto kIncludePath = "-I../../..";
+      static constexpr auto kCompilerOpts = "--std=c++14";// -I/home/david/work/umpalumpa -I/usr/include/c++/9";
       inline static const auto kKernelFile = utils::GetSourceFilePath(
         "../../../libumpalumpa/algorithms/fourier_processing/fp_cuda_kernels.cu");
       // FIXME how to set/tune this via KTT (filip)
@@ -44,7 +45,7 @@ namespace fourier_processing {
         bool canProcess = true;// FIXME 
 
         if (canProcess) {
-          const ktt::DimensionVector blockDimensions(kBlockDimX * kBlockDimY * kBlockDimZ);
+          const ktt::DimensionVector blockDimensions(kBlockDimX, kBlockDimY, kBlockDimZ);
           const auto &size = out.data.info.GetPaddedSize();
           const ktt::DimensionVector gridDimensions(
               ComputeDimension(size.x, kBlockDimX),
@@ -57,7 +58,7 @@ namespace fourier_processing {
           tuner.AddParameter(kernelData.kernelId, "applyFilter", std::vector<uint64_t>{ s.GetApplyFilter() });
           tuner.AddParameter(kernelData.kernelId, "normalize", std::vector<uint64_t>{ s.GetNormalize() });
           tuner.AddParameter(kernelData.kernelId, "center", std::vector<uint64_t>{ s.GetCenter() });
-          tuner.SetCompilerOptions(kIncludePath);
+          tuner.SetCompilerOptions(kCompilerOpts);
         }
         return canProcess;
       }
@@ -74,13 +75,13 @@ namespace fourier_processing {
           return false;
 
         // prepare input data
-        auto argIn = tuner.AddArgumentVector<float>(in.data.data,
+        auto argIn = tuner.AddArgumentVector<float2>(in.data.data,
           in.data.info.GetSize().total,
           ktt::ArgumentAccessType::ReadOnly,// FIXME these information should be stored in the physical descriptor
           ktt::ArgumentMemoryLocation::Unified);// ^
 
         // prepare output data
-        auto argOut = tuner.AddArgumentVector<float>(out.data.data,
+        auto argOut = tuner.AddArgumentVector<float2>(out.data.data,
           out.data.info.GetSize().total,
           ktt::ArgumentAccessType::WriteOnly,// FIXME these information should be stored in the physical descriptor
           ktt::ArgumentMemoryLocation::Unified);// ^
@@ -107,7 +108,7 @@ namespace fourier_processing {
 
         // update grid dimension to properly react to batch size
         tuner.SetLauncher(kernelData.kernelId, [this, &out](ktt::ComputeInterface &interface) {
-          const ktt::DimensionVector blockDimensions(kBlockDimX * kBlockDimY * kBlockDimZ);
+          const ktt::DimensionVector blockDimensions(kBlockDimX, kBlockDimY, kBlockDimZ);
           const auto &size = out.data.info.GetPaddedSize();
           const ktt::DimensionVector gridDimensions(
               ComputeDimension(size.x, kBlockDimX),
@@ -161,6 +162,8 @@ namespace fourier_processing {
     const InputData &in,
     const Settings &s)
   {
+    SetSettings(s);
+
     auto tryToAdd = [this, &out, &in, &s](auto i) {
       bool canAdd = i->Init(out, in, s, tuner);
       if (canAdd) {

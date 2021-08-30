@@ -25,7 +25,7 @@ public:
   FP_CUDA &GetTransformer() override { return transformer; }
 
 protected:
-  FP_CUDA transformer = FP_CUDA(0);//TODO define pure virtual methods
+  FP_CUDA transformer = FP_CUDA(0);
 };
 #define NAME FPCUDATest
 #include <tests/algorithms/fourier_processing/afp_common.hpp>
