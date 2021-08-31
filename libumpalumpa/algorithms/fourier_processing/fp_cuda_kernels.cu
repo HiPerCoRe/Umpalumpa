@@ -1,29 +1,10 @@
-//#include <libumpalumpa/data/size.hpp>
+#include <libumpalumpa/data/size.hpp>
 
 // This kernel assumes that low frequencies are located in the corners
 
 // FIXME filter is currently a nullptr, it will crash when it is run
 // FIXME not sure to work properly when out dimensions are bigger than
 //       input dimensions
-namespace umpalumpa {
-namespace data {
-  enum class Dimensionality {
-    k1Dim = 1,
-    k2Dim = 2,
-    k3Dim = 3,
-  };
-
-class Size {
-  public:
-    size_t x;
-    size_t y;
-    size_t z;
-    size_t n;
-    Dimensionality dim;
-    size_t single;
-    size_t total;
-};
-}}
 
 __global__
 void scaleFFT2DKernel(const float2* __restrict__ in, float2* __restrict__ out,

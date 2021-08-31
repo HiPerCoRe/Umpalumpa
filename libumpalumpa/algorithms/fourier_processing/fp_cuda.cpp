@@ -18,7 +18,9 @@ namespace fourier_processing {
       // https://stackoverflow.com/questions/28708497/constexpr-to-concatenate-two-or-more-char-strings
       //static constexpr auto kProjectRoot = "../../..";
       //static constexpr auto kIncludePath = "-I../../..";
-      static constexpr auto kCompilerOpts = "--std=c++14";// -I/home/david/work/umpalumpa -I/usr/include/c++/9";
+      // TODO NVRTC adds current working directory into the header-search-path.
+      // But I would say that dynamically loaded absolute path into the project root is better option
+      static constexpr auto kCompilerOpts = "--std=c++14 -I/home/david/work/umpalumpa -default-device";
       inline static const auto kKernelFile = utils::GetSourceFilePath(
         "../../../libumpalumpa/algorithms/fourier_processing/fp_cuda_kernels.cu");
       // FIXME how to set/tune this via KTT (filip)

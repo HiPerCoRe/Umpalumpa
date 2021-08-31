@@ -1,6 +1,10 @@
 #pragma once
 
+// NVRTC can't handle std includes. <cstddef> is included to define size_t;
+// however, NVRTC has size_t predefined so no include is needed
+#ifndef __CUDACC_RTC__
 #include <cstddef>
+#endif
 #include <libumpalumpa/data/dimensionality.hpp>
 
 namespace umpalumpa {
