@@ -13,14 +13,13 @@ namespace fourier_processing {
       // Crop, Normalize, Filter, Center
       static constexpr auto kTMP = "scaleFFT2DKernel";
       static constexpr auto kStrategyName = "Strategy1";
-      // c++ is sometimes difficult :(
       // TODO?? constexpr string concatenation:
       // https://stackoverflow.com/questions/28708497/constexpr-to-concatenate-two-or-more-char-strings
-      //static constexpr auto kProjectRoot = "../../..";
-      //static constexpr auto kIncludePath = "-I../../..";
       // TODO NVRTC adds current working directory into the header-search-path.
-      // But I would say that dynamically loaded absolute path into the project root is better option
-      static constexpr auto kCompilerOpts = "--std=c++14 -I/home/david/work/umpalumpa -default-device";
+      // But I would say that absolute path into the project root is better option (makes more sense when including headers in .cu)
+      inline static const auto kProjectRoot = utils::GetSourceFilePath(
+          "../../..");
+      static constexpr auto kCompilerOpts = "--std=c++14 -default-device";
       inline static const auto kKernelFile = utils::GetSourceFilePath(
         "../../../libumpalumpa/algorithms/fourier_processing/fp_cuda_kernels.cu");
       // FIXME how to set/tune this via KTT (filip)
@@ -60,7 +59,7 @@ namespace fourier_processing {
           tuner.AddParameter(kernelData.kernelId, "applyFilter", std::vector<uint64_t>{ s.GetApplyFilter() });
           tuner.AddParameter(kernelData.kernelId, "normalize", std::vector<uint64_t>{ s.GetNormalize() });
           tuner.AddParameter(kernelData.kernelId, "center", std::vector<uint64_t>{ s.GetCenter() });
-          tuner.SetCompilerOptions(kCompilerOpts);
+          tuner.SetCompilerOptions("-I" + kProjectRoot + " " + kCompilerOpts);
         }
         return canProcess;
       }
