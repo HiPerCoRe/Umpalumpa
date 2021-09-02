@@ -32,7 +32,8 @@ void correlate2D(T* __restrict__ correlations, const T* __restrict__ in1, umpalu
       res.x = (tmp.x*tmp2.x) + (tmp.y*tmp2.y);
       res.y = (tmp.y*tmp2.x) - (tmp.x*tmp2.y);
       if (center) {
-        res *= centerCoef;
+        res.x *= centerCoef;
+        res.y *= centerCoef;
       }
       correlations[counter*in1Size.single + pixelIndex] = res;
       counter++;
