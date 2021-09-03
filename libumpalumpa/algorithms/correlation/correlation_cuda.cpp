@@ -129,30 +129,6 @@ namespace correlation {
 
   void Correlation_CUDA::Synchronize() { tuner.Synchronize(); }
 
-  // FIXME createApiInitializer is reapeating itself in all gpu implementation, find a way to implement it once
-  ktt::ComputeApiInitializer Correlation_CUDA::createApiInitializer(int deviceOrdinal)
-  {
-    CudaErrchk(cuInit(0));
-    CUdevice device;
-    CudaErrchk(cuDeviceGet(&device, deviceOrdinal));
-    CUcontext context;
-    cuCtxCreate(&context, CU_CTX_SCHED_AUTO, device);
-    CUstream stream;
-    CudaErrchk(cuStreamCreate(&stream, CU_STREAM_DEFAULT));
-    return ktt::ComputeApiInitializer(context, std::vector<ktt::ComputeQueue>{ stream });
-  }
-
-  ktt::ComputeApiInitializer Correlation_CUDA::createApiInitializer(CUstream stream)
-  {
-    CudaErrchk(cuInit(0));
-    CUcontext context;
-    CudaErrchk(cuStreamGetCtx(stream, &context));
-    // Create compute API initializer which specifies context and streams that will be utilized by
-    // the tuner.
-    return ktt::ComputeApiInitializer(context, std::vector<ktt::ComputeQueue>{ stream });
-  }
-
-
   bool Correlation_CUDA::Init(const OutputData &out,
     const InputData &in,
     const Settings &s)
