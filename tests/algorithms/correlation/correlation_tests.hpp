@@ -18,7 +18,32 @@ public:
   virtual void *Allocate(size_t bytes) = 0;
   virtual void Free(void *ptr) = 0;
 
-  void testCorrelation(ACorrelation::OutputData &out, ACorrelation::InputData &in, const Settings &settings) {
+  // Works correctly only with float
+  void testCorrelationSimple(ACorrelation::OutputData &out, ACorrelation::InputData &in, const Settings &settings) {
+    auto f = [](std::complex<float> *arr, size_t size) {
+        for (size_t i = 0; i < size; i++) {
+          arr[i] = {1.f, 1.f};
+        }
+      };
+    testCorrelation(out, in, settings, f);
+  }
+
+  // Works correctly only with float
+  void testCorrelationRandomData(ACorrelation::OutputData &out, ACorrelation::InputData &in, const Settings &settings) {
+    // Not part of the function f, so that more invocations produce different output
+    auto mt = std::mt19937(42);
+    auto dist = std::normal_distribution<float>((float)0, (float)1);
+    auto f = [&mt, &dist](std::complex<float> *arr, size_t size) {
+        for (size_t i = 0; i < size; i++) {
+          arr[i] = {dist(mt), dist(mt)};
+        }
+      };
+    testCorrelation(out, in, settings, f);
+  }
+
+protected:
+  template<typename InputProvider>
+  void testCorrelation(ACorrelation::OutputData &out, ACorrelation::InputData &in, const Settings &settings, InputProvider ip) {
     auto *input1 = reinterpret_cast<std::complex<float>*>(in.data1.data);
     auto *input2 = reinterpret_cast<std::complex<float>*>(in.data2.data);
     auto *output = reinterpret_cast<std::complex<float>*>(out.data.data);
@@ -26,11 +51,9 @@ public:
     auto inSize2 = in.data2.info.GetSize();
     //auto outSize = out.data.info.GetSize();
 
-    for (size_t i = 0; i < inSize.total; i++) {
-      input1[i] = {1.f, 1.f};
-    }
-    for (size_t i = 0; i < inSize2.total; i++) {
-      input2[i] = {1.f, 1.f};
+    ip(input1, inSize.total);
+    if (input1 != input2) {
+      ip(input2, inSize2.total);
     }
 
     //PrintData(input1, inSize);
@@ -47,7 +70,6 @@ public:
     check(output, settings, input1, inSize, input2, inSize2, delta);
   }
 
-protected:
   void check(const std::complex<float> *output, const Settings &s, const std::complex<float> *input1,
       const Size &inSize, const std::complex<float> *input2, const Size &in2Size, float delta = 0.00001f) const {
     auto imageCounter = 0;
@@ -64,8 +86,6 @@ protected:
             auto val2 = input2[i2 * inSize.single + y * inSize.x + x];
             auto realRes = val1.real()*val2.real() + val1.imag()*val2.imag();
             auto imagRes = val1.imag()*val2.real() - val1.real()*val2.imag();
-            //auto realRes = 2.f;// works with input {1.f, 1.f}
-            //auto imagRes = 0.f;// ^
             if (s.GetCenter()) {
               float centerCoef = 1 - 2*((static_cast<int>(x)+static_cast<int>(y))&1);
               realRes *= centerCoef;
