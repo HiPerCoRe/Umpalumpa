@@ -74,19 +74,19 @@ namespace fourier_processing {
           return false;
 
         // prepare input data
-        auto argIn = tuner.AddArgumentVector<float>(in.data.data,
+        auto argIn = tuner.AddArgumentVector<float>(in.data.ptr,
           in.data.info.GetSize().total,
           ktt::ArgumentAccessType::ReadOnly,// FIXME these information should be stored in the physical descriptor
           ktt::ArgumentMemoryLocation::Unified);// ^
 
         // prepare output data
-        auto argOut = tuner.AddArgumentVector<float>(out.data.data,
+        auto argOut = tuner.AddArgumentVector<float>(out.data.ptr,
           out.data.info.GetSize().total,
           ktt::ArgumentAccessType::WriteOnly,// FIXME these information should be stored in the physical descriptor
           ktt::ArgumentMemoryLocation::Unified);// ^
 
         //TODO add filter
-        //auto filter = tuner.AddArgumentVector<float>(out.data.data,
+        //auto filter = tuner.AddArgumentVector<float>(out.data.ptr,
         //  out.data.info.GetSize().total,
         //  ktt::ArgumentAccessType::WriteOnly,// FIXME these information should be stored in the physical descriptor
         //  ktt::ArgumentMemoryLocation::Unified);// ^

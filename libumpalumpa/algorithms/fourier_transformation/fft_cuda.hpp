@@ -38,8 +38,8 @@ namespace fourier_transformation {
     bool Execute(const ResultData &out, const InputData &in) override {
       // TODO create methods for comparing this InputData with Init InputData
       auto direction = (GetSettings().IsForward() ? CUFFT_FORWARD : CUFFT_INVERSE);
-      CudaErrchk(cufftXtExec(plan, in.data.data, out.data.data, direction));
-      //CudaErrchk(cufftExecR2C(plan, (cufftReal*)in.data.data, (cufftComplex*)out.data.data));
+      CudaErrchk(cufftXtExec(plan, in.data.ptr, out.data.ptr, direction));
+      //CudaErrchk(cufftExecR2C(plan, (cufftReal*)in.data.ptr, (cufftComplex*)out.data.ptr));
       return true;
     }
 
