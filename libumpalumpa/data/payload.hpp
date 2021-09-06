@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdexcept>
+#include <ostream>
 #include <string>
 #include <libumpalumpa/data/physical_desriptor.hpp>
 #include <cassert>
@@ -50,6 +52,22 @@ namespace data {
         nullptr, info, PhysicalDescriptor(0, dataInfo.type), description + suffixEmpty);
     }
 
+    void PrintData(std::ostream& out, const Size &total) const {
+      Size offset(0, 0, 0, 0);
+      switch (dataInfo.type) {
+        case DataType::kFloat: PrivatePrint<float>(out, total, total, offset); break;
+        case DataType::kDouble: PrivatePrint<double>(out, total, total, offset); break;
+        default: throw std::logic_error("Trying to print unprintable type.");
+      }
+    }
+
+    void PrintData(std::ostream& out, const Size &total, const Size &dims, const Size &offset) const {
+      switch (dataInfo.type) {
+        case DataType::kFloat: PrivatePrint<float>(out, total, dims, offset); break;
+        case DataType::kDouble: PrivatePrint<double>(out, total, dims, offset); break;
+        default: throw std::logic_error("Trying to print unprintable type.");
+      }
+    }
 
     // these shouold be private + getters / setters
     void *ptr;// constant pointer to non-constant data, type defined by other descriptors
@@ -64,6 +82,27 @@ namespace data {
     {
       return ((nullptr == ptr) && (0 == dataInfo.bytes))
              || (dataInfo.bytes >= (info.GetPaddedSize().total * Sizeof(dataInfo.type)));
+    }
+
+    template<typename DT>
+    void PrivatePrint(std::ostream& out, const Size &total, const Size &dims, const Size &offset) const {
+      //FIXME this wont work, because Size cannot have 0 in any dimension -> offset will be atleast 1
+      //well... it actually works, but the Size is not Valid, but we dont need that here, soooo its ok??
+      auto* data = reinterpret_cast<DT>(ptr);
+      for (size_t n = offset.n; n < offset.n + dims.n; n++) {
+        for (size_t z = offset.z; z < offset.z + dims.z; z++) {
+          for (size_t y = offset.y; y < offset.y + dims.y; y++) {
+            for (size_t x = offset.x; x < offset.x + dims.x; x++) {
+              auto index = n*total.single + z*total.y*total.x + y*total.x + x;
+              //FIXME printing needs to be done better
+              out << data[index] << '\t';
+            }
+            out << '\n';
+          }
+          out << "---\n";
+        }
+        out << "###\n";
+      }
     }
   };
 }// namespace data
