@@ -30,8 +30,8 @@ namespace extrema_finder {
         if (!in.data.IsValid() || in.data.IsEmpty() || !out.values.IsValid()
             || out.values.IsEmpty())
           return false;
-        FindSingleExtremaValXDCPU(reinterpret_cast<float *>(out.values.data),
-          reinterpret_cast<float *>(in.data.data),
+        FindSingleExtremaValXDCPU(reinterpret_cast<float *>(out.values.ptr),
+          reinterpret_cast<float *>(in.data.ptr),
           in.data.info.size,
           std::greater<float>());
         return true;

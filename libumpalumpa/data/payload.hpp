@@ -11,11 +11,11 @@ namespace data {
   public:
   // add documentation, especially that we don't manage data
     explicit Payload(void *d, const T &ld, const PhysicalDescriptor &pd, const std::string &desc)
-      : data(d), info(ld), dataInfo(pd), description(desc)
+      : ptr(d), info(ld), dataInfo(pd), description(desc)
     {}
 
     explicit Payload(const T &ld, const std::string &desc)
-      : data(nullptr), info(ld), dataInfo(), description(desc + suffixEmpty)
+      : ptr(nullptr), info(ld), dataInfo(), description(desc + suffixEmpty)
     {}
 
     bool IsValid() const
@@ -27,7 +27,7 @@ namespace data {
       return (result && HasValidBytes());
     }
 
-    bool IsEmpty() const { return (nullptr == data) && (dataInfo.IsEmpty()); }
+    bool IsEmpty() const { return (nullptr == ptr) && (dataInfo.IsEmpty()); }
 
   // FIXME  it might be useful to have subset which takes e.g. a vector of possitions that we want to get
     Payload Subset(size_t startN, size_t count) const// FIXME refactor
@@ -39,7 +39,7 @@ namespace data {
 
       const auto newDataInfo =
         PhysicalDescriptor(newInfo.Elems() * Sizeof(dataInfo.type), dataInfo.type);
-      void *newData = reinterpret_cast<char *>(data) + (offset * Sizeof(dataInfo.type));
+      void *newData = reinterpret_cast<char *>(ptr) + (offset * Sizeof(dataInfo.type));
       const auto suffix = " [" + std::to_string(startN) + ".." + std::to_string(startN + safeCount);
       return Payload(newData, newInfo, newDataInfo, description + suffix);
     };
@@ -51,7 +51,7 @@ namespace data {
     }
 
     // these shouold be private + getters / setters
-    void *data;// constant pointer to non-constant data, type defined by other descriptors
+    void *ptr;// constant pointer to non-constant data, type defined by other descriptors
     T info;
     PhysicalDescriptor dataInfo;
     std::string description;
@@ -61,7 +61,7 @@ namespace data {
     static auto constexpr suffixEmpty = " [empty]";
     bool HasValidBytes() const// FIXME refactor
     {
-      return ((nullptr == data) && (0 == dataInfo.bytes))
+      return ((nullptr == ptr) && (0 == dataInfo.bytes))
              || (dataInfo.bytes >= (info.GetPaddedSize().total * Sizeof(dataInfo.type)));
     }
   };

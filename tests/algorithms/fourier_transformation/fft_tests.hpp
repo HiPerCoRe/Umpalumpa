@@ -34,8 +34,8 @@ public:
   virtual void Free(void *ptr) = 0;
 
   void testFFTInpulseOrigin(AFFT::ResultData &out, AFFT::InputData &in, const Settings &settings) {
-    auto *inData = reinterpret_cast<float*>(in.data.data);
-    auto *outData = reinterpret_cast<std::complex<float>*>(out.data.data);
+    auto *inData = reinterpret_cast<float*>(in.data.ptr);
+    auto *outData = reinterpret_cast<std::complex<float>*>(out.data.ptr);
 
     for (size_t n = 0; n < in.data.info.GetSize().n; ++n) {
       // impulse at the origin ...
@@ -61,8 +61,8 @@ public:
   }
 
   void testIFFTInpulseOrigin(AFFT::ResultData &out, AFFT::InputData &in, const Settings &settings) {
-    auto *inData = reinterpret_cast<std::complex<float>*>(in.data.data);
-    auto *outData = reinterpret_cast<float*>(out.data.data);
+    auto *inData = reinterpret_cast<std::complex<float>*>(in.data.ptr);
+    auto *outData = reinterpret_cast<float*>(out.data.ptr);
 
     for (size_t n = 0; n < in.data.info.GetPaddedSize().single; ++n) {
       // impulse at the origin ...
@@ -102,8 +102,8 @@ public:
   }
 
   void testFFTInpulseShifted(AFFT::ResultData &out, AFFT::InputData &in, const Settings &settings) {
-    auto *inData = reinterpret_cast<float*>(in.data.data);
-    auto *outData = reinterpret_cast<std::complex<float>*>(out.data.data);
+    auto *inData = reinterpret_cast<float*>(in.data.ptr);
+    auto *outData = reinterpret_cast<std::complex<float>*>(out.data.ptr);
 
     for (size_t n = 0; n < in.data.info.GetSize().n; ++n) {
       // impulse at the origin ...
@@ -131,14 +131,14 @@ public:
   }
 
   void testFFTIFFT(AFFT::ResultData &out, AFFT::InputData &in, const Settings &settings) {
-    auto *inData = reinterpret_cast<float*>(in.data.data);
-    auto *outData = reinterpret_cast<std::complex<float>*>(out.data.data);
+    auto *inData = reinterpret_cast<float*>(in.data.ptr);
+    auto *outData = reinterpret_cast<std::complex<float>*>(out.data.ptr);
     auto &inverseIn = out;
     auto &inverseOut = in;
 
     auto *ref = new float[in.data.info.GetPaddedSize().total];
     GenerateData(ref, in.data.info.GetPaddedSize().total);
-    memcpy(in.data.data, ref, in.data.info.GetPaddedSize().total * sizeof(float));
+    memcpy(in.data.ptr, ref, in.data.info.GetPaddedSize().total * sizeof(float));
 
     PrintData(inData, in.data.info.GetPaddedSize());
 

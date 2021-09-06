@@ -36,7 +36,7 @@ static void payload_register_data_handle(starpu_data_handle_t handle,
     auto *local_interface = reinterpret_cast<umpalumpa::data::Payload<T> *>(
       starpu_data_get_interface_on_node(handle, node));
     *local_interface = *interface;
-    if (node != home_node) { local_interface->data = nullptr; }
+    if (node != home_node) { local_interface->ptr = nullptr; }
   }
 }
 
@@ -52,7 +52,7 @@ static starpu_ssize_t payload_allocate_data_on_node(void *data_interface, unsign
     if (nullptr == data) return -ENOMEM;
   }
   /* update the data properly in consequence */
-  interface->data = data;
+  interface->ptr = data;
   return requested_memory;
 }
 
@@ -61,9 +61,9 @@ template<typename T> static void payload_free_data_on_node(void *data_interface,
   auto *interface = reinterpret_cast<umpalumpa::data::Payload<T> *>(data_interface);
   if (!interface->IsEmpty()) {
     starpu_free_on_node(
-      node, reinterpret_cast<uintptr_t>(interface->data), interface->dataInfo.bytes);
+      node, reinterpret_cast<uintptr_t>(interface->ptr), interface->dataInfo.bytes);
   }
-  interface->data = nullptr;
+  interface->ptr = nullptr;
 }
 
 template<typename T>
@@ -77,10 +77,10 @@ static int copy_any_to_any(void *src_interface,
   auto *dst = reinterpret_cast<umpalumpa::data::Payload<T> *>(dst_interface);
 
   if (src->IsEmpty()) return 0; // nothing to do
-  return starpu_interface_copy(reinterpret_cast<uintptr_t>(src->data),
+  return starpu_interface_copy(reinterpret_cast<uintptr_t>(src->ptr),
     0,
     src_node,
-    reinterpret_cast<uintptr_t>(dst->data),
+    reinterpret_cast<uintptr_t>(dst->ptr),
     0,
     dst_node,
     src->dataInfo.bytes,
