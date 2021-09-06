@@ -16,6 +16,7 @@ set(umpalumpa_sources
   algorithms/fourier_transformation/fft_cuda.hpp
   algorithms/fourier_processing/fp_cuda.cpp
   algorithms/correlation/correlation_cuda.cpp
+  algorithms/ktt_base.cpp
   )
 
 if(USE_STARPU)
