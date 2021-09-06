@@ -54,7 +54,7 @@ TEST_F(NAME, SearchData_Subset)
     ASSERT_EQ(s.info.size, Size(3, 5, 7, batch)) << " for i=" << i;
     const size_t offset = startN * sizeIn.single;
     // check that pointer is correct
-    ASSERT_EQ(s.data, data.get() + offset) << " for i=" << i;
+    ASSERT_EQ(s.ptr, data.get() + offset) << " for i=" << i;
     // check that bytes are correct
     ASSERT_EQ(s.dataInfo.bytes, sizeIn.single * sizeof(float) * batch) << " for i=" << i;
   }
@@ -64,7 +64,7 @@ TEST_F(NAME, SearchData_Subset)
   ASSERT_EQ(s.info.size, Size(3, 5, 7, 2));
   const size_t offset = 9 * sizeIn.single;
   // check that pointer is correct
-  ASSERT_EQ(s.data, data.get() + offset);
+  ASSERT_EQ(s.ptr, data.get() + offset);
   // check that bytes are correct
   ASSERT_EQ(s.dataInfo.bytes, sizeIn.single * sizeof(float) * 2);
 }
