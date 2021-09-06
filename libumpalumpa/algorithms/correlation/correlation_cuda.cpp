@@ -58,7 +58,7 @@ namespace correlation {
             kTMP, kKernelFile, gridDimensions, blockDimensions, {"float2"}));
           kernelData.kernelId = tuner.CreateSimpleKernel(kTMP, kernelData.definitionIds.front());
           tuner.AddParameter(kernelData.kernelId, "center", std::vector<uint64_t>{ s.GetCenter() });
-          tuner.AddParameter(kernelData.kernelId, "isWithin", std::vector<uint64_t>{ in.data1.data == in.data2.data });
+          tuner.AddParameter(kernelData.kernelId, "isWithin", std::vector<uint64_t>{ in.data1.ptr == in.data2.ptr });
           tuner.AddParameter(kernelData.kernelId, "TILE", std::vector<uint64_t>{ kTile });
           tuner.SetCompilerOptions("-I" + kProjectRoot + " " + kCompilerOpts);
         }
@@ -80,18 +80,18 @@ namespace correlation {
 //    const T* __restrict__ in2, int in2N) {
 
         // prepare input data1
-        auto argIn1 = tuner.AddArgumentVector<float2>(in.data1.data,
+        auto argIn1 = tuner.AddArgumentVector<float2>(in.data1.ptr,
           in.data1.info.GetSize().total,
           ktt::ArgumentAccessType::ReadOnly,// FIXME these information should be stored in the physical descriptor
           ktt::ArgumentMemoryLocation::Unified);// ^
 
-        auto argIn2 = tuner.AddArgumentVector<float2>(in.data2.data,
+        auto argIn2 = tuner.AddArgumentVector<float2>(in.data2.ptr,
           in.data2.info.GetSize().total,
           ktt::ArgumentAccessType::ReadOnly,// FIXME these information should be stored in the physical descriptor
           ktt::ArgumentMemoryLocation::Unified);// ^
 
         // prepare output data1
-        auto argOut = tuner.AddArgumentVector<float2>(out.data.data,
+        auto argOut = tuner.AddArgumentVector<float2>(out.data.ptr,
           out.data.info.GetSize().total,
           ktt::ArgumentAccessType::WriteOnly,// FIXME these information should be stored in the physical descriptor
           ktt::ArgumentMemoryLocation::Unified);// ^
@@ -116,7 +116,7 @@ namespace correlation {
             blockDimensions);
         });
 
-        auto isWithin = in.data1.data == in.data2.data;
+        auto isWithin = in.data1.ptr == in.data2.ptr;
 
         auto configuration =
           tuner.CreateConfiguration(kernelData.kernelId, {

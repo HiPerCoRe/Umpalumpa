@@ -65,13 +65,13 @@ namespace extrema_finder {
           return false;
 
         // prepare input data
-        auto argIn = tuner.AddArgumentVector<float>(in.data.data,
+        auto argIn = tuner.AddArgumentVector<float>(in.data.ptr,
           in.data.info.size.total,
           ktt::ArgumentAccessType::ReadOnly,
           ktt::ArgumentMemoryLocation::Unified);
 
         // prepare output data
-        auto argVals = tuner.AddArgumentVector<float>(out.values.data,
+        auto argVals = tuner.AddArgumentVector<float>(out.values.ptr,
           out.values.info.size.total,
           ktt::ArgumentAccessType::WriteOnly,
           ktt::ArgumentMemoryLocation::Unified);
