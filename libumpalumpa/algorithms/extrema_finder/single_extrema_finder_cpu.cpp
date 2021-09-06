@@ -37,6 +37,46 @@ namespace extrema_finder {
         return true;
       }
     };
+
+    struct Strategy2 : public SingleExtremaFinderCPU::Strategy
+    {
+      static constexpr auto kStrategyName = "Strategy2";
+
+      bool Init(const AExtremaFinder::ResultData &,
+        const AExtremaFinder::SearchData &in,
+        const Settings &s) override final
+      {
+        return (s.version == 1) && (in.data.info.size == in.data.info.paddedSize)
+               && (s.location == SearchLocation::kRectCenter) && (s.type == SearchType::kMax)
+               && (s.result == SearchResult::kLocation)
+               && (in.data.dataInfo.type == umpalumpa::data::DataType::kFloat);
+      }
+
+      std::string GetName() const override final { return kStrategyName; }
+
+      bool Execute(const AExtremaFinder::ResultData &out,
+        const AExtremaFinder::SearchData &in,
+        const Settings &) override final
+      {
+        if (!in.data.IsValid() || in.data.IsEmpty() || !out.locations.IsValid()
+            || out.locations.IsEmpty())
+          return false;
+        //FIXME these values should be read from settings
+        size_t offsetX = 1;
+        size_t offsetY = 1;
+        size_t width = 10;
+        size_t height = 10;
+        FindSingleExtremaInRectangle2DCPU<false, true>(
+            reinterpret_cast<float *>(out.values.ptr),
+            reinterpret_cast<float *>(out.locations.ptr),
+            reinterpret_cast<float *>(in.data.ptr),
+            offsetX, offsetY,
+            data::Size(width, height, 1, 1),
+            in.data.info.size,
+            std::greater<float>());
+        return true;
+      }
+    };
   }// namespace
 
   bool SingleExtremaFinderCPU::Init(const ResultData &out,
@@ -52,7 +92,7 @@ namespace extrema_finder {
       return canAdd;
     };
 
-    return tryToAdd(std::make_unique<Strategy1>()) || false;
+    return tryToAdd(std::make_unique<Strategy1>()) || tryToAdd(std::make_unique<Strategy2>());
   }
 
   bool SingleExtremaFinderCPU::Execute(const ResultData &out,
