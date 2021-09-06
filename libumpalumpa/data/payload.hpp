@@ -50,6 +50,7 @@ namespace data {
         nullptr, info, PhysicalDescriptor(0, dataInfo.type), description + suffixEmpty);
     }
 
+
     // these shouold be private + getters / setters
     void *ptr;// constant pointer to non-constant data, type defined by other descriptors
     T info;
@@ -67,3 +68,12 @@ namespace data {
   };
 }// namespace data
 }// namespace umpalumpa
+
+//FIXME move to .cpp
+
+template<typename T>
+std::ostream& operator<<(std::ostream& out, const umpalumpa::data::Payload<T> &payload) {
+  //TODO
+  out << payload.description << '\n';
+  return out;
+}
