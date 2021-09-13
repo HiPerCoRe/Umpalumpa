@@ -62,10 +62,11 @@ namespace extrema_finder {
             || out.locations.IsEmpty())
           return false;
         //FIXME these values should be read from settings
+        //FIXME offset + rectDim cant be > inSize, add check
         size_t offsetX = 1;
         size_t offsetY = 1;
-        size_t width = 10;
-        size_t height = 10;
+        size_t width = 28;
+        size_t height = 17;
         FindSingleExtremaInRectangle2DCPU<false, true>(
             reinterpret_cast<float *>(out.values.ptr),
             reinterpret_cast<float *>(out.locations.ptr),

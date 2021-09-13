@@ -168,8 +168,7 @@ TEST_F(NAME, 3D_manyBatches_noPadd_max_valOnly)
 TEST_F(NAME, 2D_batch_noPadd_max_rectCenter_posOnly)
 {
   auto sizeIn = Size(120, 100, 1, 3);
-  std::cout << "This test will need at least " << sizeIn.total * sizeof(float) / 1048576 << " MB"
-            << std::endl;
+
   auto settings = Settings(SearchType::kMax, SearchLocation::kRectCenter, SearchResult::kLocation);
   auto data = reinterpret_cast<float *>(Allocate(sizeIn.total * sizeof(float)));
   auto ldIn = LogicalDescriptor(sizeIn, sizeIn, "Basic data");
@@ -179,9 +178,6 @@ TEST_F(NAME, 2D_batch_noPadd_max_rectCenter_posOnly)
   for (size_t i = 0; i < sizeIn.total; i++) {
     data[i] = i;
   }
-
-  //FillRandomBytes(data, sizeIn.total * sizeof(float));
-  //   PrintData(data, sizeIn);// FIXME add utility method to payload?
 
   auto sizeValues = Size(1, 1, 1, sizeIn.n);
   auto locations = reinterpret_cast<float *>(Allocate(sizeValues.total * sizeof(float)));
@@ -198,9 +194,10 @@ TEST_F(NAME, 2D_batch_noPadd_max_rectCenter_posOnly)
   ASSERT_TRUE(searcher.Execute(out, in, settings));
 
   WaitTillDone();
+  PrintData(reinterpret_cast<float*>(locations), Size(1, 1, 1, 3));
 
   //FIXME tmp fixed rect
-  Size searchRect(10, 10, 1, 1);
+  Size searchRect(28, 17, 1, 1);
   // test that we found good maximas
   for (int n = 0; n < sizeValues.n; ++n) {
     auto expectedResult = sizeIn.x + 1;// at beginning of searchRect
