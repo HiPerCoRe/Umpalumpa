@@ -2,6 +2,7 @@
 
 #include <stdexcept>
 #include <ostream>
+#include <iomanip>
 #include <string>
 #include <libumpalumpa/data/physical_desriptor.hpp>
 #include <cassert>
@@ -52,6 +53,7 @@ namespace data {
         nullptr, info, PhysicalDescriptor(0, dataInfo.type), description + suffixEmpty);
     }
 
+    // Data need to be accessible from CPU
     void PrintData(std::ostream& out, const Size &total) const {
       Size offset(0, 0, 0, 0);
       switch (dataInfo.type) {
@@ -61,6 +63,7 @@ namespace data {
       }
     }
 
+    // Data need to be accessible from CPU
     void PrintData(std::ostream& out, const Size &total, const Size &dims, const Size &offset) const {
       switch (dataInfo.type) {
         case DataType::kFloat: PrivatePrint<float>(out, total, dims, offset); break;
@@ -86,33 +89,29 @@ namespace data {
 
     template<typename DT>
     void PrivatePrint(std::ostream& out, const Size &total, const Size &dims, const Size &offset) const {
-      //FIXME this wont work, because Size cannot have 0 in any dimension -> offset will be atleast 1
-      //well... it actually works, but the Size is not Valid, but we dont need that here, soooo its ok??
-      auto* data = reinterpret_cast<DT>(ptr);
+
+      auto original = out.flags();
+      // prepare output formatting
+      out << std::setfill(' ') << std::left << std::setprecision(3) << std::showpos;
+
+      auto* data = reinterpret_cast<DT*>(ptr);
       for (size_t n = offset.n; n < offset.n + dims.n; n++) {
         for (size_t z = offset.z; z < offset.z + dims.z; z++) {
           for (size_t y = offset.y; y < offset.y + dims.y; y++) {
             for (size_t x = offset.x; x < offset.x + dims.x; x++) {
               auto index = n*total.single + z*total.y*total.x + y*total.x + x;
-              //FIXME printing needs to be done better
-              out << data[index] << '\t';
+              out << std::setw(7) << data[index] << ' ';
             }
             out << '\n';
           }
-          out << "---\n";
+          if (dims.z > 1 && z < dims.z - 1) out << "---\n";
         }
-        out << "###\n";
+        if (dims.n > 1 && n < dims.n - 1) out << "###\n";
       }
+
+      out.flags(original);
     }
   };
 }// namespace data
 }// namespace umpalumpa
 
-//FIXME move to .cpp
-
-template<typename T>
-std::ostream& operator<<(std::ostream& out, const umpalumpa::data::Payload<T> &payload) {
-  //TODO
-  out << payload.description << '\n';
-  return out;
-}

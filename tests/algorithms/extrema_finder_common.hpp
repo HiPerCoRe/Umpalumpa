@@ -81,7 +81,7 @@ TEST_F(NAME, 1D_batch_noPadd_max_valOnly)
 
   GenerateData(data, sizeIn.total);
   memcpy(dataOrig.get(), data, sizeIn.total * sizeof(float));
-  //   PrintData(data, sizeIn);// FIXME add utility method to payload?
+  //in.data.PrintData(std::cout, sizeIn);
 
   auto sizeValues = Size(1, 1, 1, sizeIn.n);
   auto values = reinterpret_cast<float *>(Allocate(sizeValues.total * sizeof(float)));
@@ -123,7 +123,6 @@ TEST_F(NAME, 3D_manyBatches_noPadd_max_valOnly)
   auto inP = Payload(data, ldIn, pdIn, "Random data");
 
   FillRandomBytes(data, sizeIn.total * sizeof(float));
-  //   PrintData(data, sizeIn);// FIXME add utility method to payload?
 
   auto sizeValues = Size(1, 1, 1, sizeIn.n);
   auto values = reinterpret_cast<float *>(Allocate(sizeValues.total * sizeof(float)));
