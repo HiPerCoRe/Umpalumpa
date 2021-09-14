@@ -113,7 +113,7 @@ TEST_F(NAME, 1D_batch_noPadd_max_valOnly)
 
 TEST_F(NAME, 3D_manyBatches_noPadd_max_valOnly)
 {
-  auto sizeIn = Size(120, 173, 150, 1030);
+  auto sizeIn = Size(120, 173, 150, 103);
   std::cout << "This test will need at least " << sizeIn.total * sizeof(float) / 1048576 << " MB"
             << std::endl;
   auto settings = Settings(SearchType::kMax, SearchLocation::kEntire, SearchResult::kValue);
@@ -193,7 +193,6 @@ TEST_F(NAME, 2D_batch_noPadd_max_rectCenter_posOnly)
   ASSERT_TRUE(searcher.Execute(out, in, settings));
 
   WaitTillDone();
-  PrintData(reinterpret_cast<float*>(locations), Size(1, 1, 1, 3));
 
   //FIXME tmp fixed rect
   Size searchRect(28, 17, 1, 1);

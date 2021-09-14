@@ -42,7 +42,7 @@ public:
       inData[n * in.data.info.GetPaddedSize().single] = 1.f;
     }
 
-    PrintData(inData, in.data.info.GetSize());
+    //PrintData(inData, in.data.info.GetSize());
 
     auto &ft = GetTransformer();
 
@@ -50,7 +50,7 @@ public:
     ft.Execute(out, in);
     ft.Synchronize();
 
-    PrintData(outData, out.data.info.GetPaddedSize());
+    //PrintData(outData, out.data.info.GetPaddedSize());
 
     float delta = 0.00001f;
     for (size_t i = 0; i < out.data.info.GetPaddedSize().total; ++i) {
@@ -69,7 +69,7 @@ public:
       inData[n] = {1.f, 0};
     }
 
-    PrintData(inData, in.data.info.GetPaddedSize());
+    //PrintData(inData, in.data.info.GetPaddedSize());
 
     auto &ft = GetTransformer();
 
@@ -77,7 +77,7 @@ public:
     ft.Execute(out, in);
     ft.Synchronize();
 
-    PrintData(outData, out.data.info.GetSize());
+    //PrintData(outData, out.data.info.GetSize());
 
     float delta = 0.00001f;
     for (size_t n = 0; n < out.data.info.GetSize().n; ++n) {
@@ -110,7 +110,7 @@ public:
       inData[n * in.data.info.GetPaddedSize().single + 1] = 1.f;
     }
 
-    PrintData(inData, in.data.info.GetSize());
+    //PrintData(inData, in.data.info.GetSize());
 
     auto &ft = GetTransformer();
 
@@ -118,7 +118,7 @@ public:
     ft.Execute(out, in);
     ft.Synchronize();
 
-    PrintData(outData, out.data.info.GetPaddedSize());
+    //PrintData(outData, out.data.info.GetPaddedSize());
 
     float delta = 0.00001f;
     for (size_t i = 0; i < out.data.info.GetPaddedSize().total; ++i) {
@@ -140,7 +140,7 @@ public:
     GenerateData(ref, in.data.info.GetPaddedSize().total);
     memcpy(in.data.ptr, ref, in.data.info.GetPaddedSize().total * sizeof(float));
 
-    PrintData(inData, in.data.info.GetPaddedSize());
+    //PrintData(inData, in.data.info.GetPaddedSize());
 
     auto &ft = GetTransformer();
 
@@ -149,13 +149,13 @@ public:
     ft.Execute(out, in);
     ft.Synchronize();
 
-    PrintData(outData, out.data.info.GetPaddedSize());
+    //PrintData(outData, out.data.info.GetPaddedSize());
 
     ft.Init(inverseOut, inverseIn, settings.CreateInverse());
     ft.Execute(inverseOut, inverseIn);
     ft.Synchronize();
 
-    PrintData(inData, in.data.info.GetPaddedSize());
+    //PrintData(inData, in.data.info.GetPaddedSize());
 
     float delta = 0.00001f;
     for (size_t n = 0; n < inverseOut.data.info.GetSize().n; ++n) {

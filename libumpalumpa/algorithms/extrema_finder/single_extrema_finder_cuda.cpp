@@ -146,7 +146,6 @@ namespace extrema_finder {
           tuner.AddParameter(kernelData.kernelId, "blockSizeY", std::vector<uint64_t>{ threadsY });
           tuner.AddParameter(kernelData.kernelId, "blockSize", std::vector<uint64_t>{ threadsX * threadsY });
           tuner.SetCompilerOptions("-I" + kProjectRoot + " " + kCompilerOpts);
-          tuner.SetLoggingLevel(ktt::LoggingLevel::Debug);
         }
         return canProcess;
       }
