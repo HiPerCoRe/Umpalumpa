@@ -103,29 +103,6 @@ namespace extrema_finder {
 
   void SingleExtremaFinderCUDA::Synchronize() { tuner.Synchronize(); }
 
-  ktt::ComputeApiInitializer SingleExtremaFinderCUDA::createApiInitializer(int deviceOrdinal)
-  {
-    CudaErrchk(cuInit(0));
-    CUdevice device;
-    CudaErrchk(cuDeviceGet(&device, deviceOrdinal));
-    CUcontext context;
-    cuCtxCreate(&context, CU_CTX_SCHED_AUTO, device);
-    CUstream stream;
-    CudaErrchk(cuStreamCreate(&stream, CU_STREAM_DEFAULT));
-    return ktt::ComputeApiInitializer(context, std::vector<ktt::ComputeQueue>{ stream });
-  }
-
-  ktt::ComputeApiInitializer SingleExtremaFinderCUDA::createApiInitializer(CUstream stream)
-  {
-    CudaErrchk(cuInit(0));
-    CUcontext context;
-    CudaErrchk(cuStreamGetCtx(stream, &context));
-    // Create compute API initializer which specifies context and streams that will be utilized by
-    // the tuner.
-    return ktt::ComputeApiInitializer(context, std::vector<ktt::ComputeQueue>{ stream });
-  }
-
-
   bool SingleExtremaFinderCUDA::Init(const ResultData &out,
     const SearchData &in,
     const Settings &settings)

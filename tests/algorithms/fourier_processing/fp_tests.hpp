@@ -12,31 +12,87 @@
 using namespace umpalumpa::fourier_processing;
 using namespace umpalumpa::data;
 
-//FIXME make some utility file, for similar functions needed in tests
-template<typename T> void FillRandomBytes(T *dst, size_t bytes)
-{
-  int fd = open("/dev/urandom", O_RDONLY);
-  read(fd, dst, bytes);
-  close(fd);
-}
-
-template<typename T> void GenerateData(T *data, size_t elems)
-{
-  auto mt = std::mt19937(42);
-  auto dist = std::normal_distribution<float>((float)0, (float)1);
-  for (size_t i = 0; i < elems; ++i) { data[i] = dist(mt); }
-}
-
 class FP_Tests 
 {
 public:
-  virtual AFP &GetTransformer() = 0;
+  virtual AFP &GetFourierProcessor() = 0;
   virtual void *Allocate(size_t bytes) = 0;
   virtual void Free(void *ptr) = 0;
 
-  // TESTS GO HERE
+  void testFP(AFP::OutputData &out, AFP::InputData &in, const Settings &settings) {
+    auto *input = reinterpret_cast<std::complex<float>*>(in.data.ptr);
+    auto *output = reinterpret_cast<std::complex<float>*>(out.data.ptr);
+    auto *filter = reinterpret_cast<float*>(in.filter.ptr);
+    auto inSize = in.data.info.GetSize();
+    auto outSize = out.data.info.GetSize();
+
+    for (size_t i = 0; i < inSize.total; i++) {
+      input[i] = {static_cast<float>(i), static_cast<float>(i)};
+    }
+
+    //PrintData(input, inSize);
+
+    auto &fp = GetFourierProcessor();
+
+    fp.Init(out, in, settings);
+    fp.Execute(out, in);
+    fp.Synchronize();
+
+    //PrintData(output, outSize);
+
+    float delta = 0.00001f;
+    checkEdges(output, outSize, delta);
+    checkInside(output, outSize, input, inSize, filter, settings, delta);
+  }
 
 protected:
+  void checkEdges(const std::complex<float> *out, const Size &outSize, float delta = 0.00001f) const {
+    for (size_t n = 0; n < outSize.n; n++) {
+      for (size_t x = 0; x < outSize.x; x++) {
+        auto outIndex = n * outSize.single + x;//y == 0
+        ASSERT_NEAR(0.f, out[outIndex].real(), delta) << " at checkEdges";
+        ASSERT_NEAR(0.f, out[outIndex].imag(), delta) << " at checkEdges";
+      }
+      for (size_t y = 0; y < outSize.y; y++) {
+        auto outIndex = n * outSize.single + y * outSize.x;//x == 0
+        ASSERT_NEAR(0.f, out[outIndex].real(), delta) << " at checkEdges";
+        ASSERT_NEAR(0.f, out[outIndex].imag(), delta) << " at checkEdges";
+      }
+    }
+  }
+
+  void checkInside(const std::complex<float> *output, const Size &outSize,
+      const std::complex<float> *input, const Size &inSize, const float *filter, const Settings &s, float delta = 0.00001f) const {
+    for (size_t n = 0; n < outSize.n; n++) {
+      size_t cropIndex = outSize.y / 2 + 1;
+      for (size_t y = 1; y < outSize.y; y++) {
+        for (size_t x = 1; x < outSize.x; x++) {
+          auto inIndex = n * inSize.single + (y < cropIndex ? y : inSize.y - outSize.y + y) * inSize.x + x;
+          auto outIndex = n * outSize.single + y * outSize.x + x;
+          float inReal = input[inIndex].real();
+          float inImag = input[inIndex].imag();
+          if (s.GetApplyFilter()) {
+            float filterCoef = filter[y * outSize.x + x];
+            inReal *= filterCoef;
+            inImag *= filterCoef;
+          }
+          if (s.GetNormalize()) {
+            float normFactor = 1.f / static_cast<float>(inSize.single);
+            inReal *= normFactor;
+            inImag *= normFactor;
+          }
+          if (s.GetCenter()) {
+            float centerCoef = 1-2*((static_cast<int>(x+y))&1); // center FT, input must be even
+            inReal *= centerCoef;
+            inImag *= centerCoef;
+          }
+          ASSERT_NEAR(inReal, output[outIndex].real(), delta) << " at real " << outIndex;
+          ASSERT_NEAR(inImag, output[outIndex].imag(), delta) << " at imag " << outIndex;
+        }
+      }
+    }
+  }
+
   template<typename T> void PrintData(T *data, const Size size)
   {
     ASSERT_EQ(size.GetDim(), Dimensionality::k2Dim);
@@ -78,29 +134,43 @@ protected:
   // Deliberately not using gtest's SetUp method, because we need to know Settings and
   // Size of the current test to properly initialize memory
   // ONLY float currently supported!!
-  void SetUpFFT(const Settings &settings, const Size &size, const Size &paddedSize) {
-    ldSpatial = std::make_unique<FourierDescriptor>(size, paddedSize);
-    auto spatialSizeInBytes = ldSpatial->GetPaddedSize().total * Sizeof(DataType::kFloat);
-    pdSpatial = std::make_unique<PhysicalDescriptor>(spatialSizeInBytes, DataType::kFloat);
+  // Assumes size == paddedSize
+  void SetUpFP(const Settings &settings, const Size &inSize, const Size &outSize) {
+    auto &paddedInSize = inSize;
+    auto &paddedOutSize = outSize;
 
-    dataSpatial = std::shared_ptr<void>(Allocate(pdSpatial->bytes), GetFree());
-    memset(dataSpatial.get(), 0, pdSpatial->bytes);
+    ldIn = std::make_unique<FourierDescriptor>(inSize, paddedInSize, FourierDescriptor::FourierSpaceDescriptor{});
+    auto inputSizeInBytes = ldIn->GetPaddedSize().total * Sizeof(DataType::kFloat) * 2;
+    pdIn = std::make_unique<PhysicalDescriptor>(inputSizeInBytes, DataType::kFloat);
 
-    ldFrequency = std::make_unique<FourierDescriptor>(size, paddedSize, FourierDescriptor::FourierSpaceDescriptor());
-    auto frequencySizeInBytes = ldFrequency->GetPaddedSize().total * Sizeof(DataType::kFloat) * 2;
-    pdFrequency = std::make_unique<PhysicalDescriptor>(frequencySizeInBytes, DataType::kFloat);
+    inData = std::shared_ptr<void>(Allocate(pdIn->bytes), GetFree());
+    memset(inData.get(), 0, pdIn->bytes);
+
+    ldOut = std::make_unique<FourierDescriptor>(outSize, paddedOutSize, FourierDescriptor::FourierSpaceDescriptor{});
+    auto outputSizeInBytes = ldOut->GetPaddedSize().total * Sizeof(DataType::kFloat) * 2;
+    pdOut = std::make_unique<PhysicalDescriptor>(outputSizeInBytes, DataType::kFloat);
 
     if (settings.IsOutOfPlace()) {
-      dataFrequency = std::shared_ptr<void>(Allocate(pdFrequency->bytes), GetFree());
+      outData = std::shared_ptr<void>(Allocate(pdOut->bytes), GetFree());
     } else {
-      dataFrequency = dataSpatial;
+      outData = inData;
     }
+
+    ldFilter = std::make_unique<LogicalDescriptor>(outSize, paddedOutSize, "Filter");
+    auto filterSizeInBytes = ldOut->GetPaddedSize().total * Sizeof(DataType::kFloat);
+    pdFilter = std::make_unique<PhysicalDescriptor>(filterSizeInBytes, DataType::kFloat);
+
+    filterData = std::shared_ptr<void>(Allocate(pdOut->bytes), GetFree());
+    memset(filterData.get(), 0, pdOut->bytes);
   }
 
-  std::shared_ptr<void> dataSpatial;
-  std::unique_ptr<PhysicalDescriptor> pdSpatial;
-  std::unique_ptr<FourierDescriptor> ldSpatial;
-  std::shared_ptr<void> dataFrequency;
-  std::unique_ptr<PhysicalDescriptor> pdFrequency;
-  std::unique_ptr<FourierDescriptor> ldFrequency;
+  std::shared_ptr<void> inData;
+  std::unique_ptr<PhysicalDescriptor> pdIn;
+  std::unique_ptr<FourierDescriptor> ldIn;
+  std::shared_ptr<void> outData;
+  std::unique_ptr<PhysicalDescriptor> pdOut;
+  std::unique_ptr<FourierDescriptor> ldOut;
+  std::shared_ptr<void> filterData;
+  std::unique_ptr<PhysicalDescriptor> pdFilter;
+  std::unique_ptr<LogicalDescriptor> ldFilter;
 };

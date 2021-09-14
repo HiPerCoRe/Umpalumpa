@@ -1,22 +1,18 @@
 #pragma once
 
 #include <libumpalumpa/algorithms/extrema_finder/aextrema_finder.hpp>
-#include <libumpalumpa/system_includes/ktt.hpp>
+#include <libumpalumpa/algorithms/ktt_base.hpp>
 #include <vector>
 #include <memory>
 #include <map>
 
-typedef struct CUstream_st *CUstream;
-
 namespace umpalumpa {
 namespace extrema_finder {
-  class SingleExtremaFinderCUDA : public AExtremaFinder
+  class SingleExtremaFinderCUDA : public AExtremaFinder, public algorithm::KTT_Base
   {
   public:
-    explicit SingleExtremaFinderCUDA(CUstream stream)
-      : tuner(ktt::ComputeApi::CUDA, createApiInitializer(stream)){};
-    explicit SingleExtremaFinderCUDA(int deviceOrdinal)
-      : tuner(ktt::ComputeApi::CUDA, createApiInitializer(deviceOrdinal)){};
+    using algorithm::KTT_Base::KTT_Base;
+
     bool Init(const ResultData &out, const SearchData &in, const Settings &settings) override;
     bool Execute(const ResultData &out, const SearchData &in, const Settings &settings) override;
 
@@ -42,10 +38,7 @@ namespace extrema_finder {
     void Synchronize() override;
 
   private:
-    ktt::ComputeApiInitializer createApiInitializer(int deviceOrdinal);
-    ktt::ComputeApiInitializer createApiInitializer(CUstream stream);
     std::unique_ptr<Strategy> strategy;
-    ktt::Tuner tuner;
   };
 }// namespace extrema_finder
 }// namespace umpalumpa

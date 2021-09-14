@@ -22,10 +22,10 @@ public:
   // CANNOT return "Free" method, because of the destruction order
   FreeFunction GetFree() override { return [](void *ptr){ CudaErrchk(cudaFree(ptr));}; }
 
-  FP_CUDA &GetTransformer() override { return transformer; }
+  FP_CUDA &GetFourierProcessor() override { return transformer; }
 
 protected:
-  FP_CUDA transformer = FP_CUDA(0);//TODO define pure virtual methods
+  FP_CUDA transformer = FP_CUDA(0);
 };
 #define NAME FPCUDATest
 #include <tests/algorithms/fourier_processing/afp_common.hpp>
