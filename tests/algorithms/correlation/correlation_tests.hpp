@@ -44,9 +44,9 @@ public:
 protected:
   template<typename InputProvider>
   void testCorrelation(ACorrelation::OutputData &out, ACorrelation::InputData &in, const Settings &settings, InputProvider ip) {
-    auto *input1 = reinterpret_cast<std::complex<float>*>(in.data1.data);
-    auto *input2 = reinterpret_cast<std::complex<float>*>(in.data2.data);
-    auto *output = reinterpret_cast<std::complex<float>*>(out.data.data);
+    auto *input1 = reinterpret_cast<std::complex<float>*>(in.data1.ptr);
+    auto *input2 = reinterpret_cast<std::complex<float>*>(in.data2.ptr);
+    auto *output = reinterpret_cast<std::complex<float>*>(out.data.ptr);
     auto inSize = in.data1.info.GetSize();
     auto inSize2 = in.data2.info.GetSize();
     //auto outSize = out.data.info.GetSize();
