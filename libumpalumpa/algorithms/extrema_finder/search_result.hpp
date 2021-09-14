@@ -10,6 +10,7 @@ namespace extrema_finder {
      * kBoth (kPosition and kValue)
      **/
     kValue,// i.e. retrieve only the values
+    kLocation,// i.e. retieve only the position
   };
 
 }// namespace extrema_finder

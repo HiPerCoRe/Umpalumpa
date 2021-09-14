@@ -14,6 +14,8 @@ namespace extrema_finder {
      *
      **/
     kEntire,// i.e. check entire data
+    kWindow,// i.e. check rectangular area//TODO needs to know in what area to look (will be solved with change to class instead of enum)
+    kRectCenter,// i.e. check rectangular area around the center
   };
 
 }// namespace extrema_finder

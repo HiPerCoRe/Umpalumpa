@@ -163,3 +163,47 @@ TEST_F(NAME, 3D_manyBatches_noPadd_max_valOnly)
   Free(values);
   Free(data);
 }
+
+TEST_F(NAME, 2D_batch_noPadd_max_rectCenter_posOnly)
+{
+  auto sizeIn = Size(120, 100, 1, 3);
+
+  auto settings = Settings(SearchType::kMax, SearchLocation::kRectCenter, SearchResult::kLocation);
+  auto data = reinterpret_cast<float *>(Allocate(sizeIn.total * sizeof(float)));
+  auto ldIn = LogicalDescriptor(sizeIn, sizeIn, "Basic data");
+  auto pdIn = PhysicalDescriptor(sizeIn.total * sizeof(float), DataType::kFloat);
+  auto inP = Payload(data, ldIn, pdIn, "Random data");
+
+  for (size_t i = 0; i < sizeIn.total; i++) {
+    data[i] = i;
+  }
+
+  auto sizeValues = Size(1, 1, 1, sizeIn.n);
+  auto locations = reinterpret_cast<float *>(Allocate(sizeValues.total * sizeof(float)));
+  auto ldVal = LogicalDescriptor(sizeValues, sizeValues, "Locations of the found extremas");
+  auto pdVal = PhysicalDescriptor(sizeValues.total * sizeof(float), DataType::kFloat);
+  auto locationsP = Payload(locations, ldVal, pdVal, "Result maxima");
+
+  auto &searcher = GetSearcher();
+
+  auto in = AExtremaFinder::SearchData(std::move(inP));
+  auto out = AExtremaFinder::ResultData::LocationsOnly(std::move(locationsP));
+
+  ASSERT_TRUE(searcher.Init(out, in, settings));
+  ASSERT_TRUE(searcher.Execute(out, in, settings));
+
+  WaitTillDone();
+  PrintData(reinterpret_cast<float*>(locations), Size(1, 1, 1, 3));
+
+  //FIXME tmp fixed rect
+  Size searchRect(28, 17, 1, 1);
+  // test that we found good maximas
+  for (int n = 0; n < sizeValues.n; ++n) {
+    auto expectedResult = sizeIn.x + 1;// at beginning of searchRect
+    expectedResult += sizeIn.x * (searchRect.y - 1) + (searchRect.x - 1);// at last element of searchRect
+    ASSERT_FLOAT_EQ(expectedResult, locations[n]) << " for n=" << n;
+  }
+
+  Free(locations);
+  Free(data);
+}
