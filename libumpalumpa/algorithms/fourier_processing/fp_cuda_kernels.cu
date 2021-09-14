@@ -1,19 +1,11 @@
 #include <libumpalumpa/data/size.hpp>
-//template<typename T, typename U, bool applyFilter, bool normalize, bool center>
-//__global__
-//void scaleFFT2DKernel(const T* __restrict__ in, T* __restrict__ out,
-//    int noOfImages, size_t inX, size_t inY, size_t outX, size_t outY,
-//    const U* __restrict__ filter, U normFactor) {
 
 // This kernel assumes that low frequencies are located in the corners
 
 // FIXME filter is currently a nullptr, it will crash when it is run
 // FIXME not sure to work properly when out dimensions are bigger than
 //       input dimensions
-//extern "C" __global__
-//void scaleFFT2DKernel(const float2* __restrict__ in, float2* __restrict__ out,
-//    int noOfImages, size_t inX, size_t inY, size_t outX, size_t outY,
-//    const float* __restrict__ filter, float normFactor ) {
+
 __global__
 void scaleFFT2DKernel(const float2* __restrict__ in, float2* __restrict__ out,
     umpalumpa::data::Size inSize, umpalumpa::data::Size outSize,
@@ -42,10 +34,12 @@ void scaleFFT2DKernel(const float2* __restrict__ in, float2* __restrict__ out,
       out[oIndex] = {0, 0}; // ignore low frequency, this should increase precision a bit
     }
     if (normalize) {
-      out[oIndex] *= normFactor;
+      out[oIndex].x *= normFactor;
+      out[oIndex].y *= normFactor;
     }
     if (center) {
-      out[oIndex] *= centerCoef;
+      out[oIndex].x *= centerCoef;
+      out[oIndex].y *= centerCoef;
     }
   }
 }
