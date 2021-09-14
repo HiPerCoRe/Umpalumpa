@@ -11,15 +11,16 @@ namespace correlation {
     struct Strategy1 : public Correlation_CUDA::Strategy
     {
       // Crop, Normalize, Filter, Center
-      static constexpr auto kTMP = "scaleFFT2DKernel";
+      static constexpr auto kTMP = "correlate2D";
       static constexpr auto kStrategyName = "Strategy1";
       // c++ is sometimes difficult :(
       // TODO?? constexpr string concatenation:
       // https://stackoverflow.com/questions/28708497/constexpr-to-concatenate-two-or-more-char-strings
-      //static constexpr auto kProjectRoot = "../../..";
-      static constexpr auto kIncludePath = "-I../../..";
+      inline static const auto kProjectRoot = utils::GetSourceFilePath(
+          "../../..");
+      static constexpr auto kCompilerOpts = "--std=c++14 -default-device";
       inline static const auto kKernelFile = utils::GetSourceFilePath(
-        "../../../libumpalumpa/algorithms/fourier_processing/fp_cuda_kernels.cu");
+        "../../../libumpalumpa/algorithms/correlation/correlation_cuda_kernels.cu");
       // FIXME how to set/tune this via KTT (filip)
       static constexpr auto kBlockDimX = 32;
       static constexpr auto kBlockDimY = 32;
@@ -39,14 +40,14 @@ namespace correlation {
       }
 
       bool Init(const Correlation_CUDA::OutputData &out,
-        const Correlation_CUDA::InputData &,
+        const Correlation_CUDA::InputData &in,
         const Settings &s,
         ktt::Tuner &tuner) override final
       {
         bool canProcess = true;// FIXME 
 
         if (canProcess) {
-          const ktt::DimensionVector blockDimensions(kBlockDimX * kBlockDimY * kBlockDimZ);
+          const ktt::DimensionVector blockDimensions(kBlockDimX, kBlockDimY, kBlockDimZ);
           const auto &size = out.data.info.GetPaddedSize();
           const ktt::DimensionVector gridDimensions(
               ComputeDimension(size.x, kBlockDimX),
@@ -54,10 +55,12 @@ namespace correlation {
               ComputeDimension(size.z, kBlockDimZ));
 
           kernelData.definitionIds.emplace_back(tuner.AddKernelDefinitionFromFile(
-            kTMP, kKernelFile, gridDimensions, blockDimensions, {}));
+            kTMP, kKernelFile, gridDimensions, blockDimensions, {"float2"}));
           kernelData.kernelId = tuner.CreateSimpleKernel(kTMP, kernelData.definitionIds.front());
           tuner.AddParameter(kernelData.kernelId, "center", std::vector<uint64_t>{ s.GetCenter() });
-          tuner.SetCompilerOptions(kIncludePath);
+          tuner.AddParameter(kernelData.kernelId, "isWithin", std::vector<uint64_t>{ in.data1.ptr == in.data2.ptr });
+          tuner.AddParameter(kernelData.kernelId, "TILE", std::vector<uint64_t>{ kTile });
+          tuner.SetCompilerOptions("-I" + kProjectRoot + " " + kCompilerOpts);
         }
         return canProcess;
       }
@@ -77,31 +80,31 @@ namespace correlation {
 //    const T* __restrict__ in2, int in2N) {
 
         // prepare input data1
-        auto argIn1 = tuner.AddArgumentVector<float>(in.data1.ptr,
+        auto argIn1 = tuner.AddArgumentVector<float2>(in.data1.ptr,
           in.data1.info.GetSize().total,
           ktt::ArgumentAccessType::ReadOnly,// FIXME these information should be stored in the physical descriptor
           ktt::ArgumentMemoryLocation::Unified);// ^
 
-        auto argIn2 = tuner.AddArgumentVector<float>(in.data2.ptr,
+        auto argIn2 = tuner.AddArgumentVector<float2>(in.data2.ptr,
           in.data2.info.GetSize().total,
           ktt::ArgumentAccessType::ReadOnly,// FIXME these information should be stored in the physical descriptor
           ktt::ArgumentMemoryLocation::Unified);// ^
 
         // prepare output data1
-        auto argOut = tuner.AddArgumentVector<float>(out.data.ptr,
+        auto argOut = tuner.AddArgumentVector<float2>(out.data.ptr,
           out.data.info.GetSize().total,
           ktt::ArgumentAccessType::WriteOnly,// FIXME these information should be stored in the physical descriptor
           ktt::ArgumentMemoryLocation::Unified);// ^
 
         auto inSize = tuner.AddArgumentScalar(in.data1.info.GetSize());
-        auto in2N = tuner.AddArgumentScalar(in.data2.info.GetSize().n);
+        auto in2N = tuner.AddArgumentScalar(static_cast<int>(in.data2.info.GetSize().n));
 
         tuner.SetArguments(kernelData.definitionIds.front(),
             { argOut, argIn1,  inSize, argIn2, in2N });
 
         // update grid dimension to properly react to batch size
         tuner.SetLauncher(kernelData.kernelId, [this, &out](ktt::ComputeInterface &interface) {
-          const ktt::DimensionVector blockDimensions(kBlockDimX * kBlockDimY * kBlockDimZ);
+          const ktt::DimensionVector blockDimensions(kBlockDimX, kBlockDimY, kBlockDimZ);
           const auto &size = out.data.info.GetPaddedSize();
           const ktt::DimensionVector gridDimensions(
               ComputeDimension(size.x, kBlockDimX),
@@ -118,7 +121,7 @@ namespace correlation {
         auto configuration =
           tuner.CreateConfiguration(kernelData.kernelId, {
               { "center", static_cast<uint64_t>(s.GetCenter()) },
-              { "inWithin", static_cast<uint64_t>(isWithin) },
+              { "isWithin", static_cast<uint64_t>(isWithin) },
               { "TILE", static_cast<uint64_t>(kTile) } });
         tuner.Run(kernelData.kernelId, configuration, {}); // run is blocking call
         // arguments shall be removed once the run is done
@@ -133,6 +136,8 @@ namespace correlation {
     const InputData &in,
     const Settings &s)
   {
+    SetSettings(s);
+
     auto tryToAdd = [this, &out, &in, &s](auto i) {
       bool canAdd = i->Init(out, in, s, tuner);
       if (canAdd) {
