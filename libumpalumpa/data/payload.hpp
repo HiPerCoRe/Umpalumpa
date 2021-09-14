@@ -54,27 +54,21 @@ namespace data {
     }
 
     // Data need to be accessible from CPU
-    // FIXME total size might not be necessary, if we impose a condition, that type T has method GetSize
-    void PrintData(std::ostream& out, const Size &total) const {
+    void PrintData(std::ostream& out) const {
       Size offset(0, 0, 0, 0);
-      switch (dataInfo.type) {
-        case DataType::kFloat: PrivatePrint<float>(out, total, total, offset); break;
-        case DataType::kDouble: PrivatePrint<double>(out, total, total, offset); break;
-        default: throw std::logic_error("Trying to print unprintable type.");
-      }
+      auto dims = info.GetSize();
+      PrintData(out, dims, offset);
     }
 
     // Data need to be accessible from CPU
-    // FIXME total size might not be necessary, if we impose a condition, that type T has method GetSize
-    void PrintData(std::ostream& out, const Size &total, const Size &dims, const Size &offset) const {
+    void PrintData(std::ostream& out, const Size &dims, const Size &offset) const {
+      auto total = info.GetSize();
       switch (dataInfo.type) {
         case DataType::kFloat: PrivatePrint<float>(out, total, dims, offset); break;
         case DataType::kDouble: PrivatePrint<double>(out, total, dims, offset); break;
         default: throw std::logic_error("Trying to print unprintable type.");
       }
     }
-
-    // TODO overload operator<<
 
     // these shouold be private + getters / setters
     void *ptr;// constant pointer to non-constant data, type defined by other descriptors
@@ -119,3 +113,8 @@ namespace data {
 }// namespace data
 }// namespace umpalumpa
 
+template<typename T>
+std::ostream& operator<<(std::ostream& out, const umpalumpa::data::Payload<T>& p) {
+  p.PrintData(out);
+  return out;
+}
