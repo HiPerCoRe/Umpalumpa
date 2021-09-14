@@ -1,0 +1,4 @@
+Known issues / bugs:
+
+starPU docs:
+	2.3.1: starpu_env does NOT set STARPU_PATH
