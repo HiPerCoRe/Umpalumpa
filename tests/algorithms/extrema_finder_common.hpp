@@ -81,7 +81,7 @@ TEST_F(NAME, 1D_batch_noPadd_max_valOnly)
 
   GenerateData(data, sizeIn.total);
   memcpy(dataOrig.get(), data, sizeIn.total * sizeof(float));
-  //in.data.PrintData(std::cout, sizeIn);
+  //in.data.PrintData(std::cout);
 
   auto sizeValues = Size(1, 1, 1, sizeIn.n);
   auto values = reinterpret_cast<float *>(Allocate(sizeValues.total * sizeof(float)));
