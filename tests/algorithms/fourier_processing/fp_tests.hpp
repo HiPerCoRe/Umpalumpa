@@ -15,14 +15,14 @@ using namespace umpalumpa::data;
 class FP_Tests 
 {
 public:
-  virtual AFP &GetTransformer() = 0;
+  virtual AFP &GetFourierProcessor() = 0;
   virtual void *Allocate(size_t bytes) = 0;
   virtual void Free(void *ptr) = 0;
 
   void testFP(AFP::OutputData &out, AFP::InputData &in, const Settings &settings) {
-    auto *input = reinterpret_cast<std::complex<float>*>(in.data.data);
-    auto *output = reinterpret_cast<std::complex<float>*>(out.data.data);
-    auto *filter = reinterpret_cast<float*>(in.filter.data);
+    auto *input = reinterpret_cast<std::complex<float>*>(in.data.ptr);
+    auto *output = reinterpret_cast<std::complex<float>*>(out.data.ptr);
+    auto *filter = reinterpret_cast<float*>(in.filter.ptr);
     auto inSize = in.data.info.GetSize();
     auto outSize = out.data.info.GetSize();
 
@@ -32,7 +32,7 @@ public:
 
     //PrintData(input, inSize);
 
-    auto &fp = GetTransformer();
+    auto &fp = GetFourierProcessor();
 
     fp.Init(out, in, settings);
     fp.Execute(out, in);
