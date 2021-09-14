@@ -54,6 +54,7 @@ namespace data {
     }
 
     // Data need to be accessible from CPU
+    // FIXME total size might not be necessary, if we impose a condition, that type T has method GetSize
     void PrintData(std::ostream& out, const Size &total) const {
       Size offset(0, 0, 0, 0);
       switch (dataInfo.type) {
@@ -64,6 +65,7 @@ namespace data {
     }
 
     // Data need to be accessible from CPU
+    // FIXME total size might not be necessary, if we impose a condition, that type T has method GetSize
     void PrintData(std::ostream& out, const Size &total, const Size &dims, const Size &offset) const {
       switch (dataInfo.type) {
         case DataType::kFloat: PrivatePrint<float>(out, total, dims, offset); break;
@@ -71,6 +73,8 @@ namespace data {
         default: throw std::logic_error("Trying to print unprintable type.");
       }
     }
+
+    // TODO overload operator<<
 
     // these shouold be private + getters / setters
     void *ptr;// constant pointer to non-constant data, type defined by other descriptors
