@@ -172,7 +172,7 @@ __global__ void findMaxRect(
   findUniversalInSharedMem(//<float2, blockSize>(
     // comp,
     ldata,
-    threadIdx.y * blockSizeY + threadIdx.x);
+    threadIdx.y * blockSizeX + threadIdx.x);
 
   // last thread now holds the result
   if (threadIdx.x == 0 && threadIdx.y == 0) {
