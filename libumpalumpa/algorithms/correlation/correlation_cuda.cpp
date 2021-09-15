@@ -7,6 +7,10 @@ namespace umpalumpa {
 namespace correlation {
 
   namespace {// to avoid poluting
+    using umpalumpa::utils::kProjectRoot;
+    static constexpr auto kCompileFlags = "--std=c++14 -default-device";
+    inline static const auto kKernelFile =
+      utils::GetSourceFilePath("libumpalumpa/algorithms/correlation/correlation_cuda_kernels.cu");
 
     struct Strategy1 : public Correlation_CUDA::Strategy
     {
@@ -16,11 +20,6 @@ namespace correlation {
       // c++ is sometimes difficult :(
       // TODO?? constexpr string concatenation:
       // https://stackoverflow.com/questions/28708497/constexpr-to-concatenate-two-or-more-char-strings
-      inline static const auto kProjectRoot = utils::GetSourceFilePath(
-          "../../..");
-      static constexpr auto kCompilerOpts = "--std=c++14 -default-device";
-      inline static const auto kKernelFile = utils::GetSourceFilePath(
-        "../../../libumpalumpa/algorithms/correlation/correlation_cuda_kernels.cu");
       // FIXME how to set/tune this via KTT (filip)
       static constexpr auto kBlockDimX = 32;
       static constexpr auto kBlockDimY = 32;
@@ -34,9 +33,9 @@ namespace correlation {
 
       KernelData kernelData;
 
-      inline size_t ComputeDimension(size_t l, int r) const {
-        return static_cast<size_t>(std::ceil(
-              static_cast<float>(l) / static_cast<float>(r)));
+      inline size_t ComputeDimension(size_t l, int r) const
+      {
+        return static_cast<size_t>(std::ceil(static_cast<float>(l) / static_cast<float>(r)));
       }
 
       bool Init(const Correlation_CUDA::OutputData &out,
@@ -44,23 +43,23 @@ namespace correlation {
         const Settings &s,
         ktt::Tuner &tuner) override final
       {
-        bool canProcess = true;// FIXME 
+        bool canProcess = true;// FIXME
 
         if (canProcess) {
           const ktt::DimensionVector blockDimensions(kBlockDimX, kBlockDimY, kBlockDimZ);
           const auto &size = out.data.info.GetPaddedSize();
-          const ktt::DimensionVector gridDimensions(
-              ComputeDimension(size.x, kBlockDimX),
-              ComputeDimension(size.y, kBlockDimY),
-              ComputeDimension(size.z, kBlockDimZ));
+          const ktt::DimensionVector gridDimensions(ComputeDimension(size.x, kBlockDimX),
+            ComputeDimension(size.y, kBlockDimY),
+            ComputeDimension(size.z, kBlockDimZ));
 
           kernelData.definitionIds.emplace_back(tuner.AddKernelDefinitionFromFile(
-            kTMP, kKernelFile, gridDimensions, blockDimensions, {"float2"}));
+            kTMP, kKernelFile, gridDimensions, blockDimensions, { "float2" }));
           kernelData.kernelId = tuner.CreateSimpleKernel(kTMP, kernelData.definitionIds.front());
           tuner.AddParameter(kernelData.kernelId, "center", std::vector<uint64_t>{ s.GetCenter() });
-          tuner.AddParameter(kernelData.kernelId, "isWithin", std::vector<uint64_t>{ in.data1.ptr == in.data2.ptr });
+          tuner.AddParameter(
+            kernelData.kernelId, "isWithin", std::vector<uint64_t>{ in.data1.ptr == in.data2.ptr });
           tuner.AddParameter(kernelData.kernelId, "TILE", std::vector<uint64_t>{ kTile });
-          tuner.SetCompilerOptions("-I" + kProjectRoot + " " + kCompilerOpts);
+          tuner.SetCompilerOptions("-I" + kProjectRoot + " " + kCompileFlags);
         }
         return canProcess;
       }
@@ -72,44 +71,47 @@ namespace correlation {
         const Settings &s,
         ktt::Tuner &tuner) override final
       {
-        if (!in.data1.IsValid() || in.data1.IsEmpty() || !out.data.IsValid()//FIXME refactor
+        if (!in.data1.IsValid() || in.data1.IsEmpty() || !out.data.IsValid()// FIXME refactor
             || out.data.IsEmpty())
           return false;
 
-//void correlate2D(T* __restrict__ correlations, const T* __restrict__ in1, umpalumpa::data::Size in1Size,
-//    const T* __restrict__ in2, int in2N) {
+        // void correlate2D(T* __restrict__ correlations, const T* __restrict__ in1,
+        // umpalumpa::data::Size in1Size,
+        //    const T* __restrict__ in2, int in2N) {
 
         // prepare input data1
         auto argIn1 = tuner.AddArgumentVector<float2>(in.data1.ptr,
           in.data1.info.GetSize().total,
-          ktt::ArgumentAccessType::ReadOnly,// FIXME these information should be stored in the physical descriptor
+          ktt::ArgumentAccessType::ReadOnly,// FIXME these information should be stored in the
+                                            // physical descriptor
           ktt::ArgumentMemoryLocation::Unified);// ^
 
         auto argIn2 = tuner.AddArgumentVector<float2>(in.data2.ptr,
           in.data2.info.GetSize().total,
-          ktt::ArgumentAccessType::ReadOnly,// FIXME these information should be stored in the physical descriptor
+          ktt::ArgumentAccessType::ReadOnly,// FIXME these information should be stored in the
+                                            // physical descriptor
           ktt::ArgumentMemoryLocation::Unified);// ^
 
         // prepare output data1
         auto argOut = tuner.AddArgumentVector<float2>(out.data.ptr,
           out.data.info.GetSize().total,
-          ktt::ArgumentAccessType::WriteOnly,// FIXME these information should be stored in the physical descriptor
+          ktt::ArgumentAccessType::WriteOnly,// FIXME these information should be stored in the
+                                             // physical descriptor
           ktt::ArgumentMemoryLocation::Unified);// ^
 
         auto inSize = tuner.AddArgumentScalar(in.data1.info.GetSize());
         auto in2N = tuner.AddArgumentScalar(static_cast<int>(in.data2.info.GetSize().n));
 
-        tuner.SetArguments(kernelData.definitionIds.front(),
-            { argOut, argIn1,  inSize, argIn2, in2N });
+        tuner.SetArguments(
+          kernelData.definitionIds.front(), { argOut, argIn1, inSize, argIn2, in2N });
 
         // update grid dimension to properly react to batch size
         tuner.SetLauncher(kernelData.kernelId, [this, &out](ktt::ComputeInterface &interface) {
           const ktt::DimensionVector blockDimensions(kBlockDimX, kBlockDimY, kBlockDimZ);
           const auto &size = out.data.info.GetPaddedSize();
-          const ktt::DimensionVector gridDimensions(
-              ComputeDimension(size.x, kBlockDimX),
-              ComputeDimension(size.y, kBlockDimY),
-              ComputeDimension(size.z, kBlockDimZ));
+          const ktt::DimensionVector gridDimensions(ComputeDimension(size.x, kBlockDimX),
+            ComputeDimension(size.y, kBlockDimY),
+            ComputeDimension(size.z, kBlockDimZ));
           interface.RunKernelAsync(kernelData.definitionIds.front(),
             interface.GetAllQueues().at(0),
             gridDimensions,
@@ -118,12 +120,11 @@ namespace correlation {
 
         auto isWithin = in.data1.ptr == in.data2.ptr;
 
-        auto configuration =
-          tuner.CreateConfiguration(kernelData.kernelId, {
-              { "center", static_cast<uint64_t>(s.GetCenter()) },
-              { "isWithin", static_cast<uint64_t>(isWithin) },
-              { "TILE", static_cast<uint64_t>(kTile) } });
-        tuner.Run(kernelData.kernelId, configuration, {}); // run is blocking call
+        auto configuration = tuner.CreateConfiguration(kernelData.kernelId,
+          { { "center", static_cast<uint64_t>(s.GetCenter()) },
+            { "isWithin", static_cast<uint64_t>(isWithin) },
+            { "TILE", static_cast<uint64_t>(kTile) } });
+        tuner.Run(kernelData.kernelId, configuration, {});// run is blocking call
         // arguments shall be removed once the run is done
         return true;
       };
@@ -132,9 +133,7 @@ namespace correlation {
 
   void Correlation_CUDA::Synchronize() { tuner.Synchronize(); }
 
-  bool Correlation_CUDA::Init(const OutputData &out,
-    const InputData &in,
-    const Settings &s)
+  bool Correlation_CUDA::Init(const OutputData &out, const InputData &in, const Settings &s)
   {
     SetSettings(s);
 
@@ -150,8 +149,7 @@ namespace correlation {
     return tryToAdd(std::make_unique<Strategy1>()) || false;
   }
 
-  bool Correlation_CUDA::Execute(const OutputData &out,
-    const InputData &in)
+  bool Correlation_CUDA::Execute(const OutputData &out, const InputData &in)
   {
     if (!this->IsValid(out, in)) return false;
     return strategy->Execute(out, in, GetSettings(), tuner);
@@ -159,4 +157,3 @@ namespace correlation {
 
 }// namespace correlation
 }// namespace umpalumpa
- 

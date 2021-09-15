@@ -17,15 +17,15 @@ namespace extrema_finder {
       return power;
     }
 
+    inline static const auto kKernelFile = utils::GetSourceFilePath(
+      "libumpalumpa/algorithms/extrema_finder/single_extrema_finder_cuda_kernels.cu");
+    using umpalumpa::utils::kProjectRoot;
+    static constexpr auto kCompileFlags = "--std=c++14 -default-device";
+
     struct Strategy1 : public SingleExtremaFinderCUDA::Strategy
     {
       static constexpr auto kFindMax1D = "findMax1D";
       static constexpr auto kStrategyName = "Strategy1";
-      inline static const auto kKernelFile = utils::GetSourceFilePath(
-        "../../../libumpalumpa/algorithms/extrema_finder/single_extrema_finder_cuda_kernels.cu");
-      inline static const auto kProjectRoot = utils::GetSourceFilePath(
-          "../../..");
-      static constexpr auto kCompilerOpts = "--std=c++14 -default-device";
 
       static constexpr size_t kMaxThreads = 512;
 
@@ -52,7 +52,7 @@ namespace extrema_finder {
             kFindMax1D, kKernelFile, gridDimensions, blockDimensions, {});
           kernelData.kernelId = tuner.CreateSimpleKernel(kFindMax1D, kernelData.definitionId);
           tuner.AddParameter(kernelData.kernelId, "blockSize", std::vector<uint64_t>{ threads });
-          tuner.SetCompilerOptions("-I" + kProjectRoot + " " + kCompilerOpts);
+          tuner.SetCompilerOptions("-I" + kProjectRoot + " " + kCompileFlags);
         }
         return canProcess;
       }
@@ -98,7 +98,7 @@ namespace extrema_finder {
 
         auto configuration =
           tuner.CreateConfiguration(kernelData.kernelId, { { "blockSize", threads } });
-        tuner.Run(kernelData.kernelId, configuration, {}); // run is blocking call
+        tuner.Run(kernelData.kernelId, configuration, {});// run is blocking call
         // arguments shall be removed once the run is done
         return true;
       };
@@ -108,13 +108,8 @@ namespace extrema_finder {
     {
       static constexpr auto kFindMaxRect = "findMaxRect";
       static constexpr auto kStrategyName = "Strategy2";
-      inline static const auto kKernelFile = utils::GetSourceFilePath(
-        "../../../libumpalumpa/algorithms/extrema_finder/single_extrema_finder_cuda_kernels.cu");
-      inline static const auto kProjectRoot = utils::GetSourceFilePath(
-          "../../..");
-      static constexpr auto kCompilerOpts = "--std=c++14 -default-device";
 
-      //static constexpr size_t kMaxThreads = 512;
+      // static constexpr size_t kMaxThreads = 512;
 
       size_t threadsX;
       size_t threadsY;
@@ -132,20 +127,21 @@ namespace extrema_finder {
                           && (in.data.dataInfo.type == umpalumpa::data::DataType::kFloat);
         if (canProcess) {
           // how many threads do we need?
-          //threads = (in.data.info.size.single < kMaxThreads) ? ceilPow2(in.data.info.size.single)
+          // threads = (in.data.info.size.single < kMaxThreads) ? ceilPow2(in.data.info.size.single)
           //                                                   : kMaxThreads;
-          //TODO should be tuned by KTT, for now it is FIXED to work at least somehow
+          // TODO should be tuned by KTT, for now it is FIXED to work at least somehow
           threadsX = 62;
           threadsY = 2;
           const ktt::DimensionVector blockDimensions(threadsX, threadsY);
           const ktt::DimensionVector gridDimensions(in.data.info.size.n);
           kernelData.definitionId = tuner.AddKernelDefinitionFromFile(
-            kFindMaxRect, kKernelFile, gridDimensions, blockDimensions, {"float"});
+            kFindMaxRect, kKernelFile, gridDimensions, blockDimensions, { "float" });
           kernelData.kernelId = tuner.CreateSimpleKernel(kFindMaxRect, kernelData.definitionId);
           tuner.AddParameter(kernelData.kernelId, "blockSizeX", std::vector<uint64_t>{ threadsX });
           tuner.AddParameter(kernelData.kernelId, "blockSizeY", std::vector<uint64_t>{ threadsY });
-          tuner.AddParameter(kernelData.kernelId, "blockSize", std::vector<uint64_t>{ threadsX * threadsY });
-          tuner.SetCompilerOptions("-I" + kProjectRoot + " " + kCompilerOpts);
+          tuner.AddParameter(
+            kernelData.kernelId, "blockSize", std::vector<uint64_t>{ threadsX * threadsY });
+          tuner.SetCompilerOptions("-I" + kProjectRoot + " " + kCompileFlags);
         }
         return canProcess;
       }
@@ -171,7 +167,7 @@ namespace extrema_finder {
 
         // prepare output data
         auto argVals = tuner.AddArgumentScalar(NULL);
-        //auto argVals = tuner.AddArgumentVector<float>(out.values.ptr,
+        // auto argVals = tuner.AddArgumentVector<float>(out.values.ptr,
         //  out.values.info.size.total,
         //  ktt::ArgumentAccessType::WriteOnly,
         //  ktt::ArgumentMemoryLocation::Unified);
@@ -182,8 +178,8 @@ namespace extrema_finder {
           ktt::ArgumentAccessType::WriteOnly,
           ktt::ArgumentMemoryLocation::Unified);
 
-        //FIXME these values should be read from settings
-        //FIXME offset + rectDim cant be > inSize, add check
+        // FIXME these values should be read from settings
+        // FIXME offset + rectDim cant be > inSize, add check
         unsigned offsetX = 1;
         unsigned offsetY = 1;
         unsigned rectWidth = 28;
@@ -194,9 +190,18 @@ namespace extrema_finder {
         auto argRectWidth = tuner.AddArgumentScalar(rectWidth);
         auto argRectHeight = tuner.AddArgumentScalar(rectHeight);
         // allocate local memory
-        auto argLocMem = tuner.AddArgumentLocal<float>(2 * threadsX*threadsY * sizeof(float));
+        auto argLocMem = tuner.AddArgumentLocal<float>(2 * threadsX * threadsY * sizeof(float));
 
-        tuner.SetArguments(kernelData.definitionId, { argIn, argInSize, argVals, argLocs, argOffX, argOffY, argRectWidth, argRectHeight, argLocMem });
+        tuner.SetArguments(kernelData.definitionId,
+          { argIn,
+            argInSize,
+            argVals,
+            argLocs,
+            argOffX,
+            argOffY,
+            argRectWidth,
+            argRectHeight,
+            argLocMem });
 
         // update grid dimension to properly react to batch size
         tuner.SetLauncher(kernelData.kernelId, [this, &in](ktt::ComputeInterface &interface) {
@@ -208,12 +213,11 @@ namespace extrema_finder {
             blockDimensions);
         });
 
-        auto configuration =
-          tuner.CreateConfiguration(kernelData.kernelId, {
-              { "blockSizeX", threadsX },
-              { "blockSizeY", threadsY },
-              { "blockSize", threadsX*threadsY } });
-        tuner.Run(kernelData.kernelId, configuration, {}); // run is blocking call
+        auto configuration = tuner.CreateConfiguration(kernelData.kernelId,
+          { { "blockSizeX", threadsX },
+            { "blockSizeY", threadsY },
+            { "blockSize", threadsX * threadsY } });
+        tuner.Run(kernelData.kernelId, configuration, {});// run is blocking call
         // arguments shall be removed once the run is done
         return true;
       };

@@ -7,6 +7,8 @@ endif()
 
 set_target_properties(umpalumpa PROPERTIES SOVERSION 0 VERSION 0.0.1)
 
+add_compile_definitions(PROJECT_ROOT="${CMAKE_SOURCE_DIR}")
+
 # list of source files
 set(umpalumpa_sources 
 	utils/system.cpp
