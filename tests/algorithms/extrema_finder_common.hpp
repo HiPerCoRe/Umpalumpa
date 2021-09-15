@@ -1,6 +1,7 @@
 #pragma once
 
 #include <gtest/gtest.h>
+#include <gmock/gmock.h>
 
 #include <iostream>
 #include <memory>
@@ -81,7 +82,7 @@ TEST_F(NAME, 1D_batch_noPadd_max_valOnly)
 
   GenerateData(data, sizeIn.total);
   memcpy(dataOrig.get(), data, sizeIn.total * sizeof(float));
-  //in.data.PrintData(std::cout);
+  // in.data.PrintData(std::cout, sizeIn);
 
   auto sizeValues = Size(1, 1, 1, sizeIn.n);
   auto values = reinterpret_cast<float *>(Allocate(sizeValues.total * sizeof(float)));
@@ -101,11 +102,12 @@ TEST_F(NAME, 1D_batch_noPadd_max_valOnly)
   // make sure that we didn't change data
   ASSERT_EQ(0, memcmp(data, dataOrig.get(), sizeIn.total * sizeof(float)));
   // test that we found good maximas
+  // FIXME this comparison is very costly, run it in parallel
   for (int n = 0; n < sizeValues.n; ++n) {
     auto first = data + (sizeIn.single * n);
     auto last = first + sizeIn.single;
-    float trueMax = *std::max_element(first, last);
-    ASSERT_FLOAT_EQ(trueMax, values[n]) << " for n=" << n;
+    const float trueMax = *std::max_element(first, last);
+    ASSERT_THAT(values[n], ::testing::NanSensitiveFloatEq(trueMax)) << " for n=" << n;
   }
   Free(data);
   Free(values);
@@ -143,7 +145,9 @@ TEST_F(NAME, 3D_manyBatches_noPadd_max_valOnly)
     if (isFirstIter) {
       isFirstIter = false;
       auto tmpOut = AExtremaFinder::ResultData::ValuesOnly(o.CopyWithoutData());
-      auto tmpIn = AExtremaFinder::SearchData(i.CopyWithoutData()); // CopyWithoutData() should be done within StarPU (or Init() methods of specific algorithms)
+      auto tmpIn = AExtremaFinder::SearchData(
+        i.CopyWithoutData());// CopyWithoutData() should be done within StarPU (or Init() methods of
+                             // specific algorithms)
 
       ASSERT_TRUE(searcher.Init(tmpOut, tmpIn, settings));
     }
@@ -153,11 +157,11 @@ TEST_F(NAME, 3D_manyBatches_noPadd_max_valOnly)
   WaitTillDone();
 
   // test that we found good maximas
-  for (int i = 0; i < sizeValues.n; ++i) {
-    auto first = data + (sizeIn.single * i);
+  for (int n = 0; n < sizeValues.n; ++n) {
+    auto first = data + (sizeIn.single * n);
     auto last = first + sizeIn.single;
     float trueMax = *std::max_element(first, last);
-    ASSERT_FLOAT_EQ(trueMax, values[i]) << " for n=" << i;
+    ASSERT_THAT(values[n], ::testing::NanSensitiveFloatEq(trueMax)) << " for n=" << n;
   }
 
   Free(values);
@@ -174,9 +178,7 @@ TEST_F(NAME, 2D_batch_noPadd_max_rectCenter_posOnly)
   auto pdIn = PhysicalDescriptor(sizeIn.total * sizeof(float), DataType::kFloat);
   auto inP = Payload(data, ldIn, pdIn, "Random data");
 
-  for (size_t i = 0; i < sizeIn.total; i++) {
-    data[i] = i;
-  }
+  for (size_t i = 0; i < sizeIn.total; i++) { data[i] = i; }
 
   auto sizeValues = Size(1, 1, 1, sizeIn.n);
   auto locations = reinterpret_cast<float *>(Allocate(sizeValues.total * sizeof(float)));
@@ -194,12 +196,13 @@ TEST_F(NAME, 2D_batch_noPadd_max_rectCenter_posOnly)
 
   WaitTillDone();
 
-  //FIXME tmp fixed rect
+  // FIXME tmp fixed rect
   Size searchRect(28, 17, 1, 1);
   // test that we found good maximas
   for (int n = 0; n < sizeValues.n; ++n) {
     auto expectedResult = sizeIn.x + 1;// at beginning of searchRect
-    expectedResult += sizeIn.x * (searchRect.y - 1) + (searchRect.x - 1);// at last element of searchRect
+    expectedResult +=
+      sizeIn.x * (searchRect.y - 1) + (searchRect.x - 1);// at last element of searchRect
     ASSERT_FLOAT_EQ(expectedResult, locations[n]) << " for n=" << n;
   }
 
