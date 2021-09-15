@@ -130,7 +130,8 @@ namespace extrema_finder {
           // threads = (in.data.info.size.single < kMaxThreads) ? ceilPow2(in.data.info.size.single)
           //                                                   : kMaxThreads;
           // TODO should be tuned by KTT, for now it is FIXED to work at least somehow
-          threadsX = 62;
+          // block size needs to be power of 2
+          threadsX = 64;
           threadsY = 2;
           const ktt::DimensionVector blockDimensions(threadsX, threadsY);
           const ktt::DimensionVector gridDimensions(in.data.info.size.n);
