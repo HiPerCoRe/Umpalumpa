@@ -13,6 +13,9 @@ namespace utils {
     '/';
 #endif
 
+  // Path to repository (defined at compile time)
+  inline const std::string kProjectRoot = PROJECT_ROOT;
+
   std::string Canonize(const std::string &p);
 
   std::string Exec(const std::string &cmd);

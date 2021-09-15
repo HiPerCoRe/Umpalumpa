@@ -29,7 +29,7 @@ namespace utils {
 
   std::string GetSourceFilePath(const std::string &relPath)
   {
-    std::string fullPath = utils::GetExecPath() + relPath;
+    std::string fullPath = kProjectRoot + kPathSeparator + relPath;
     std::string canonicalPath = utils::Canonize(fullPath);
     canonicalPath.erase(
       std::remove(canonicalPath.begin(), canonicalPath.end(), '\n'), canonicalPath.end());
