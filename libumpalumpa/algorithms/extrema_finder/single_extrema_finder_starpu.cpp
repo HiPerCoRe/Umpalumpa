@@ -48,7 +48,8 @@ namespace extrema_finder {
     void CudaInit(void *args)
     {
       auto *a = reinterpret_cast<InitArgs *>(args);
-      auto alg = std::make_unique<SingleExtremaFinderCUDA>(starpu_cuda_get_local_stream());
+      std::vector<CUstream> stream = { starpu_cuda_get_local_stream() };
+      auto alg = std::make_unique<SingleExtremaFinderCUDA>(starpu_worker_get_id(), stream);
       if (alg->Init(a->out, a->in, a->settings)) {
         a->algs[static_cast<size_t>(starpu_worker_get_id())] = std::move(alg);
       }

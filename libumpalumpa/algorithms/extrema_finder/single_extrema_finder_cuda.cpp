@@ -19,24 +19,19 @@ namespace extrema_finder {
 
     inline static const auto kKernelFile = utils::GetSourceFilePath(
       "libumpalumpa/algorithms/extrema_finder/single_extrema_finder_cuda_kernels.cu");
-    using umpalumpa::utils::kProjectRoot;
-    static constexpr auto kCompileFlags = "--std=c++14 -default-device";
 
     struct Strategy1 : public SingleExtremaFinderCUDA::Strategy
     {
       static constexpr auto kFindMax1D = "findMax1D";
-      static constexpr auto kStrategyName = "Strategy1";
-
+      static constexpr size_t kernelDataIndex = 0;
       static constexpr size_t kMaxThreads = 512;
 
       size_t threads;
 
-      KernelData kernelData;
-
       bool Init(const AExtremaFinder::ResultData &,
         const AExtremaFinder::SearchData &in,
         const Settings &s,
-        ktt::Tuner &tuner) override final
+        utils::KTTHelper &helper) override final
       {
         bool canProcess = (s.version == 1) && (s.location == SearchLocation::kEntire)
                           && (s.type == SearchType::kMax) && (s.result == SearchResult::kValue)
@@ -48,27 +43,38 @@ namespace extrema_finder {
                                                              : kMaxThreads;
           const ktt::DimensionVector blockDimensions(threads);
           const ktt::DimensionVector gridDimensions(in.data.info.size.n);
-          kernelData.definitionId = tuner.AddKernelDefinitionFromFile(
-            kFindMax1D, kKernelFile, gridDimensions, blockDimensions, {});
-          kernelData.kernelId = tuner.CreateSimpleKernel(kFindMax1D, kernelData.definitionId);
-          tuner.AddParameter(kernelData.kernelId, "blockSize", std::vector<uint64_t>{ threads });
-          tuner.SetCompilerOptions("-I" + kProjectRoot + " " + kCompileFlags);
+          auto &tuner = helper.GetTuner();
+          // ensure that we have the kernel loaded to KTT
+          // this has to be done in critical section, as multiple instances of this algorithm
+          // might run on the same worker
+          std::lock_guard<std::mutex> lck(helper.GetMutex());
+          auto &kernelData = helper.GetKernelData(GetFullName());
+          auto it = kernelData.find(kernelDataIndex);
+          if (kernelData.end() == it) {
+            auto definitionId = tuner.AddKernelDefinitionFromFile(
+              kFindMax1D, kKernelFile, gridDimensions, blockDimensions, {});
+            auto kernelId = tuner.CreateSimpleKernel(kFindMax1D, definitionId);
+            tuner.AddParameter(kernelId, "blockSize", std::vector<uint64_t>{ threads });
+            // register kernel data
+            kernelData[kernelDataIndex] = { { definitionId }, { kernelId } };
+          }
         }
         return canProcess;
       }
 
-      std::string GetName() const override final { return kStrategyName; }
+      std::string GetName() const override final { return "Strategy1"; }
 
       bool Execute(const AExtremaFinder::ResultData &out,
         const AExtremaFinder::SearchData &in,
         const Settings &,
-        ktt::Tuner &tuner) override final
+        utils::KTTHelper &helper) override final
       {
         if (!in.data.IsValid() || in.data.IsEmpty() || !out.values.IsValid()
             || out.values.IsEmpty())
           return false;
 
         // prepare input data
+        auto &tuner = helper.GetTuner();
         auto argIn = tuner.AddArgumentVector<float>(in.data.ptr,
           in.data.info.size.total,
           ktt::ArgumentAccessType::ReadOnly,
@@ -84,21 +90,21 @@ namespace extrema_finder {
         // allocate local memory
         auto argLocMem = tuner.AddArgumentLocal<float>(2 * threads * sizeof(float));
 
-        tuner.SetArguments(kernelData.definitionId, { argIn, argVals, argSize, argLocMem });
+        auto definitionId =
+          helper.GetKernelData(GetFullName()).at(kernelDataIndex).definitionIds[0];
+        tuner.SetArguments(definitionId, { argIn, argVals, argSize, argLocMem });
 
         // update grid dimension to properly react to batch size
-        tuner.SetLauncher(kernelData.kernelId, [this, &in](ktt::ComputeInterface &interface) {
+        auto kernelId = helper.GetKernelData(GetFullName()).at(kernelDataIndex).kernelIds[0];
+        tuner.SetLauncher(kernelId, [this, &in, definitionId](ktt::ComputeInterface &interface) {
           const ktt::DimensionVector blockDimensions(threads);
           const ktt::DimensionVector gridDimensions(in.data.info.size.n);
-          interface.RunKernelAsync(kernelData.definitionId,
-            interface.GetAllQueues().at(0),
-            gridDimensions,
-            blockDimensions);
+          interface.RunKernelAsync(
+            definitionId, interface.GetAllQueues().at(0), gridDimensions, blockDimensions);
         });
 
-        auto configuration =
-          tuner.CreateConfiguration(kernelData.kernelId, { { "blockSize", threads } });
-        tuner.Run(kernelData.kernelId, configuration, {});// run is blocking call
+        auto configuration = tuner.CreateConfiguration(kernelId, { { "blockSize", threads } });
+        tuner.Run(kernelId, configuration, {});// run is blocking call
         // arguments shall be removed once the run is done
         return true;
       };
@@ -107,58 +113,61 @@ namespace extrema_finder {
     struct Strategy2 : public SingleExtremaFinderCUDA::Strategy
     {
       static constexpr auto kFindMaxRect = "findMaxRect";
-      static constexpr auto kStrategyName = "Strategy2";
-
-      // static constexpr size_t kMaxThreads = 512;
+      static constexpr size_t kernelDataIndex = 0;
 
       size_t threadsX;
       size_t threadsY;
 
-      KernelData kernelData;
-
       bool Init(const AExtremaFinder::ResultData &,
         const AExtremaFinder::SearchData &in,
         const Settings &s,
-        ktt::Tuner &tuner) override final
+        utils::KTTHelper &helper) override final
       {
         bool canProcess = (s.version == 1) && (s.location == SearchLocation::kRectCenter)
                           && (s.type == SearchType::kMax) && (s.result == SearchResult::kLocation)
                           && (in.data.info.size == in.data.info.paddedSize)
                           && (in.data.dataInfo.type == umpalumpa::data::DataType::kFloat);
         if (canProcess) {
-          // how many threads do we need?
-          // threads = (in.data.info.size.single < kMaxThreads) ? ceilPow2(in.data.info.size.single)
-          //                                                   : kMaxThreads;
           // TODO should be tuned by KTT, for now it is FIXED to work at least somehow
           // block size needs to be power of 2
           threadsX = 64;
           threadsY = 2;
           const ktt::DimensionVector blockDimensions(threadsX, threadsY);
           const ktt::DimensionVector gridDimensions(in.data.info.size.n);
-          kernelData.definitionId = tuner.AddKernelDefinitionFromFile(
-            kFindMaxRect, kKernelFile, gridDimensions, blockDimensions, { "float" });
-          kernelData.kernelId = tuner.CreateSimpleKernel(kFindMaxRect, kernelData.definitionId);
-          tuner.AddParameter(kernelData.kernelId, "blockSizeX", std::vector<uint64_t>{ threadsX });
-          tuner.AddParameter(kernelData.kernelId, "blockSizeY", std::vector<uint64_t>{ threadsY });
-          tuner.AddParameter(
-            kernelData.kernelId, "blockSize", std::vector<uint64_t>{ threadsX * threadsY });
-          tuner.SetCompilerOptions("-I" + kProjectRoot + " " + kCompileFlags);
+          auto &tuner = helper.GetTuner();
+          // ensure that we have the kernel loaded to KTT
+          // this has to be done in critical section, as multiple instances of this algorithm
+          // might run on the same worker
+          std::lock_guard<std::mutex> lck(helper.GetMutex());
+          auto &kernelData = helper.GetKernelData(GetFullName());
+          auto it = kernelData.find(kernelDataIndex);
+          if (kernelData.end() == it) {
+            auto definitionId = tuner.AddKernelDefinitionFromFile(
+              kFindMaxRect, kKernelFile, gridDimensions, blockDimensions, { "float" });
+            auto kernelId = tuner.CreateSimpleKernel(kFindMaxRect, definitionId);
+            tuner.AddParameter(kernelId, "blockSizeX", std::vector<uint64_t>{ threadsX });
+            tuner.AddParameter(kernelId, "blockSizeY", std::vector<uint64_t>{ threadsY });
+            tuner.AddParameter(kernelId, "blockSize", std::vector<uint64_t>{ threadsX * threadsY });
+            // register kernel data
+            kernelData[kernelDataIndex] = { { definitionId }, { kernelId } };
+          }
         }
         return canProcess;
       }
 
-      std::string GetName() const override final { return kStrategyName; }
+      std::string GetName() const override final { return "Strategy2"; }
 
       bool Execute(const AExtremaFinder::ResultData &out,
         const AExtremaFinder::SearchData &in,
         const Settings &,
-        ktt::Tuner &tuner) override final
+        utils::KTTHelper &helper) override final
       {
         if (!in.data.IsValid() || in.data.IsEmpty() || !out.locations.IsValid()
             || out.locations.IsEmpty())
           return false;
 
         // prepare input data
+        auto &tuner = helper.GetTuner();
         auto argIn = tuner.AddArgumentVector<float>(in.data.ptr,
           in.data.info.size.total,
           ktt::ArgumentAccessType::ReadOnly,
@@ -168,12 +177,6 @@ namespace extrema_finder {
 
         // prepare output data
         auto argVals = tuner.AddArgumentScalar(NULL);
-        // auto argVals = tuner.AddArgumentVector<float>(out.values.ptr,
-        //  out.values.info.size.total,
-        //  ktt::ArgumentAccessType::WriteOnly,
-        //  ktt::ArgumentMemoryLocation::Unified);
-
-        // prepare output data
         auto argLocs = tuner.AddArgumentVector<float>(out.locations.ptr,
           out.values.info.size.total,
           ktt::ArgumentAccessType::WriteOnly,
@@ -193,7 +196,9 @@ namespace extrema_finder {
         // allocate local memory
         auto argLocMem = tuner.AddArgumentLocal<float>(2 * threadsX * threadsY * sizeof(float));
 
-        tuner.SetArguments(kernelData.definitionId,
+        auto definitionId =
+          helper.GetKernelData(GetFullName()).at(kernelDataIndex).definitionIds[0];
+        tuner.SetArguments(definitionId,
           { argIn,
             argInSize,
             argVals,
@@ -204,35 +209,34 @@ namespace extrema_finder {
             argRectHeight,
             argLocMem });
 
+        auto kernelId = helper.GetKernelData(GetFullName()).at(kernelDataIndex).kernelIds[0];
         // update grid dimension to properly react to batch size
-        tuner.SetLauncher(kernelData.kernelId, [this, &in](ktt::ComputeInterface &interface) {
+        tuner.SetLauncher(kernelId, [this, &in, definitionId](ktt::ComputeInterface &interface) {
           const ktt::DimensionVector blockDimensions(threadsX, threadsY);
           const ktt::DimensionVector gridDimensions(in.data.info.size.n);
-          interface.RunKernelAsync(kernelData.definitionId,
-            interface.GetAllQueues().at(0),
-            gridDimensions,
-            blockDimensions);
+          interface.RunKernelAsync(
+            definitionId, interface.GetAllQueues().at(0), gridDimensions, blockDimensions);
         });
 
-        auto configuration = tuner.CreateConfiguration(kernelData.kernelId,
+        auto configuration = tuner.CreateConfiguration(kernelId,
           { { "blockSizeX", threadsX },
             { "blockSizeY", threadsY },
             { "blockSize", threadsX * threadsY } });
-        tuner.Run(kernelData.kernelId, configuration, {});// run is blocking call
+        tuner.Run(kernelId, configuration, {});// run is blocking call
         // arguments shall be removed once the run is done
         return true;
       };
     };
   }// namespace
 
-  void SingleExtremaFinderCUDA::Synchronize() { tuner.Synchronize(); }
+  void SingleExtremaFinderCUDA::Synchronize() { GetHelper().GetTuner().Synchronize(); }
 
   bool SingleExtremaFinderCUDA::Init(const ResultData &out,
     const SearchData &in,
     const Settings &settings)
   {
     auto tryToAdd = [this, &out, &in, &settings](auto i) {
-      bool canAdd = i->Init(out, in, settings, tuner);
+      bool canAdd = i->Init(out, in, settings, GetHelper());
       if (canAdd) {
         spdlog::debug("Found valid strategy {}", i->GetName());
         strategy = std::move(i);
@@ -248,7 +252,7 @@ namespace extrema_finder {
     const Settings &settings)
   {
     if (!this->IsValid(out, in, settings)) return false;
-    return strategy->Execute(out, in, settings, tuner);
+    return strategy->Execute(out, in, settings, GetHelper());
   }
 
 }// namespace extrema_finder

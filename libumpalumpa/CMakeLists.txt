@@ -1,5 +1,4 @@
-# we don't have to say the type, by default it's static, can be build by setting
-# BUILD_SHARED_LIBS.
+# we don't have to say the type, by default it's static, can be build by setting BUILD_SHARED_LIBS.
 add_library(umpalumpa)
 
 if(ENABLE_CLANG_TIDY)
@@ -8,12 +7,11 @@ endif()
 
 set_target_properties(umpalumpa PROPERTIES SOVERSION 0 VERSION 0.0.1)
 
-add_compile_definitions(PROJECT_ROOT="${CMAKE_SOURCE_DIR}")
-
 # list of source files
 set(umpalumpa_sources
     utils/system.cpp
     utils/cuda.cpp
+    utils/ktt_provider.cpp
     algorithms/extrema_finder/single_extrema_finder_cpu.cpp
     algorithms/extrema_finder/single_extrema_finder_cuda.cpp
     algorithms/fourier_transformation/fft_cuda.hpp
@@ -22,14 +20,20 @@ set(umpalumpa_sources
     algorithms/ktt_base.cpp)
 
 if(USE_STARPU)
-  list(APPEND umpalumpa_sources
-       algorithms/extrema_finder/single_extrema_finder_starpu.cpp)
+  list(APPEND umpalumpa_sources algorithms/extrema_finder/single_extrema_finder_starpu.cpp)
 endif()
 
 target_include_directories(umpalumpa PUBLIC ${CMAKE_SOURCE_DIR})
 
 target_sources(umpalumpa PRIVATE ${umpalumpa_sources})
 target_link_libraries(
-  umpalumpa PRIVATE project_options project_warnings spdlog ${CUDA_LIBRARY}
-                    ${CUDART_LIBRARY} ${CUDAFFT_LIBRARY})
+  umpalumpa
+  PRIVATE project_options
+          project_warnings
+          spdlog
+          ${CUDA_LIBRARY}
+          ${CUDART_LIBRARY}
+          ${CUDAFFT_LIBRARY})
 target_link_libraries(umpalumpa PUBLIC library_starpu library_ktt)
+
+target_compile_definitions(umpalumpa PUBLIC PROJECT_ROOT="${CMAKE_SOURCE_DIR}")
