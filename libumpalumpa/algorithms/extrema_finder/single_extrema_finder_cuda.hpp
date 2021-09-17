@@ -8,7 +8,9 @@
 
 namespace umpalumpa {
 namespace extrema_finder {
-  class SingleExtremaFinderCUDA : public AExtremaFinder, public algorithm::KTT_Base
+  class SingleExtremaFinderCUDA
+    : public AExtremaFinder
+    , public algorithm::KTT_Base
   {
   public:
     using algorithm::KTT_Base::KTT_Base;
@@ -19,20 +21,18 @@ namespace extrema_finder {
     struct Strategy
     {
       virtual ~Strategy() = default;
-      virtual bool
-        Init(const ResultData &, const SearchData &, const Settings &s, ktt::Tuner &tuner) = 0;
+      virtual bool Init(const ResultData &,
+        const SearchData &,
+        const Settings &s,
+        utils::KTTHelper &helper) = 0;
       virtual bool Execute(const ResultData &out,
         const SearchData &in,
         const Settings &settings,
-        ktt::Tuner &tuner) = 0;
+        utils::KTTHelper &helper) = 0;
       virtual std::string GetName() const = 0;
-
-      struct KernelData
-      {
-        ktt::KernelDefinitionId definitionId;// FIXME this should be a vector
-        ktt::KernelId kernelId;
-      };
-      // FIXME add std::vector ktt arguments that shall be deteled in.e.g destructor or synchronize() method
+      std::string GetFullName() const { return typeid(*this).name(); }
+      // FIXME add std::vector ktt arguments that shall be deteled in.e.g destructor or
+      // synchronize() method
     };
 
     void Synchronize() override;

@@ -4,27 +4,28 @@
 namespace umpalumpa {
 namespace algorithm {
 
-  ktt::ComputeApiInitializer KTT_Base::createApiInitializer(int deviceOrdinal)
+  void KTT_Base::CreateStreams()
   {
     CudaErrchk(cuInit(0));
     CUdevice device;
-    CudaErrchk(cuDeviceGet(&device, deviceOrdinal));
+    // assuming KTTId == workerId == deviceOrdinal (otherwise user should provide streams)
+    CudaErrchk(cuDeviceGet(&device, KTTId));
     CUcontext context;
     cuCtxCreate(&context, CU_CTX_SCHED_AUTO, device);
-    CUstream stream;
-    CudaErrchk(cuStreamCreate(&stream, CU_STREAM_DEFAULT));
-    return ktt::ComputeApiInitializer(context, std::vector<ktt::ComputeQueue>{ stream });
+    for (unsigned i = 0; i < GetNoOfStreams(); ++i) {
+      CUstream s;
+      CudaErrchk(cuStreamCreate(&s, CU_STREAM_DEFAULT));
+      streams.emplace_back(s);
+    }
   }
 
-  ktt::ComputeApiInitializer KTT_Base::createApiInitializer(CUstream stream)
+  std::vector<ktt::ComputeQueue> KTT_Base::CreateComputeQueues() const
   {
-    CudaErrchk(cuInit(0));
-    CUcontext context;
-    CudaErrchk(cuStreamGetCtx(stream, &context));
-    // Create compute API initializer which specifies context and streams that will be utilized by
-    // the tuner.
-    return ktt::ComputeApiInitializer(context, std::vector<ktt::ComputeQueue>{ stream });
+    std::vector<ktt::ComputeQueue> result;
+    result.reserve(streams.size());
+    std::copy(streams.begin(), streams.end(), std::back_inserter(result));
+    return result;
   }
 
-}// namespace algorithm 
+}// namespace algorithm
 }// namespace umpalumpa
