@@ -196,13 +196,16 @@ TEST_F(NAME, 2D_batch_noPadd_max_rectCenter_posOnly)
 
   WaitTillDone();
 
-  // FIXME tmp fixed rect
+  // FIXME these values should be read from settings
   Size searchRect(28, 17, 1, 1);
+  size_t searchRectOffsetX = (in.data.info.GetPaddedSize().x - searchRect.x) / 2;
+  size_t searchRectOffsetY = (in.data.info.GetPaddedSize().y - searchRect.y) / 2;
   // test that we found good maximas
   for (int n = 0; n < sizeValues.n; ++n) {
-    auto expectedResult = sizeIn.x + 1;// at beginning of searchRect
+    auto expectedResult =
+      searchRectOffsetY * sizeIn.x + searchRectOffsetX;// beginning of searchRect
     expectedResult +=
-      sizeIn.x * (searchRect.y - 1) + (searchRect.x - 1);// at last element of searchRect
+      sizeIn.x * (searchRect.y - 1) + (searchRect.x - 1);// last element of searchRect
     ASSERT_FLOAT_EQ(expectedResult, locations[n]) << " for n=" << n;
   }
 
