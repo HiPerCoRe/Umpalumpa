@@ -2,7 +2,6 @@
 
 // This kernel assumes that low frequencies are located in the corners
 
-// FIXME filter is currently a nullptr, it will crash when it is run
 // FIXME not sure to work properly when out dimensions are bigger than
 //       input dimensions
 
@@ -16,7 +15,7 @@ void scaleFFT2DKernel(const float2* __restrict__ in, float2* __restrict__ out,
 
   if (idx >= outSize.x || idy >= outSize.y ) return;
   size_t fIndex = idy*outSize.x + idx; // index within single image
-  //float filterCoef = filter[fIndex];// FIXME filter not implemented
+  
   float centerCoef = 1-2*((idx+idy)&1); // center FT, input must be even,
                                         // useful when you will do IFFT of correlation ->
                                         // -> correlation maxima will be in the center of the image
@@ -28,7 +27,8 @@ void scaleFFT2DKernel(const float2* __restrict__ in, float2* __restrict__ out,
     size_t oIndex = n*outSize.x*outSize.y + fIndex; // index within consecutive images
     out[oIndex] = in[iIndex];
     if (applyFilter) {
-      //out[oIndex] *= filterCoef;// FIXME filter not implemented
+      out[oIndex].x *= filter[fIndex];
+      out[oIndex].y *= filter[fIndex];
     }
     if (0 == idx || 0 == idy) {
       out[oIndex] = {0, 0}; // ignore low frequency, this should increase precision a bit

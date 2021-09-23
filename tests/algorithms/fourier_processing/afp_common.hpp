@@ -97,3 +97,19 @@ TEST_F(NAME, ImageCropNormalizeCenter)
   testFP(outP, inP, settings);
 }
 
+TEST_F(NAME, Filtering)
+{
+  ft::Locality locality = ft::Locality::kOutOfPlace;
+  Settings settings(locality);
+  settings.SetApplyFilter(true);
+
+  Size size(12, 12, 1, 1);
+
+  SetUpFP(settings, size, size);
+
+  auto inP = AFP::InputData(Payload(inData.get(), *ldIn, *pdIn, "Input data"), Payload(filterData.get(), *ldFilter, *pdFilter, "Filter"));
+  auto outP = AFP::OutputData(Payload(outData.get(), *ldOut, *pdOut, "Output data"));
+
+  testFP(outP, inP, settings);
+}
+
