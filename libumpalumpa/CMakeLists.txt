@@ -26,14 +26,7 @@ endif()
 target_include_directories(umpalumpa PUBLIC ${CMAKE_SOURCE_DIR})
 
 target_sources(umpalumpa PRIVATE ${umpalumpa_sources})
-target_link_libraries(
-  umpalumpa
-  PRIVATE project_options
-          project_warnings
-          spdlog
-          ${CUDA_LIBRARY}
-          ${CUDART_LIBRARY}
-          ${CUDAFFT_LIBRARY})
-target_link_libraries(umpalumpa PUBLIC library_starpu library_ktt)
+target_link_libraries(umpalumpa PRIVATE project_options project_warnings spdlog)
+target_link_libraries(umpalumpa PUBLIC library_starpu library_ktt cuda)
 
 target_compile_definitions(umpalumpa PUBLIC PROJECT_ROOT="${CMAKE_SOURCE_DIR}")

@@ -14,7 +14,9 @@ set(tests
     algorithms/extrema_finder_cuda.cpp
     algorithms/fourier_transformation/fft_cuda.cpp
     algorithms/fourier_processing/fp_cuda.cpp
-    algorithms/correlation/correlation_cuda.cpp)
+    algorithms/correlation/correlation_cuda.cpp
+    empty.cu # needs to be here so that CMAKE links CUDA libraries
+)
 
 if(USE_STARPU)
   list(APPEND tests algorithms/extrema_finder_starpu.cpp)
@@ -27,7 +29,9 @@ target_link_libraries(
   PRIVATE project_options
           umpalumpa
           gtest_main
-          gmock_main)
+          gmock_main
+          cudart
+          cufft)
 
 include(GoogleTest)
 gtest_discover_tests(Umpalumpa_Tests)
