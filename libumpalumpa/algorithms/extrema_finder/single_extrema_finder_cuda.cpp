@@ -182,17 +182,20 @@ namespace extrema_finder {
           ktt::ArgumentAccessType::WriteOnly,
           ktt::ArgumentMemoryLocation::Unified);
 
-        // FIXME these values should be read from settings
-        // FIXME offset + rectDim cant be > inSize, add check
-        unsigned offsetX = 1;
-        unsigned offsetY = 1;
-        unsigned rectWidth = 28;
-        unsigned rectHeight = 17;
+        //FIXME these values should be read from settings
+        //FIXME offset + rectDim cant be > inSize, add check
+        // Compute the area to search in
+        size_t searchRectWidth = 28;
+        size_t searchRectHeight = 17;
+        size_t searchRectOffsetX =
+          (in.data.info.GetPaddedSize().x - searchRectWidth) / 2;
+        size_t searchRectOffsetY =
+          (in.data.info.GetPaddedSize().y - searchRectHeight) / 2;
 
-        auto argOffX = tuner.AddArgumentScalar(offsetX);
-        auto argOffY = tuner.AddArgumentScalar(offsetY);
-        auto argRectWidth = tuner.AddArgumentScalar(rectWidth);
-        auto argRectHeight = tuner.AddArgumentScalar(rectHeight);
+        auto argOffX = tuner.AddArgumentScalar(searchRectOffsetX);
+        auto argOffY = tuner.AddArgumentScalar(searchRectOffsetY);
+        auto argRectWidth = tuner.AddArgumentScalar(searchRectWidth);
+        auto argRectHeight = tuner.AddArgumentScalar(searchRectHeight);
         // allocate local memory
         auto argLocMem = tuner.AddArgumentLocal<float>(2 * threadsX * threadsY * sizeof(float));
 

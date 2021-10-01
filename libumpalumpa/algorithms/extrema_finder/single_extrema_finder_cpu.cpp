@@ -61,18 +61,21 @@ namespace extrema_finder {
         if (!in.data.IsValid() || in.data.IsEmpty() || !out.locations.IsValid()
             || out.locations.IsEmpty())
           return false;
+
         //FIXME these values should be read from settings
         //FIXME offset + rectDim cant be > inSize, add check
-        size_t offsetX = 1;
-        size_t offsetY = 1;
-        size_t width = 28;
-        size_t height = 17;
+        // Compute the area to search in
+        size_t searchRectWidth = 28;
+        size_t searchRectHeight = 17;
+        size_t searchRectOffsetX = (in.data.info.GetPaddedSize().x - searchRectWidth) / 2;
+        size_t searchRectOffsetY = (in.data.info.GetPaddedSize().y - searchRectHeight) / 2;
+
         FindSingleExtremaInRectangle2DCPU<false, true>(
             reinterpret_cast<float *>(out.values.ptr),
             reinterpret_cast<float *>(out.locations.ptr),
             reinterpret_cast<float *>(in.data.ptr),
-            offsetX, offsetY,
-            data::Size(width, height, 1, 1),
+            searchRectOffsetX, searchRectOffsetY,
+            data::Size(searchRectWidth, searchRectHeight, 1, 1),
             in.data.info.size,
             std::greater<float>());
         return true;
