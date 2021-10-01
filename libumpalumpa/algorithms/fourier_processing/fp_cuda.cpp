@@ -89,20 +89,26 @@ namespace fourier_processing {
                                              // physical descriptor
           ktt::ArgumentMemoryLocation::Unified);// ^
 
-        // TODO add filter
-        // auto filter = tuner.AddArgumentVector<float>(out.data.ptr,
-        //  out.data.info.GetSize().total,
-
         auto inSize = tuner.AddArgumentScalar(in.data.info.GetSize());
         auto outSize = tuner.AddArgumentScalar(out.data.info.GetSize());
-        auto filter = tuner.AddArgumentScalar(NULL);
+
+        auto filter = [&s, &tuner, &in]() {
+          if (s.GetApplyFilter()) {
+            return tuner.AddArgumentVector<float>(in.filter.ptr,
+              in.filter.info.GetSize().total,
+              ktt::ArgumentAccessType::ReadOnly,// FIXME these information should be stored in the
+                                                // physical descriptor
+              ktt::ArgumentMemoryLocation::Unified);// ^
+          }
+          return tuner.AddArgumentScalar(nullptr);
+        }();
+
         auto normFactor =
           tuner.AddArgumentScalar(1.f / static_cast<float>(in.data.info.GetSize().single));
 
         auto definitionId =
           helper.GetKernelData(GetFullName()).at(kernelDataIndex).definitionIds[0];
         tuner.SetArguments(definitionId, { argIn, argOut, inSize, outSize, filter, normFactor });
-        //{ argIn, argOut, noOfImages, inX, inY, outX, outY, filter, normFactor });
 
         // update grid dimension to properly react to batch size
         auto kernelId = helper.GetKernelData(GetFullName()).at(kernelDataIndex).kernelIds[0];
@@ -121,7 +127,7 @@ namespace fourier_processing {
             { "normalize", static_cast<uint64_t>(s.GetNormalize()) },
             { "center", static_cast<uint64_t>(s.GetCenter()) } });
         tuner.Run(kernelId, configuration, {});// run is blocking call
-        // arguments shall be removed once the run is done
+        // FIXME arguments shall be removed once the run is done
         return true;
       };
     };
