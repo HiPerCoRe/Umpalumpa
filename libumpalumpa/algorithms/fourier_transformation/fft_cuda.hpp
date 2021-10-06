@@ -45,6 +45,7 @@ namespace fourier_transformation {
 
     void Cleanup() override {
       CudaErrchk(cufftDestroy(plan));
+      AFFT::Cleanup();
     }
 
     void Synchronize() override {

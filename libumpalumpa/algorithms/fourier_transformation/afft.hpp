@@ -32,7 +32,9 @@ namespace fourier_transformation {
     using InputData = DataWrapper<data::Payload<data::FourierDescriptor>>;
     virtual bool Init(const ResultData &out, const InputData &in, const Settings &settings) = 0;
     virtual bool Execute(const ResultData &out, const InputData &in) = 0;
-    virtual void Cleanup(){};
+    virtual void Cleanup(){
+      settings.reset();
+    };
     virtual void Synchronize() = 0;
 
     bool IsInitialized() { return settings.get(); }
