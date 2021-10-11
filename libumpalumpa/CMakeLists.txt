@@ -15,6 +15,7 @@ set(umpalumpa_sources
     algorithms/extrema_finder/single_extrema_finder_cpu.cpp
     algorithms/extrema_finder/single_extrema_finder_cuda.cpp
     algorithms/fourier_transformation/fft_cuda.hpp
+    algorithms/fourier_processing/fp_cpu.cpp
     algorithms/fourier_processing/fp_cuda.cpp
     algorithms/correlation/correlation_cuda.cpp
     algorithms/ktt_base.cpp)
