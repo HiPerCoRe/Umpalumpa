@@ -12,7 +12,7 @@ namespace data {
   template<typename T> class Payload
   {
   public:
-  // add documentation, especially that we don't manage data
+    // add documentation, especially that we don't manage data
     explicit Payload(void *d, const T &ld, const PhysicalDescriptor &pd, const std::string &desc)
       : ptr(d), info(ld), dataInfo(pd), description(desc)
     {}
@@ -32,11 +32,12 @@ namespace data {
 
     bool IsEmpty() const { return (nullptr == ptr) && (dataInfo.IsEmpty()); }
 
-  // FIXME  it might be useful to have subset which takes e.g. a vector of possitions that we want to get
+    // FIXME  it might be useful to have subset which takes e.g. a vector of possitions that we want
+    // to get
     Payload Subset(size_t startN, size_t count) const// FIXME refactor
     {
       assert(!IsEmpty());
-      size_t safeCount = 0; // change name to something more reasonable
+      size_t safeCount = 0;// change name to something more reasonable
       const auto newInfo = info.Subset(safeCount, startN, count);
       const auto offset = info.Offset(0, 0, 0, startN);
 
@@ -47,6 +48,11 @@ namespace data {
       return Payload(newData, newInfo, newDataInfo, description + suffix);
     };
 
+    /**
+     * Create an exact copy of this Payload, but without data.
+     * This can be useful for e.g. Algorithm initialization or to compare
+     * multiple Payloads
+     * */
     Payload CopyWithoutData() const
     {
       return Payload(
@@ -54,21 +60,36 @@ namespace data {
     }
 
     // Data need to be accessible from CPU
-    void PrintData(std::ostream& out) const {
+    // FIXME printing methods should be defined elsewhere
+    void PrintData(std::ostream &out) const
+    {
       Size offset(0, 0, 0, 0);
       auto dims = info.GetSize();
       PrintData(out, dims, offset);
     }
 
     // Data need to be accessible from CPU
-    void PrintData(std::ostream& out, const Size &dims, const Size &offset) const {
+    void PrintData(std::ostream &out, const Size &dims, const Size &offset) const
+    {
       auto total = info.GetSize();
       switch (dataInfo.type) {
-        case DataType::kFloat: PrivatePrint<float>(out, total, dims, offset); break;
-        case DataType::kDouble: PrivatePrint<double>(out, total, dims, offset); break;
-        default: throw std::logic_error("Trying to print unprintable type.");
+      case DataType::kFloat:
+        PrivatePrint<float>(out, total, dims, offset);
+        break;
+      case DataType::kDouble:
+        PrivatePrint<double>(out, total, dims, offset);
+        break;
+      default:
+        throw std::logic_error("Trying to print unprintable type.");
       }
     }
+
+    /**
+     * Returns minimal number of bytes necessary to fit this data.
+     * Returned amount might be smaller than bytes provided by Physical descriptor,
+     * as data represented by this Payload might not span the entire memory block.
+     **/
+    size_t GetBytes() { return info.GetPaddedSize().total * Sizeof(dataInfo.type); }
 
     // these shouold be private + getters / setters
     void *ptr;// constant pointer to non-constant data, type defined by other descriptors
@@ -86,18 +107,20 @@ namespace data {
     }
 
     template<typename DT>
-    void PrivatePrint(std::ostream& out, const Size &total, const Size &dims, const Size &offset) const {
+    void
+      PrivatePrint(std::ostream &out, const Size &total, const Size &dims, const Size &offset) const
+    {
 
       auto original = out.flags();
       // prepare output formatting
       out << std::setfill(' ') << std::left << std::setprecision(3) << std::showpos;
 
-      auto* data = reinterpret_cast<DT*>(ptr);
+      auto *data = reinterpret_cast<DT *>(ptr);
       for (size_t n = offset.n; n < offset.n + dims.n; n++) {
         for (size_t z = offset.z; z < offset.z + dims.z; z++) {
           for (size_t y = offset.y; y < offset.y + dims.y; y++) {
             for (size_t x = offset.x; x < offset.x + dims.x; x++) {
-              auto index = n*total.single + z*total.y*total.x + y*total.x + x;
+              auto index = n * total.single + z * total.y * total.x + y * total.x + x;
               out << std::setw(7) << data[index] << ' ';
             }
             out << '\n';
@@ -114,7 +137,8 @@ namespace data {
 }// namespace umpalumpa
 
 template<typename T>
-std::ostream& operator<<(std::ostream& out, const umpalumpa::data::Payload<T>& p) {
+std::ostream &operator<<(std::ostream &out, const umpalumpa::data::Payload<T> &p)
+{
   p.PrintData(out);
   return out;
 }

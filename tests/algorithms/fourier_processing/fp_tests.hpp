@@ -160,16 +160,16 @@ protected:
 
     ldIn = std::make_unique<FourierDescriptor>(
       inSize, paddedInSize, FourierDescriptor::FourierSpaceDescriptor{});
-    auto inputSizeInBytes = ldIn->GetPaddedSize().total * Sizeof(DataType::kFloat) * 2;
-    pdIn = std::make_unique<PhysicalDescriptor>(inputSizeInBytes, DataType::kFloat);
+    auto inputSizeInBytes = ldIn->GetPaddedSize().total * Sizeof(DataType::kComplexFloat);
+    pdIn = std::make_unique<PhysicalDescriptor>(inputSizeInBytes, DataType::kComplexFloat);
 
     inData = std::shared_ptr<void>(Allocate(pdIn->bytes), GetFree());
     memset(inData.get(), 0, pdIn->bytes);
 
     ldOut = std::make_unique<FourierDescriptor>(
       outSize, paddedOutSize, FourierDescriptor::FourierSpaceDescriptor{});
-    auto outputSizeInBytes = ldOut->GetPaddedSize().total * Sizeof(DataType::kFloat) * 2;
-    pdOut = std::make_unique<PhysicalDescriptor>(outputSizeInBytes, DataType::kFloat);
+    auto outputSizeInBytes = ldOut->GetPaddedSize().total * Sizeof(DataType::kComplexFloat);
+    pdOut = std::make_unique<PhysicalDescriptor>(outputSizeInBytes, DataType::kComplexFloat);
 
     if (settings.IsOutOfPlace()) {
       outData = std::shared_ptr<void>(Allocate(pdOut->bytes), GetFree());

@@ -22,11 +22,12 @@ namespace fourier_transformation {
         cuCtxCreate(&context, CU_CTX_SCHED_AUTO, device);
         CudaErrchk(cuStreamCreate(&stream, CU_STREAM_DEFAULT));
     }
-      
-    bool Init(const ResultData &out, const InputData &in, const Settings &settings) override {
-      if (IsInitialized()) {
-        CudaErrchk(cufftDestroy(plan));
-      }
+
+    bool Init(const ResultData &out, const InputData &in, const Settings &settings) override
+    {
+      bool canProcess = checkTypes(out, in, settings.GetDirection());
+      if (!canProcess) return false;
+      if (IsInitialized()) { CudaErrchk(cufftDestroy(plan)); }
       SetSettings(settings);
 
       CudaErrchk(cufftCreate(&plan));
@@ -56,9 +57,23 @@ namespace fourier_transformation {
     cufftHandle plan;
     CUstream stream;
 
-    //TODO move definitions into .cpp file
-    template<typename F>
-    void manyHelper(const InputData &in, const Settings &settings, F function) {
+    bool checkTypes(const ResultData &out, const InputData &in, Direction d)
+    {
+      if (Direction::kForward == d) {
+        return ((out.data.dataInfo.type == data::DataType::kComplexFloat)
+                 && (in.data.dataInfo.type == data::DataType::kFloat))
+               || ((out.data.dataInfo.type == data::DataType::kComplexDouble)
+                   && (in.data.dataInfo.type == data::DataType::kDouble));
+      }
+      return ((out.data.dataInfo.type == data::DataType::kFloat)
+               && (in.data.dataInfo.type == data::DataType::kComplexFloat))
+             || ((out.data.dataInfo.type == data::DataType::kDouble)
+                 && (in.data.dataInfo.type == data::DataType::kComplexDouble));
+    }
+
+    // TODO move definitions into .cpp file
+    template<typename F> void manyHelper(const InputData &in, const Settings &settings, F function)
+    {
       auto &fd = in.data.info;
       auto n = std::array<int, 3>{
         static_cast<int>(fd.GetPaddedSpatialSize().z),
@@ -76,7 +91,7 @@ namespace fourier_transformation {
       } else {
         idist = fd.GetPaddedFrequencySize().single;
         odist = fd.GetPaddedSpatialSize().single;
-        type = (in.data.dataInfo.type == data::DataType::kFloat) ? CUFFT_C2R : CUFFT_Z2D;
+        type = (in.data.dataInfo.type == data::DataType::kComplexFloat) ? CUFFT_C2R : CUFFT_Z2D;
       }
 
       int rank = ToInt(fd.GetPaddedSpatialSize().GetDim());
