@@ -44,6 +44,10 @@ namespace data {
       return fsd;// FIXME decide whether you want to throw exception, or return optional
     }
 
+    double GetNormFactor() const {
+      return 1.0 / static_cast<double>(paddedSize.single);
+    }
+
     // fixme say that padded size is size + padding
     explicit FourierDescriptor(const Size &s, const Size &padded)
       : size(s), paddedSize(padded), frequencyDomainSize(ComputeFrequencySize(s)),

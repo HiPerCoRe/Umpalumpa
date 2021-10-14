@@ -105,7 +105,7 @@ namespace fourier_processing {
 
         // normalize using the original size
         auto normFactor =
-          tuner.AddArgumentScalar(1.f / static_cast<float>(in.data.info.GetPaddedSpatialSize().single));
+          tuner.AddArgumentScalar(static_cast<float>(in.data.info.GetNormFactor()));
 
         auto definitionId =
           helper.GetKernelData(GetFullName()).at(kernelDataIndex).definitionIds[0];

@@ -53,7 +53,8 @@ public:
 
     float delta = 0.00001f;
     checkEdges(output, outSize, delta);
-    checkInside(output, outSize, input, inSize, filter, settings, delta);
+    float normFactor = 1.f / in.data.info.GetSpatialSize().single;
+    checkInside(output, outSize, input, inSize, normFactor, filter, settings, delta);
   }
 
 protected:
@@ -77,6 +78,7 @@ protected:
     const Size &outSize,
     const std::complex<float> *input,
     const Size &inSize,
+    float normFactor,
     const float *filter,
     const Settings &s,
     float delta = 0.00001f) const
@@ -96,7 +98,6 @@ protected:
             inImag *= filterCoef;
           }
           if (s.GetNormalize()) {
-            float normFactor = 1.f / static_cast<float>(inSize.single);
             inReal *= normFactor;
             inImag *= normFactor;
           }
