@@ -159,15 +159,15 @@ protected:
     auto &paddedOutSize = outSize;
 
     ldIn1 = std::make_unique<FourierDescriptor>(inSize, paddedInSize, FourierDescriptor::FourierSpaceDescriptor{});
-    auto inputSizeInBytes = ldIn1->GetPaddedSize().total * Sizeof(DataType::kFloat) * 2;
-    pdIn1 = std::make_unique<PhysicalDescriptor>(inputSizeInBytes, DataType::kFloat);
+    auto inputSizeInBytes = ldIn1->GetPaddedSize().total * Sizeof(DataType::kComplexFloat);
+    pdIn1 = std::make_unique<PhysicalDescriptor>(inputSizeInBytes, DataType::kComplexFloat);
 
     inData1 = std::shared_ptr<void>(Allocate(pdIn1->bytes), GetFree());
     memset(inData1.get(), 0, pdIn1->bytes);
 
     ldIn2 = std::make_unique<FourierDescriptor>(in2Size, paddedIn2Size, FourierDescriptor::FourierSpaceDescriptor{});
-    auto input2SizeInBytes = ldIn2->GetPaddedSize().total * Sizeof(DataType::kFloat) * 2;
-    pdIn2 = std::make_unique<PhysicalDescriptor>(input2SizeInBytes, DataType::kFloat);
+    auto input2SizeInBytes = ldIn2->GetPaddedSize().total * Sizeof(DataType::kComplexFloat);
+    pdIn2 = std::make_unique<PhysicalDescriptor>(input2SizeInBytes, DataType::kComplexFloat);
 
     if (isWithin) {
       inData2 = inData1;
@@ -177,8 +177,8 @@ protected:
     }
 
     ldOut = std::make_unique<FourierDescriptor>(outSize, paddedOutSize, FourierDescriptor::FourierSpaceDescriptor{});
-    auto outputSizeInBytes = ldOut->GetPaddedSize().total * Sizeof(DataType::kFloat) * 2;
-    pdOut = std::make_unique<PhysicalDescriptor>(outputSizeInBytes, DataType::kFloat);
+    auto outputSizeInBytes = ldOut->GetPaddedSize().total * Sizeof(DataType::kComplexFloat);
+    pdOut = std::make_unique<PhysicalDescriptor>(outputSizeInBytes, DataType::kComplexFloat);
 
     outData = std::shared_ptr<void>(Allocate(pdOut->bytes), GetFree());
   }

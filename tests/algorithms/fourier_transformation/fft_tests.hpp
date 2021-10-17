@@ -65,11 +65,11 @@ public:
     auto *outData = reinterpret_cast<float*>(out.data.ptr);
 
     for (size_t n = 0; n < in.data.info.GetPaddedSize().single; ++n) {
-      // impulse at the origin ...
+      // constant real value, and no imag value ...
       inData[n] = {1.f, 0};
     }
 
-    //PrintData(inData, in.data.info.GetPaddedSize());
+    // PrintData(inData, in.data.info.GetPaddedSize());
 
     auto &ft = GetTransformer();
 
@@ -77,7 +77,7 @@ public:
     ft.Execute(out, in);
     ft.Synchronize();
 
-    //PrintData(outData, out.data.info.GetSize());
+    // PrintData(outData, out.data.info.GetSize());
 
     float delta = 0.00001f;
     for (size_t n = 0; n < out.data.info.GetSize().n; ++n) {
@@ -213,7 +213,7 @@ protected:
     throw std::logic_error("GetFree() method not overridden!");
   }
 
-  // Deliberately not using gtest's SetUp method, because we need to know Settings and
+    // Deliberately not using gtest's SetUp method, because we need to know Settings and
   // Size of the current test to properly initialize memory
   // ONLY float currently supported!!
   void SetUpFFT(const Settings &settings, const Size &size, const Size &paddedSize) {
@@ -225,8 +225,8 @@ protected:
     memset(dataSpatial.get(), 0, pdSpatial->bytes);
 
     ldFrequency = std::make_unique<FourierDescriptor>(size, paddedSize, FourierDescriptor::FourierSpaceDescriptor());
-    auto frequencySizeInBytes = ldFrequency->GetPaddedSize().total * Sizeof(DataType::kFloat) * 2;
-    pdFrequency = std::make_unique<PhysicalDescriptor>(frequencySizeInBytes, DataType::kFloat);
+    auto frequencySizeInBytes = ldFrequency->GetPaddedSize().total * Sizeof(DataType::kComplexFloat);
+    pdFrequency = std::make_unique<PhysicalDescriptor>(frequencySizeInBytes, DataType::kComplexFloat);
 
     if (settings.IsOutOfPlace()) {
       dataFrequency = std::shared_ptr<void>(Allocate(pdFrequency->bytes), GetFree());

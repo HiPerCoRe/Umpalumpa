@@ -12,9 +12,13 @@ namespace fourier_processing {
     {
       static constexpr auto kStrategyName = "Strategy1";
 
-      bool Init(const AFP::OutputData &, const AFP::InputData &, const Settings &) override final
+      bool
+        Init(const AFP::OutputData &out, const AFP::InputData &in, const Settings &) override final
       {
-        return true;// FIXME !!!
+        // FIXME check settings
+        return (in.data.dataInfo.type == data::DataType::kComplexFloat)
+               && (in.filter.dataInfo.type == data::DataType::kFloat)
+               && (out.data.dataInfo.type == data::DataType::kComplexFloat);
       }
 
       std::string GetName() const override final { return kStrategyName; }

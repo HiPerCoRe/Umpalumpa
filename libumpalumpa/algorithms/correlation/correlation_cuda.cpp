@@ -36,7 +36,10 @@ namespace correlation {
         const Settings &s,
         utils::KTTHelper &helper) override final
       {
-        bool canProcess = true;// FIXME
+        // FIXME check settings
+        bool canProcess = (in.data1.dataInfo.type == data::DataType::kComplexFloat)
+                          && (in.data2.dataInfo.type == data::DataType::kComplexFloat)
+                          && (out.data.dataInfo.type == data::DataType::kComplexFloat);
 
         if (canProcess) {
           const ktt::DimensionVector blockDimensions(kBlockDimX, kBlockDimY, kBlockDimZ);

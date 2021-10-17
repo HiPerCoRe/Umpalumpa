@@ -29,11 +29,14 @@ namespace fourier_processing {
       }
 
       bool Init(const FP_CUDA::OutputData &out,
-        const FP_CUDA::InputData &,
+        const FP_CUDA::InputData &in,
         const Settings &s,
         utils::KTTHelper &helper) override final
       {
-        bool canProcess = true;// FIXME
+        // FIXME check settings
+        bool canProcess = (in.data.dataInfo.type == data::DataType::kComplexFloat)
+                          && (in.filter.dataInfo.type == data::DataType::kFloat)
+                          && (out.data.dataInfo.type == data::DataType::kComplexFloat);
 
         if (canProcess) {
           const ktt::DimensionVector blockDimensions(kBlockDimX, kBlockDimY, kBlockDimZ);
