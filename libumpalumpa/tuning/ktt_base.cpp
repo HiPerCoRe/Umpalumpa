@@ -1,4 +1,4 @@
-#include <libumpalumpa/algorithms/ktt_base.hpp>
+#include <libumpalumpa/tuning/ktt_base.hpp>
 #include <libumpalumpa/utils/cuda.hpp>
 
 namespace umpalumpa {
