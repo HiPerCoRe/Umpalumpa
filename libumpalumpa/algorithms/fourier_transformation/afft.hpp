@@ -21,8 +21,8 @@ namespace fourier_transformation {
       return *settings.get();
     }
 
-    void SetSettings(const Settings& settings) {
-      this->settings = std::make_unique<Settings>(settings);
+    void SetSettings(const Settings& s) {
+      this->settings = std::make_unique<Settings>(s);
     }
 
     // FIXME IsValid needs to check the data type (either float or double)

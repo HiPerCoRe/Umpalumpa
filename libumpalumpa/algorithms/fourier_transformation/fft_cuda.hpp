@@ -5,7 +5,6 @@
 #include <libumpalumpa/data/fourier_descriptor.hpp>
 #include <array>
 #include <stdexcept>
-#include <libumpalumpa/data/data_type.hpp>
 
 namespace umpalumpa {
 namespace fourier_transformation {
