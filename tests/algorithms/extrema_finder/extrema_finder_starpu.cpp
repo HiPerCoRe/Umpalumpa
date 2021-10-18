@@ -17,7 +17,7 @@ public:
     STARPU_CHECK_RETURN_VALUE(starpu_task_wait_for_all(), "Waiting for all tasks");
   }
 
-  auto Allocate(size_t bytes) // FIXME auto *Allocate()
+  auto Allocate(size_t bytes)// FIXME auto *Allocate()
   {
     void *ptr = nullptr;
     starpu_malloc(&ptr, bytes);
@@ -29,4 +29,4 @@ private:
   SingleExtremaFinderStarPU searcher;
 };
 #define NAME SingleExtremaFinderStarPUTest
-#include <tests/algorithms/extrema_finder_common.hpp>
+#include <tests/algorithms/extrema_finder/extrema_finder_common.hpp>

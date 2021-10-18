@@ -25,4 +25,4 @@ private:
   SingleExtremaFinderCUDA searcher = SingleExtremaFinderCUDA(0);
 };
 #define NAME SingleExtremaFinderCUDATest
-#include <tests/algorithms/extrema_finder_common.hpp>
+#include <tests/algorithms/extrema_finder/extrema_finder_common.hpp>
