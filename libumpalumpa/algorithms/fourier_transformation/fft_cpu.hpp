@@ -9,6 +9,7 @@ namespace fourier_transformation {
   public:
     bool Init(const ResultData &out, const InputData &in, const Settings &settings) override;
     bool Execute(const ResultData &out, const InputData &in) override;
+    void Synchronize() override{};
 
     struct Strategy
     {
