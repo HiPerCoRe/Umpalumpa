@@ -1,6 +1,6 @@
 #pragma once
 
-#include <libumpalumpa/utils/ktt_provider.hpp>
+#include <libumpalumpa/tuning/ktt_provider.hpp>
 #include <cassert>
 
 typedef struct CUstream_st *CUstream;

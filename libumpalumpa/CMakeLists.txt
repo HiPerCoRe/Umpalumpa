@@ -11,14 +11,14 @@ set_target_properties(umpalumpa PROPERTIES SOVERSION 0 VERSION 0.0.1)
 set(umpalumpa_sources
     utils/system.cpp
     utils/cuda.cpp
-    utils/ktt_provider.cpp
     algorithms/extrema_finder/single_extrema_finder_cpu.cpp
     algorithms/extrema_finder/single_extrema_finder_cuda.cpp
     algorithms/fourier_transformation/fft_cuda.hpp
     algorithms/fourier_processing/fp_cpu.cpp
     algorithms/fourier_processing/fp_cuda.cpp
     algorithms/correlation/correlation_cuda.cpp
-    algorithms/ktt_base.cpp)
+    tuning/ktt_provider.cpp
+    tuning/ktt_base.cpp)
 
 if(USE_STARPU)
   list(APPEND umpalumpa_sources algorithms/extrema_finder/single_extrema_finder_starpu.cpp)

@@ -16,4 +16,4 @@ private:
   SingleExtremaFinderCPU searcher;
 };
 #define NAME SingleExtremaFinderCPUTest
-#include <tests/algorithms/extrema_finder_common.hpp>
+#include <tests/algorithms/extrema_finder/extrema_finder_common.hpp>

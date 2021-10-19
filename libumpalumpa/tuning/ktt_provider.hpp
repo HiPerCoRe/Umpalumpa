@@ -4,7 +4,7 @@
 #include <mutex>
 #include <map>
 #include <cassert>
-#include <libumpalumpa/utils/ktt_helper.hpp>
+#include <libumpalumpa/tuning/ktt_helper.hpp>
 
 namespace umpalumpa {
 namespace utils {

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <libumpalumpa/algorithms/fourier_processing/afp.hpp>
-#include <libumpalumpa/algorithms/ktt_base.hpp>
+#include <libumpalumpa/tuning/ktt_base.hpp>
 #include <vector>
 #include <memory>
 #include <map>

@@ -1,5 +1,4 @@
-
-#include <libumpalumpa/utils/ktt_provider.hpp>
+#include <libumpalumpa/tuning/ktt_provider.hpp>
 
 namespace umpalumpa {
 namespace utils {
