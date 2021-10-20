@@ -28,10 +28,10 @@ namespace fourier_transformation {
     // FIXME IsValid needs to check the data type (either float or double)
 
   public:
-    using ResultData = DataWrapper<data::Payload<data::FourierDescriptor>>;//FIXME rename to OutputData
+    using OutputData = DataWrapper<data::Payload<data::FourierDescriptor>>;
     using InputData = DataWrapper<data::Payload<data::FourierDescriptor>>;
-    virtual bool Init(const ResultData &out, const InputData &in, const Settings &settings) = 0;
-    virtual bool Execute(const ResultData &out, const InputData &in) = 0;
+    virtual bool Init(const OutputData &out, const InputData &in, const Settings &settings) = 0;
+    virtual bool Execute(const OutputData &out, const InputData &in) = 0;
     virtual void Cleanup(){
       settings.reset();
     };

@@ -22,7 +22,7 @@ namespace fourier_transformation {
         CudaErrchk(cuStreamCreate(&stream, CU_STREAM_DEFAULT));
     }
 
-    bool Init(const ResultData &out, const InputData &in, const Settings &settings) override
+    bool Init(const OutputData &out, const InputData &in, const Settings &settings) override
     {
       bool canProcess = checkTypes(out, in, settings.GetDirection());
       if (!canProcess) return false;
@@ -35,7 +35,7 @@ namespace fourier_transformation {
       return true;
     }
 
-    bool Execute(const ResultData &out, const InputData &in) override {
+    bool Execute(const OutputData &out, const InputData &in) override {
       // TODO create methods for comparing this InputData with Init InputData
       auto direction = (GetSettings().IsForward() ? CUFFT_FORWARD : CUFFT_INVERSE);
       CudaErrchk(cufftXtExec(plan, in.data.ptr, out.data.ptr, direction));
@@ -56,7 +56,7 @@ namespace fourier_transformation {
     cufftHandle plan;
     CUstream stream;
 
-    bool checkTypes(const ResultData &out, const InputData &in, Direction d)
+    bool checkTypes(const OutputData &out, const InputData &in, Direction d)
     {
       if (Direction::kForward == d) {
         return ((out.data.dataInfo.type == data::DataType::kComplexFloat)
