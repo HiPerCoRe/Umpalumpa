@@ -13,6 +13,7 @@ set(tests
     algorithms/extrema_finder/extrema_finder_cpu.cpp
     algorithms/extrema_finder/extrema_finder_cuda.cpp
     algorithms/fourier_transformation/fft_cuda.cpp
+    algorithms/fourier_transformation/fft_cpu.cpp
     algorithms/fourier_processing/fp_cpu.cpp
     algorithms/fourier_processing/fp_cuda.cpp
     algorithms/correlation/correlation_cuda.cpp

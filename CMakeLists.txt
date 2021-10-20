@@ -14,6 +14,7 @@ include(cmake/PreventInSourceBuilds.cmake)
 include(cmake/Cache.cmake)
 # get all dependencies
 include(cmake/UpdateSubmodules.cmake)
+include(cmake/EnsureFFTW.cmake)
 
 # Link this 'library' (phony target) to set the c++ standard / compile-time options requested
 add_library(project_options INTERFACE)
@@ -53,6 +54,9 @@ if(USE_STARPU)
   include(cmake/EnsureStarPU.cmake)
   ensure_starpu(library_starpu)
 endif()
+
+add_library(library_fftw INTERFACE)
+ensure_fftw(library_fftw)
 
 add_subdirectory(libumpalumpa)
 

@@ -8,10 +8,13 @@
 using namespace umpalumpa::fourier_transformation;
 using namespace umpalumpa::data;
 
-class FFTCUDATest : public ::testing::Test, public FFT_Tests
+class FFTCUDATest
+  : public ::testing::Test
+  , public FFT_Tests
 {
 public:
-  void *Allocate(size_t bytes) override {
+  void *Allocate(size_t bytes) override
+  {
     void *ptr;
     CudaErrchk(cudaMallocManaged(&ptr, bytes));
     return ptr;
@@ -20,7 +23,10 @@ public:
   void Free(void *ptr) override { cudaFree(ptr); }
 
   // CANNOT return "Free" method, because of the destruction order
-  FreeFunction GetFree() override { return [](void *ptr){ CudaErrchk(cudaFree(ptr));}; }
+  FreeFunction GetFree() override
+  {
+    return [](void *ptr) { CudaErrchk(cudaFree(ptr)); };
+  }
 
   FFTCUDA &GetTransformer() override { return transformer; }
 
@@ -29,4 +35,3 @@ protected:
 };
 #define NAME FFTCUDATest
 #include <tests/algorithms/fourier_transformation/afft_common.hpp>
-
