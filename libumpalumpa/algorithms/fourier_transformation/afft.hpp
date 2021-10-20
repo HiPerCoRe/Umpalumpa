@@ -12,7 +12,7 @@ namespace fourier_transformation {
   protected:
     template<typename T> struct DataWrapper
     {
-      DataWrapper(T &&d) : data(std::move(d)) {}
+      DataWrapper(T d) : data(std::move(d)) {}
       const T data;
       typedef T PayloadType;
     };
