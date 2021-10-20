@@ -96,7 +96,7 @@ namespace data {
     T info;
     PhysicalDescriptor dataInfo;
     std::string description;
-    typedef T type;
+    typedef T LDType;
 
   private:
     static auto constexpr suffixEmpty = " [empty]";

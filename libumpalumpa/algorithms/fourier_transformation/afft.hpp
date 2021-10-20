@@ -14,7 +14,7 @@ namespace fourier_transformation {
     {
       DataWrapper(T &&d) : data(std::move(d)) {}
       const T data;
-      typedef T type;
+      typedef T PayloadType;
     };
 
     const Settings& GetSettings() const {
