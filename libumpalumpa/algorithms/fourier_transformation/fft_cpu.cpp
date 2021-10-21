@@ -176,8 +176,6 @@ namespace fourier_transformation {
     private:
       typename T::kPlanType plan;
     };
-
-
   }// namespace
 
   std::vector<std::unique_ptr<FFTCPU::Strategy>> FFTCPU::GetStrategies() const
@@ -187,6 +185,5 @@ namespace fourier_transformation {
     vec.emplace_back(std::make_unique<UniversalStrategy<DoubleFFTWHelper>>());
     return vec;
   }
-
 }// namespace fourier_transformation
 }// namespace umpalumpa

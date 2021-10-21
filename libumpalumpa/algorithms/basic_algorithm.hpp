@@ -136,7 +136,7 @@ protected:
    * algorithm. By default, the first Strategy which returns true from its
    * initialization method will be used during the execution.
    **/
-  virtual std::vector<std::unique_ptr<Strategy>> GetStrategies() const = 0;
+  virtual std::vector<std::unique_ptr<Strategy>> GetStrategies() const { return {}; };
 
   const InputData &GetOutputRef() const { return *outputRef.get(); }
 

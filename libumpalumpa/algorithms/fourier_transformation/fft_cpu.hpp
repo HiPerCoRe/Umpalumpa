@@ -3,7 +3,7 @@
 
 namespace umpalumpa {
 namespace fourier_transformation {
-  class FFTCPU : public AFFT
+  class FFTCPU final : public AFFT
   {
   public:
     using BasicAlgorithm::Strategy;
