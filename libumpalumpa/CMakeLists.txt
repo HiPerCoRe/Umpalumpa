@@ -18,6 +18,7 @@ set(umpalumpa_sources
     algorithms/fourier_processing/fp_cuda.cpp
     algorithms/correlation/correlation_cuda.cpp
     tuning/ktt_provider.cpp
+    tuning/algorithm_manager.cpp
     tuning/ktt_base.cpp)
 
 if(USE_STARPU)

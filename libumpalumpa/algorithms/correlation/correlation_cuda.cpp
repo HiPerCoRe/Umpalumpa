@@ -31,11 +31,24 @@ namespace correlation {
         return static_cast<size_t>(std::ceil(static_cast<float>(l) / static_cast<float>(r)));
       }
 
+      size_t GetHash() const override { return 0; }
+      bool IsSimilar(const TunableStrategy &other) const override
+      {
+        if (GetFullName() != other.GetFullName()) { return false; }
+        // Now we know that type of 'other' is the same as 'this' and we can safely cast it to the
+        // needed type
+        // auto &o = dynamic_cast<const Strategy1 &>(other);
+        // TODO real similarity check
+        return false;
+      }
+
       bool Init(const Correlation_CUDA::OutputData &out,
         const Correlation_CUDA::InputData &in,
         const Settings &s,
         utils::KTTHelper &helper) override final
       {
+        TunableStrategy::Init(helper);
+
         // FIXME check settings
         bool canProcess = (in.data1.dataInfo.type == data::DataType::kComplexFloat)
                           && (in.data2.dataInfo.type == data::DataType::kComplexFloat)
@@ -58,6 +71,7 @@ namespace correlation {
             auto definitionId = tuner.AddKernelDefinitionFromFile(
               kTMP, kKernelFile, gridDimensions, blockDimensions, { "float2" });
             auto kernelId = tuner.CreateSimpleKernel(kTMP, definitionId);
+            SetKernelId(kernelId);
             tuner.AddParameter(kernelId, "center", std::vector<uint64_t>{ s.GetCenter() });
             tuner.AddParameter(
               kernelId, "isWithin", std::vector<uint64_t>{ in.data1.ptr == in.data2.ptr });
