@@ -1,5 +1,4 @@
 #include <libumpalumpa/algorithms/fourier_transformation/fft_cpu.hpp>
-#include <libumpalumpa/system_includes/spdlog.hpp>
 #include <fftw3.h>
 #include <mutex>
 
@@ -19,7 +18,7 @@ namespace fourier_transformation {
       const Settings &settings,
       F function)
     {
-      auto &fd = in.data.info;
+      auto &fd = in.payload.info;
       auto n = std::array<int, 3>{ static_cast<int>(fd.GetPaddedSpatialSize().z),
         static_cast<int>(fd.GetPaddedSpatialSize().y),
         static_cast<int>(fd.GetPaddedSpatialSize().x) };
@@ -49,42 +48,22 @@ namespace fourier_transformation {
       // set threads
       // fftw_plan_with_nthreads(threads);
       // fftwf_plan_with_nthreads(threads);
-      
+
       // only one thread can create a plan
       std::lock_guard<std::mutex> lck(mutex);
       auto tmp = function(rank,
         &n[offset],
-        static_cast<int>(in.data.info.GetPaddedSize().n),
-        in.data.ptr,
+        static_cast<int>(in.payload.info.GetPaddedSize().n),
+        in.payload.ptr,
         nullptr,
         1,
         idist,
-        out.data.ptr,
+        out.payload.ptr,
         nullptr,
         1,
         odist,
         flags);
       return tmp;
-    }
-
-    bool IsDouble(const AFFT::OutputData &out, const AFFT::InputData &in, Direction d)
-    {
-      if (Direction::kForward == d) {
-        return ((out.data.dataInfo.type == data::DataType::kComplexDouble)
-                && (in.data.dataInfo.type == data::DataType::kDouble));
-      }
-      return ((out.data.dataInfo.type == data::DataType::kDouble)
-              && (in.data.dataInfo.type == data::DataType::kComplexDouble));
-    }
-
-    bool IsFloat(const AFFT::OutputData &out, const AFFT::InputData &in, Direction d)
-    {
-      if (Direction::kForward == d) {
-        return ((out.data.dataInfo.type == data::DataType::kComplexFloat)
-                && (in.data.dataInfo.type == data::DataType::kFloat));
-      }
-      return ((out.data.dataInfo.type == data::DataType::kFloat)
-              && (in.data.dataInfo.type == data::DataType::kComplexFloat));
     }
 
     struct StrategyFloat : public FFTCPU::Strategy
@@ -97,7 +76,7 @@ namespace fourier_transformation {
         const AFFT::InputData &in,
         const Settings &settings) override final
       {
-        bool canProcess = IsFloat(out, in, settings.GetDirection());
+        bool canProcess = AFFT::IsFloat(out, in, settings.GetDirection());
         if (!canProcess) return false;
         auto f = [&settings](int rank,
                    const int *n,
@@ -149,8 +128,6 @@ namespace fourier_transformation {
         const AFFT::InputData &in,
         const Settings &s) override final
       {
-        if (!in.data.IsValid() || in.data.IsEmpty() || !out.data.IsValid() || out.data.IsEmpty())
-          return false;
         // FIXME Since FFTW is very picky about the data alignment etc.,
         // we currently internally reinitialize the algorithm each time Execute() is called
         // Based on the documentation, replanning for existing size should be fast, but
@@ -160,12 +137,12 @@ namespace fourier_transformation {
         this->Init(out, in, s);
         if (s.IsForward()) {
           fftwf_execute_dft_r2c(plan,
-            reinterpret_cast<float *>(in.data.ptr),
-            reinterpret_cast<fftwf_complex *>(out.data.ptr));
+            reinterpret_cast<float *>(in.payload.ptr),
+            reinterpret_cast<fftwf_complex *>(out.payload.ptr));
         } else {
           fftwf_execute_dft_c2r(plan,
-            reinterpret_cast<fftwf_complex *>(in.data.ptr),
-            reinterpret_cast<float *>(out.data.ptr));
+            reinterpret_cast<fftwf_complex *>(in.payload.ptr),
+            reinterpret_cast<float *>(out.payload.ptr));
         }
         return true;
       }
@@ -185,7 +162,7 @@ namespace fourier_transformation {
         const AFFT::InputData &in,
         const Settings &settings) override final
       {
-        bool canProcess = IsDouble(out, in, settings.GetDirection());
+        bool canProcess = AFFT::IsDouble(out, in, settings.GetDirection());
         if (!canProcess) return false;
         auto f = [&settings](int rank,
                    const int *n,
@@ -237,8 +214,6 @@ namespace fourier_transformation {
         const AFFT::InputData &in,
         const Settings &s) override final
       {
-        if (!in.data.IsValid() || in.data.IsEmpty() || !out.data.IsValid() || out.data.IsEmpty())
-          return false;
         // FIXME Since FFTW is very picky about the data alignment etc.,
         // we currently internally reinitialize the algorithm each time Execute() is called
         // Based on the documentation, replanning for existing size should be fast, but
@@ -248,12 +223,12 @@ namespace fourier_transformation {
         this->Init(out, in, s);
         if (s.IsForward()) {
           fftw_execute_dft_r2c(plan,
-            reinterpret_cast<double *>(in.data.ptr),
-            reinterpret_cast<fftw_complex *>(out.data.ptr));
+            reinterpret_cast<double *>(in.payload.ptr),
+            reinterpret_cast<fftw_complex *>(out.payload.ptr));
         } else {
           fftw_execute_dft_c2r(plan,
-            reinterpret_cast<fftw_complex *>(in.data.ptr),
-            reinterpret_cast<double *>(out.data.ptr));
+            reinterpret_cast<fftw_complex *>(in.payload.ptr),
+            reinterpret_cast<double *>(out.payload.ptr));
         }
         return true;
       }
@@ -264,27 +239,13 @@ namespace fourier_transformation {
 
   }// namespace
 
-  bool FFTCPU::Init(const OutputData &out, const InputData &in, const Settings &s)
+  std::vector<std::unique_ptr<FFTCPU::Strategy>> FFTCPU::GetStrategies() const
   {
-    if (IsInitialized()) { strategy.reset(); }
-    SetSettings(s);
-    auto tryToAdd = [this, &out, &in, &s](auto i) {
-      bool canAdd = i->Init(out, in, s);
-      if (canAdd) {
-        spdlog::debug("Found valid strategy {}", i->GetName());
-        strategy = std::move(i);
-      }
-      return canAdd;
-    };
-
-    return tryToAdd(std::make_unique<StrategyFloat>())
-           || tryToAdd(std::make_unique<StrategyDouble>());
+    std::vector<std::unique_ptr<FFTCPU::Strategy>> vec;
+    vec.emplace_back(std::make_unique<StrategyFloat>());
+    vec.emplace_back(std::make_unique<StrategyDouble>());
+    return vec;
   }
 
-  bool FFTCPU::Execute(const OutputData &out, const InputData &in)
-  {
-    if (!this->IsInitialized()) return false;
-    return strategy->Execute(out, in, GetSettings());
-  }
 }// namespace fourier_transformation
 }// namespace umpalumpa

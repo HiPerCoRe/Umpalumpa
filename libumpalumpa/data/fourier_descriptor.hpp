@@ -17,6 +17,11 @@ namespace data {
       bool isCentered;// FIXME: change to enum
       bool isNormalized;// FIXME: change to enum
       bool hasSymetry;// FIXME: find proper name
+      bool operator==(const FourierSpaceDescriptor &o) const
+      {
+        return (isCentered == o.isCentered) && (isNormalized == o.isNormalized)
+               && (hasSymetry == o.hasSymetry);
+      }
     };
 
     inline const auto &GetSpatialSize() const { return size; }
@@ -44,9 +49,7 @@ namespace data {
       return fsd;// FIXME decide whether you want to throw exception, or return optional
     }
 
-    double GetNormFactor() const {
-      return 1.0 / static_cast<double>(paddedSize.single);
-    }
+    double GetNormFactor() const { return 1.0 / static_cast<double>(paddedSize.single); }
 
     // fixme say that padded size is size + padding
     explicit FourierDescriptor(const Size &s, const Size &padded)
@@ -86,6 +89,12 @@ namespace data {
     }
 
     virtual size_t Elems() const { return GetPaddedSize().total; }
+
+    bool IsEquivalentTo(const FourierDescriptor &ref) const
+    {
+      return size.IsEquivalentTo(ref.size) && paddedSize.IsEquivalentTo(ref.paddedSize)
+             && (isSpatial == ref.isSpatial) && (fsd == ref.fsd);
+    }
 
     // fixme these should be private + getters / setters
   private:
