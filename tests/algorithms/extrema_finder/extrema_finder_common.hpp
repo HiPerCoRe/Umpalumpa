@@ -39,7 +39,7 @@ TEST_F(NAME, SearchData_Subset)
   const auto sizeIn = Size(3, 5, 7, 11);
   const auto data = std::unique_ptr<float[]>(new float[sizeIn.total]);
   std::iota(data.get(), data.get() + sizeIn.total, 0);
-  const auto ldIn = LogicalDescriptor(sizeIn, sizeIn, "IOTA");
+  const auto ldIn = LogicalDescriptor(sizeIn);
   const auto dt = DataType::kFloat;
   const auto pdIn = PhysicalDescriptor(sizeIn.total * Sizeof(dt) + 13, dt);// add some extra bytes
   const auto in = AExtremaFinder::SearchData(Payload(data.get(), ldIn, pdIn, "Random data"));
@@ -52,7 +52,7 @@ TEST_F(NAME, SearchData_Subset)
     const size_t startN = i * batch;
     const auto s = in.data.Subset(startN, batch);
     // check size
-    ASSERT_EQ(s.info.size, Size(3, 5, 7, batch)) << " for i=" << i;
+    ASSERT_EQ(s.info.GetSize(), Size(3, 5, 7, batch)) << " for i=" << i;
     const size_t offset = startN * sizeIn.single;
     // check that pointer is correct
     ASSERT_EQ(s.ptr, data.get() + offset) << " for i=" << i;
@@ -62,7 +62,7 @@ TEST_F(NAME, SearchData_Subset)
   // check last iteration
   const auto s = in.data.Subset(9, batch);
   // check size
-  ASSERT_EQ(s.info.size, Size(3, 5, 7, 2));
+  ASSERT_EQ(s.info.GetSize(), Size(3, 5, 7, 2));
   const size_t offset = 9 * sizeIn.single;
   // check that pointer is correct
   ASSERT_EQ(s.ptr, data.get() + offset);
@@ -76,7 +76,7 @@ TEST_F(NAME, 1D_batch_noPadd_max_valOnly)
   auto settings = Settings(SearchType::kMax, SearchLocation::kEntire, SearchResult::kValue);
   auto data = reinterpret_cast<float *>(Allocate(sizeIn.total * sizeof(float)));
   auto dataOrig = std::unique_ptr<float[]>(new float[sizeIn.total]);
-  auto ldIn = LogicalDescriptor(sizeIn, sizeIn, "Random input data");
+  auto ldIn = LogicalDescriptor(sizeIn);
   auto pdIn = PhysicalDescriptor(sizeIn.total * sizeof(float), DataType::kFloat);
   auto in = AExtremaFinder::SearchData(Payload(data, ldIn, pdIn, "Random data"));
 
@@ -86,7 +86,7 @@ TEST_F(NAME, 1D_batch_noPadd_max_valOnly)
 
   auto sizeValues = Size(1, 1, 1, sizeIn.n);
   auto values = reinterpret_cast<float *>(Allocate(sizeValues.total * sizeof(float)));
-  auto ldVal = LogicalDescriptor(sizeValues, sizeValues, "Values of the found extremas");
+  auto ldVal = LogicalDescriptor(sizeValues);
   auto pdVal = PhysicalDescriptor(sizeValues.total * sizeof(float), DataType::kFloat);
   auto valuesP = Payload(values, ldVal, pdVal, "Resulting maxima");
   auto out = AExtremaFinder::ResultData::ValuesOnly(valuesP);
@@ -120,7 +120,7 @@ TEST_F(NAME, 3D_manyBatches_noPadd_max_valOnly)
             << std::endl;
   auto settings = Settings(SearchType::kMax, SearchLocation::kEntire, SearchResult::kValue);
   auto data = reinterpret_cast<float *>(Allocate(sizeIn.total * sizeof(float)));
-  auto ldIn = LogicalDescriptor(sizeIn, sizeIn, "Basic data");
+  auto ldIn = LogicalDescriptor(sizeIn);
   auto pdIn = PhysicalDescriptor(sizeIn.total * sizeof(float), DataType::kFloat);
   auto inP = Payload(data, ldIn, pdIn, "Random data");
 
@@ -128,7 +128,7 @@ TEST_F(NAME, 3D_manyBatches_noPadd_max_valOnly)
 
   auto sizeValues = Size(1, 1, 1, sizeIn.n);
   auto values = reinterpret_cast<float *>(Allocate(sizeValues.total * sizeof(float)));
-  auto ldVal = LogicalDescriptor(sizeValues, sizeValues, "Values of the found extremas");
+  auto ldVal = LogicalDescriptor(sizeValues);
   auto pdVal = PhysicalDescriptor(sizeValues.total * sizeof(float), DataType::kFloat);
   auto valuesP = Payload(values, ldVal, pdVal, "Result maxima");
 
@@ -174,7 +174,7 @@ TEST_F(NAME, 2D_batch_noPadd_max_rectCenter_posOnly)
 
   auto settings = Settings(SearchType::kMax, SearchLocation::kRectCenter, SearchResult::kLocation);
   auto data = reinterpret_cast<float *>(Allocate(sizeIn.total * sizeof(float)));
-  auto ldIn = LogicalDescriptor(sizeIn, sizeIn, "Basic data");
+  auto ldIn = LogicalDescriptor(sizeIn);
   auto pdIn = PhysicalDescriptor(sizeIn.total * sizeof(float), DataType::kFloat);
   auto inP = Payload(data, ldIn, pdIn, "Random data");
 
@@ -182,7 +182,7 @@ TEST_F(NAME, 2D_batch_noPadd_max_rectCenter_posOnly)
 
   auto sizeValues = Size(1, 1, 1, sizeIn.n);
   auto locations = reinterpret_cast<float *>(Allocate(sizeValues.total * sizeof(float)));
-  auto ldVal = LogicalDescriptor(sizeValues, sizeValues, "Locations of the found extremas");
+  auto ldVal = LogicalDescriptor(sizeValues);
   auto pdVal = PhysicalDescriptor(sizeValues.total * sizeof(float), DataType::kFloat);
   auto locationsP = Payload(locations, ldVal, pdVal, "Result maxima");
 

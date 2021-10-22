@@ -35,14 +35,14 @@ namespace extrema_finder {
       {
         bool canProcess = (s.version == 1) && (s.location == SearchLocation::kEntire)
                           && (s.type == SearchType::kMax) && (s.result == SearchResult::kValue)
-                          && (in.data.info.size == in.data.info.paddedSize)
+                          && (!in.data.info.IsPadded())
                           && (in.data.dataInfo.type == umpalumpa::data::DataType::kFloat);
         if (canProcess) {
           // how many threads do we need?
-          threads = (in.data.info.size.single < kMaxThreads) ? ceilPow2(in.data.info.size.single)
+          threads = (in.data.info.GetSize().single < kMaxThreads) ? ceilPow2(in.data.info.GetSize().single)
                                                              : kMaxThreads;
           const ktt::DimensionVector blockDimensions(threads);
-          const ktt::DimensionVector gridDimensions(in.data.info.size.n);
+          const ktt::DimensionVector gridDimensions(in.data.info.GetSize().n);
           auto &tuner = helper.GetTuner();
           // ensure that we have the kernel loaded to KTT
           // this has to be done in critical section, as multiple instances of this algorithm
@@ -76,17 +76,17 @@ namespace extrema_finder {
         // prepare input data
         auto &tuner = helper.GetTuner();
         auto argIn = tuner.AddArgumentVector<float>(in.data.ptr,
-          in.data.info.size.total,
+          in.data.info.GetSize().total,
           ktt::ArgumentAccessType::ReadOnly,
           ktt::ArgumentMemoryLocation::Unified);
 
         // prepare output data
         auto argVals = tuner.AddArgumentVector<float>(out.values.ptr,
-          out.values.info.size.total,
+          out.values.info.GetSize().total,
           ktt::ArgumentAccessType::WriteOnly,
           ktt::ArgumentMemoryLocation::Unified);
 
-        auto argSize = tuner.AddArgumentScalar(in.data.info.size.single);
+        auto argSize = tuner.AddArgumentScalar(in.data.info.GetSize().single);
         // allocate local memory
         auto argLocMem = tuner.AddArgumentLocal<float>(2 * threads * sizeof(float));
 
@@ -98,7 +98,7 @@ namespace extrema_finder {
         auto kernelId = helper.GetKernelData(GetFullName()).at(kernelDataIndex).kernelIds[0];
         tuner.SetLauncher(kernelId, [this, &in, definitionId](ktt::ComputeInterface &interface) {
           const ktt::DimensionVector blockDimensions(threads);
-          const ktt::DimensionVector gridDimensions(in.data.info.size.n);
+          const ktt::DimensionVector gridDimensions(in.data.info.GetSize().n);
           interface.RunKernelAsync(
             definitionId, interface.GetAllQueues().at(0), gridDimensions, blockDimensions);
         });
@@ -125,7 +125,7 @@ namespace extrema_finder {
       {
         bool canProcess = (s.version == 1) && (s.location == SearchLocation::kRectCenter)
                           && (s.type == SearchType::kMax) && (s.result == SearchResult::kLocation)
-                          && (in.data.info.size == in.data.info.paddedSize)
+                          && (!in.data.info.IsPadded())
                           && (in.data.dataInfo.type == umpalumpa::data::DataType::kFloat);
         if (canProcess) {
           // TODO should be tuned by KTT, for now it is FIXED to work at least somehow
@@ -133,7 +133,7 @@ namespace extrema_finder {
           threadsX = 64;
           threadsY = 2;
           const ktt::DimensionVector blockDimensions(threadsX, threadsY);
-          const ktt::DimensionVector gridDimensions(in.data.info.size.n);
+          const ktt::DimensionVector gridDimensions(in.data.info.GetSize().n);
           auto &tuner = helper.GetTuner();
           // ensure that we have the kernel loaded to KTT
           // this has to be done in critical section, as multiple instances of this algorithm
@@ -169,16 +169,16 @@ namespace extrema_finder {
         // prepare input data
         auto &tuner = helper.GetTuner();
         auto argIn = tuner.AddArgumentVector<float>(in.data.ptr,
-          in.data.info.size.total,
+          in.data.info.GetSize().total,
           ktt::ArgumentAccessType::ReadOnly,
           ktt::ArgumentMemoryLocation::Unified);
 
-        auto argInSize = tuner.AddArgumentScalar(in.data.info.size);
+        auto argInSize = tuner.AddArgumentScalar(in.data.info.GetSize());
 
         // prepare output data
         auto argVals = tuner.AddArgumentScalar(NULL);
         auto argLocs = tuner.AddArgumentVector<float>(out.locations.ptr,
-          out.values.info.size.total,
+          out.values.info.GetSize().total,
           ktt::ArgumentAccessType::WriteOnly,
           ktt::ArgumentMemoryLocation::Unified);
 
@@ -216,7 +216,7 @@ namespace extrema_finder {
         // update grid dimension to properly react to batch size
         tuner.SetLauncher(kernelId, [this, &in, definitionId](ktt::ComputeInterface &interface) {
           const ktt::DimensionVector blockDimensions(threadsX, threadsY);
-          const ktt::DimensionVector gridDimensions(in.data.info.size.n);
+          const ktt::DimensionVector gridDimensions(in.data.info.GetSize().n);
           interface.RunKernelAsync(
             definitionId, interface.GetAllQueues().at(0), gridDimensions, blockDimensions);
         });

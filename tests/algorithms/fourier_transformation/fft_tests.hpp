@@ -216,15 +216,15 @@ protected:
     // Deliberately not using gtest's SetUp method, because we need to know Settings and
   // Size of the current test to properly initialize memory
   // ONLY float currently supported!!
-  void SetUpFFT(const Settings &settings, const Size &size, const Size &paddedSize) {
-    ldSpatial = std::make_unique<FourierDescriptor>(size, paddedSize);
+  void SetUpFFT(const Settings &settings, const Size &size, const PaddingDescriptor &padding) {
+    ldSpatial = std::make_unique<FourierDescriptor>(size, padding);
     auto spatialSizeInBytes = ldSpatial->GetPaddedSize().total * Sizeof(DataType::kFloat);
     pdSpatial = std::make_unique<PhysicalDescriptor>(spatialSizeInBytes, DataType::kFloat);
 
     dataSpatial = std::shared_ptr<void>(Allocate(pdSpatial->bytes), GetFree());
     memset(dataSpatial.get(), 0, pdSpatial->bytes);
 
-    ldFrequency = std::make_unique<FourierDescriptor>(size, paddedSize, FourierDescriptor::FourierSpaceDescriptor());
+    ldFrequency = std::make_unique<FourierDescriptor>(size, padding, FourierDescriptor::FourierSpaceDescriptor());
     auto frequencySizeInBytes = ldFrequency->GetPaddedSize().total * Sizeof(DataType::kComplexFloat);
     pdFrequency = std::make_unique<PhysicalDescriptor>(frequencySizeInBytes, DataType::kComplexFloat);
 

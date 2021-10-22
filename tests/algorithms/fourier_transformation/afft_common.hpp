@@ -22,7 +22,7 @@ TEST_F(NAME, InpulseOriginForward)
 
   Size size(5, 5, 1, 1);
 
-  SetUpFFT(settings, size, size);
+  SetUpFFT(settings, size, PaddingDescriptor());
 
   auto inP = AFFT::InputData(Payload(dataSpatial.get(), *ldSpatial, *pdSpatial, "Input data"));
   auto outP = AFFT::ResultData(Payload(dataFrequency.get(), *ldFrequency, *pdFrequency, "Result data"));
@@ -38,7 +38,7 @@ TEST_F(NAME, InpulseOriginInverse)
 
   Size size(5, 5, 1, 1);
 
-  SetUpFFT(settings, size, size);
+  SetUpFFT(settings, size, PaddingDescriptor());
 
   auto inP = AFFT::InputData(Payload(dataFrequency.get(), *ldFrequency, *pdFrequency, "Result data"));
   auto outP = AFFT::ResultData(Payload(dataSpatial.get(), *ldSpatial, *pdSpatial, "Input data"));
@@ -54,7 +54,7 @@ TEST_F(NAME, InpulseShiftedForward)
 
   Size size(5, 5, 1, 1);
 
-  SetUpFFT(settings, size, size);
+  SetUpFFT(settings, size, PaddingDescriptor());
 
   auto inP = AFFT::InputData(Payload(dataSpatial.get(), *ldSpatial, *pdSpatial, "Input data"));
   auto outP = AFFT::ResultData(Payload(dataFrequency.get(), *ldFrequency, *pdFrequency, "Result data"));
@@ -70,7 +70,7 @@ TEST_F(NAME, FFTIFFT)
 
   Size size(5, 5, 1, 1);
 
-  SetUpFFT(settings, size, size);
+  SetUpFFT(settings, size, PaddingDescriptor());
 
   auto inP = AFFT::InputData(Payload(dataSpatial.get(), *ldSpatial, *pdSpatial, "Input data"));
   auto outP = AFFT::ResultData(Payload(dataFrequency.get(), *ldFrequency, *pdFrequency, "Result data"));
