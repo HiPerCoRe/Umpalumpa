@@ -1,7 +1,7 @@
 #pragma once
 
 #include <memory>
-#include <libumpalumpa/system_includes/spdlog.hpp>
+#include <vector>
 
 namespace umpalumpa {
 template<typename O, typename I, typename S> class BasicAlgorithm
@@ -107,7 +107,6 @@ protected:
     auto tryToInit = [this, &out, &in, &s](auto &i) {
       bool canUse = i->Init(out, in, s);
       if (canUse) {
-        spdlog::debug("Found valid strategy {}", i->GetName());
         strategy = std::move(i);
       }
       return canUse;

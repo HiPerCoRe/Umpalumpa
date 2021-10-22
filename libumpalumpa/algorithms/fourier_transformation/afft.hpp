@@ -15,7 +15,7 @@ namespace fourier_transformation {
         Settings>
   {
   public:
-    static bool IsDouble(const AFFT::OutputData &out, const AFFT::InputData &in, Direction d)
+    static bool IsDouble(const OutputData &out, const InputData &in, Direction d)
     {
       if (Direction::kForward == d) {
         return ((out.payload.dataInfo.type == data::DataType::kComplexDouble)
@@ -25,7 +25,7 @@ namespace fourier_transformation {
               && (in.payload.dataInfo.type == data::DataType::kComplexDouble));
     }
 
-    static bool IsFloat(const AFFT::OutputData &out, const AFFT::InputData &in, Direction d)
+    static bool IsFloat(const OutputData &out, const InputData &in, Direction d)
     {
       if (Direction::kForward == d) {
         return ((out.payload.dataInfo.type == data::DataType::kComplexFloat)
@@ -39,8 +39,7 @@ namespace fourier_transformation {
     bool IsValid(const OutputData &out, const InputData &in, const Settings &s) override
     {
       return out.payload.IsValid() && in.payload.IsValid()
-             && (AFFT::IsDouble(out, in, s.GetDirection())
-                 || AFFT::IsFloat(out, in, s.GetDirection()));
+             && (IsDouble(out, in, s.GetDirection()) || IsFloat(out, in, s.GetDirection()));
     }
   };
 }// namespace fourier_transformation
