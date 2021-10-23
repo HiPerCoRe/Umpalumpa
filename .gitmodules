@@ -1,7 +1,7 @@
 [submodule "external/KTT"]
 	path = external/KTT
 	url = https://github.com/HiPerCoRe/KTT.git
-	branch = master
+	branch = development
 	ignore = untracked
 [submodule "external/spdlog"]
 	path = external/spdlog
