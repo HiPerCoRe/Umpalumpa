@@ -2,6 +2,7 @@
 
 #include <libumpalumpa/algorithms/extrema_finder/aextrema_finder.hpp>
 #include <libumpalumpa/tuning/ktt_base.hpp>
+#include <libumpalumpa/tuning/tunable_strategy.hpp>
 #include <vector>
 #include <memory>
 #include <map>
@@ -18,7 +19,7 @@ namespace extrema_finder {
     bool Init(const ResultData &out, const SearchData &in, const Settings &settings) override;
     bool Execute(const ResultData &out, const SearchData &in, const Settings &settings) override;
 
-    struct Strategy
+    struct Strategy : public algorithm::TunableStrategy
     {
       virtual ~Strategy() = default;
       virtual bool Init(const ResultData &,

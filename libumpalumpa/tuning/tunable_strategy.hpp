@@ -6,15 +6,14 @@ namespace umpalumpa::algorithm {
 
 class TunableStrategy
 {
-  ktt::KernelId kernel;// NOTE this might need change to a vector
-  utils::KTTHelper *kttHelper;
-
 public:
+  TunableStrategy() : strategyId(GetNewStrategyId()) {}
   virtual ~TunableStrategy()
   {
     AlgorithmManager::Get().Unregister(this);
-    // kttHelper->GetTuner().RemoveKernel(kernel);// FIXME uncomment once the strategies are
-    // reworked
+    if (kttHelper != nullptr) {
+      kttHelper->GetTuner().RemoveKernel(kernelId);
+    }// FIXME not working properly can be leak or something
   }
 
   virtual size_t GetHash() const = 0;
@@ -23,7 +22,7 @@ public:
   std::string GetFullName() const { return typeid(*this).name(); }
   ktt::KernelConfiguration GetBestConfiguration() const
   {
-    return kttHelper->GetTuner().GetBestConfiguration(kernel);
+    return kttHelper->GetTuner().GetBestConfiguration(kernelId);
   }
 
 protected:
@@ -38,7 +37,22 @@ protected:
     AlgorithmManager::Get().Register(this);
   }
 
-  void SetKernelId(ktt::KernelId id) { kernel = id; }
+  ktt::KernelId kernelId;// NOTE this might need change to a vector
+  ktt::KernelDefinitionId definitionId;// NOTE this might need change to a vector
+
+  // KTT needs different names for each kernel, this id serves as a simple unique identifier
+  const size_t strategyId;
+
+private:
+  utils::KTTHelper *kttHelper;
+
+  static size_t GetNewStrategyId()
+  {
+    static std::mutex mutex;
+    static size_t strategyCounter = 1;
+    std::lock_guard<std::mutex> lck(mutex);
+    return strategyCounter++;
+  }
 };
 
 }// namespace umpalumpa::algorithm

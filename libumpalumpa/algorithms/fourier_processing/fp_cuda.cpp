@@ -14,7 +14,6 @@ namespace fourier_processing {
     {
       // FIXME improve name of the kernel and variable
       static constexpr auto kTMP = "scaleFFT2DKernel";
-      static constexpr size_t kernelDataIndex = 0;
       // Currently we create one thread per each pixel of a single image. Each thread processes
       // same pixel of all images. The other option for 2D images is to map N dimension to the
       // Z dimension, ie. create more threads, each thread processing fewer images.
@@ -28,6 +27,17 @@ namespace fourier_processing {
         return static_cast<size_t>(std::ceil(static_cast<float>(l) / static_cast<float>(r)));
       }
 
+      size_t GetHash() const override { return 0; }
+      bool IsSimilar(const TunableStrategy &other) const override
+      {
+        if (GetFullName() != other.GetFullName()) { return false; }
+        // Now we know that type of 'other' is the same as 'this' and we can safely cast it to the
+        // needed type
+        // auto &o = dynamic_cast<const Strategy1 &>(other);
+        // TODO real similarity check
+        return false;
+      }
+
       bool Init(const FP_CUDA::OutputData &out,
         const FP_CUDA::InputData &in,
         const Settings &s,
@@ -39,6 +49,7 @@ namespace fourier_processing {
                           && (out.data.dataInfo.type == data::DataType::kComplexFloat);
 
         if (canProcess) {
+          TunableStrategy::Init(helper);
           const ktt::DimensionVector blockDimensions(kBlockDimX, kBlockDimY, kBlockDimZ);
           const auto &size = out.data.info.GetPaddedSize();
           const ktt::DimensionVector gridDimensions(ComputeDimension(size.x, kBlockDimX),
@@ -50,19 +61,15 @@ namespace fourier_processing {
           // this has to be done in critical section, as multiple instances of this algorithm
           // might run on the same worker
           std::lock_guard<std::mutex> lck(helper.GetMutex());
-          auto &kernelData = helper.GetKernelData(GetFullName());
-          auto it = kernelData.find(kernelDataIndex);
-          if (kernelData.end() == it) {
-            auto definitionId = tuner.AddKernelDefinitionFromFile(
+          definitionId = tuner.GetKernelDefinitionId(kTMP);
+          if (definitionId == ktt::InvalidKernelDefinitionId) {
+            definitionId = tuner.AddKernelDefinitionFromFile(
               kTMP, kKernelFile, gridDimensions, blockDimensions, {});
-            auto kernelId = tuner.CreateSimpleKernel(kTMP, definitionId);
-            tuner.AddParameter(
-              kernelId, "applyFilter", std::vector<uint64_t>{ s.GetApplyFilter() });
-            tuner.AddParameter(kernelId, "normalize", std::vector<uint64_t>{ s.GetNormalize() });
-            tuner.AddParameter(kernelId, "center", std::vector<uint64_t>{ s.GetCenter() });
-            // register kernel data
-            kernelData[kernelDataIndex] = { { definitionId }, { kernelId } };
           }
+          kernelId = tuner.CreateSimpleKernel(kTMP + std::to_string(strategyId), definitionId);
+          tuner.AddParameter(kernelId, "applyFilter", std::vector<uint64_t>{ s.GetApplyFilter() });
+          tuner.AddParameter(kernelId, "normalize", std::vector<uint64_t>{ s.GetNormalize() });
+          tuner.AddParameter(kernelId, "center", std::vector<uint64_t>{ s.GetCenter() });
         }
         return canProcess;
       }
@@ -103,28 +110,25 @@ namespace fourier_processing {
                                                 // physical descriptor
               ktt::ArgumentMemoryLocation::Unified);// ^
           }
-          return tuner.AddArgumentScalar(nullptr);
+          return tuner.AddArgumentScalar(NULL);
         }();
 
         // normalize using the original size
-        auto normFactor =
-          tuner.AddArgumentScalar(static_cast<float>(in.data.info.GetNormFactor()));
+        auto normFactor = tuner.AddArgumentScalar(static_cast<float>(in.data.info.GetNormFactor()));
 
-        auto definitionId =
-          helper.GetKernelData(GetFullName()).at(kernelDataIndex).definitionIds[0];
         tuner.SetArguments(definitionId, { argIn, argOut, inSize, outSize, filter, normFactor });
 
         // update grid dimension to properly react to batch size
-        auto kernelId = helper.GetKernelData(GetFullName()).at(kernelDataIndex).kernelIds[0];
-        tuner.SetLauncher(kernelId, [this, &out, definitionId](ktt::ComputeInterface &interface) {
-          const ktt::DimensionVector blockDimensions(kBlockDimX, kBlockDimY, kBlockDimZ);
-          const auto &size = out.data.info.GetPaddedSize();
-          const ktt::DimensionVector gridDimensions(ComputeDimension(size.x, kBlockDimX),
-            ComputeDimension(size.y, kBlockDimY),
-            ComputeDimension(size.z, kBlockDimZ));
-          interface.RunKernelAsync(
-            definitionId, interface.GetAllQueues().at(0), gridDimensions, blockDimensions);
-        });
+        tuner.SetLauncher(
+          kernelId, [this, &out, definitionId = definitionId](ktt::ComputeInterface &interface) {
+            const ktt::DimensionVector blockDimensions(kBlockDimX, kBlockDimY, kBlockDimZ);
+            const auto &size = out.data.info.GetPaddedSize();
+            const ktt::DimensionVector gridDimensions(ComputeDimension(size.x, kBlockDimX),
+              ComputeDimension(size.y, kBlockDimY),
+              ComputeDimension(size.z, kBlockDimZ));
+            interface.RunKernelAsync(
+              definitionId, interface.GetAllQueues().at(0), gridDimensions, blockDimensions);
+          });
 
         auto configuration = tuner.CreateConfiguration(kernelId,
           { { "applyFilter", static_cast<uint64_t>(s.GetApplyFilter()) },
