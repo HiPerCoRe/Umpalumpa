@@ -17,17 +17,6 @@ namespace correlation {
       // Currently we create one thread per each pixel of a single image. Each thread processes
       // same pixel of all images. The other option for 2D images is to map N dimension to the
       // Z dimension, ie. create more threads, each thread processing fewer images.
-      // FIXME  this should be tuned by the KTT
-      static constexpr auto kBlockDimX = 32;
-      static constexpr auto kBlockDimY = 32;
-      static constexpr auto kBlockDimZ = 1;
-
-      static constexpr auto kTile = 8;
-
-      inline size_t ComputeDimension(size_t l, int r) const
-      {
-        return static_cast<size_t>(std::ceil(static_cast<float>(l) / static_cast<float>(r)));
-      }
 
       size_t GetHash() const override { return 0; }
       bool IsSimilar(const TunableStrategy &other) const override
