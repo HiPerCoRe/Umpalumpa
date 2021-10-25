@@ -7,25 +7,12 @@ namespace umpalumpa {
 namespace extrema_finder {
 
   namespace {// to avoid poluting
-
-    size_t ceilPow2(size_t x)
-    {
-      if (x <= 1) return 1;
-      size_t power = 2;
-      x--;
-      while (x >>= 1) power <<= 1;
-      return power;
-    }
-
     inline static const auto kKernelFile = utils::GetSourceFilePath(
       "libumpalumpa/algorithms/extrema_finder/single_extrema_finder_cuda_kernels.cu");
 
     struct Strategy1 : public SingleExtremaFinderCUDA::Strategy
     {
       static constexpr auto kFindMax1D = "findMax1D";
-      static constexpr size_t kMaxThreads = 512;
-
-      size_t threads;
 
       size_t GetHash() const override { return 0; }
       bool IsSimilar(const TunableStrategy &other) const override
@@ -49,24 +36,26 @@ namespace extrema_finder {
                           && (in.data.dataInfo.type == umpalumpa::data::DataType::kFloat);
         if (canProcess) {
           TunableStrategy::Init(helper);
-          // how many threads do we need?
-          threads = (in.data.info.size.single < kMaxThreads) ? ceilPow2(in.data.info.size.single)
-                                                             : kMaxThreads;
-          const ktt::DimensionVector blockDimensions(threads);
-          const ktt::DimensionVector gridDimensions(in.data.info.size.n);
+          auto &size = in.data.info.GetSize();
           auto &tuner = helper.GetTuner();
+
           // ensure that we have the kernel loaded to KTT
           // this has to be done in critical section, as multiple instances of this algorithm
           // might run on the same worker
           std::lock_guard<std::mutex> lck(helper.GetMutex());
-          definitionId = tuner.GetKernelDefinitionId(kFindMax1D);
-          if (definitionId == ktt::InvalidKernelDefinitionId) {
-            definitionId = tuner.AddKernelDefinitionFromFile(
-              kFindMax1D, kKernelFile, gridDimensions, blockDimensions, {});
-          }
+          definitionId =
+            GetKernelDefinitionId(kFindMax1D, kKernelFile, ktt::DimensionVector{ size.n });
           kernelId =
             tuner.CreateSimpleKernel(kFindMax1D + std::to_string(strategyId), definitionId);
-          tuner.AddParameter(kernelId, "blockSize", std::vector<uint64_t>{ threads });
+
+          tuner.AddParameter(kernelId, "blockSize", std::vector<uint64_t>{ 32, 64, 128, 256, 512 });
+
+          tuner.AddThreadModifier(kernelId,
+            { definitionId },
+            ktt::ModifierType::Local,
+            ktt::ModifierDimension::X,
+            "blockSize",
+            ktt::ModifierAction::Multiply);
         }
         return canProcess;
       }
@@ -96,23 +85,29 @@ namespace extrema_finder {
           ktt::ArgumentMemoryLocation::Unified);
 
         auto argSize = tuner.AddArgumentScalar(in.data.info.size.single);
-        // allocate local memory
-        auto argLocMem = tuner.AddArgumentLocal<float>(2 * threads * sizeof(float));
 
-        tuner.SetArguments(definitionId, { argIn, argVals, argSize, argLocMem });
+        tuner.SetArguments(definitionId, { argIn, argVals, argSize });
 
-        // update grid dimension to properly react to batch size
-        tuner.SetLauncher(
-          kernelId, [this, &in, definitionId = definitionId](ktt::ComputeInterface &interface) {
-            const ktt::DimensionVector blockDimensions(threads);
-            const ktt::DimensionVector gridDimensions(in.data.info.size.n);
-            interface.RunKernelAsync(
-              definitionId, interface.GetAllQueues().at(0), gridDimensions, blockDimensions);
-          });
+        auto &size = in.data.info.GetSize();
+        tuner.SetLauncher(kernelId, [this, &size](ktt::ComputeInterface &interface) {
+          auto blockDim = interface.GetCurrentLocalSize(definitionId);
+          const ktt::DimensionVector gridDim(size.n);
+          interface.RunKernelAsync(definitionId, interface.GetAllQueues().at(0), gridDim, blockDim);
+        });
 
-        auto configuration = tuner.CreateConfiguration(kernelId, { { "blockSize", threads } });
-        tuner.Run(kernelId, configuration, {});// run is blocking call
-        // arguments shall be removed once the run is done
+        if (GetTuning()) {
+          tuner.TuneIteration(kernelId, {});
+        } else {
+          // TODO GetBestConfiguration can be used once the KTT is able to synchronize
+          // the best configuration from multiple KTT instances, or loads the best
+          // configuration from previous runs
+          // auto bestConfig = tuner.GetBestConfiguration(kernelId);
+          auto bestConfig =
+            tuner.CreateConfiguration(kernelId, { { "blockSize", static_cast<uint64_t>(32) } });
+          tuner.Run(kernelId, bestConfig, {});// run is blocking call
+          // arguments shall be removed once the run is done
+        }
+
         return true;
       };
     };
@@ -120,9 +115,6 @@ namespace extrema_finder {
     struct Strategy2 : public SingleExtremaFinderCUDA::Strategy
     {
       static constexpr auto kFindMaxRect = "findMaxRect";
-
-      size_t threadsX;
-      size_t threadsY;
 
       size_t GetHash() const override { return 0; }
       bool IsSimilar(const TunableStrategy &other) const override
@@ -146,27 +138,42 @@ namespace extrema_finder {
                           && (in.data.dataInfo.type == umpalumpa::data::DataType::kFloat);
         if (canProcess) {
           TunableStrategy::Init(helper);
-          // TODO should be tuned by KTT, for now it is FIXED to work at least somehow
-          // block size needs to be power of 2
-          threadsX = 64;
-          threadsY = 2;
-          const ktt::DimensionVector blockDimensions(threadsX, threadsY);
-          const ktt::DimensionVector gridDimensions(in.data.info.size.n);
+          auto &size = in.data.info.GetSize();
           auto &tuner = helper.GetTuner();
           // ensure that we have the kernel loaded to KTT
           // this has to be done in critical section, as multiple instances of this algorithm
           // might run on the same worker
           std::lock_guard<std::mutex> lck(helper.GetMutex());
-          definitionId = tuner.GetKernelDefinitionId(kFindMaxRect, { "float" });
-          if (definitionId == ktt::InvalidKernelDefinitionId) {
-            definitionId = tuner.AddKernelDefinitionFromFile(
-              kFindMaxRect, kKernelFile, gridDimensions, blockDimensions, { "float" });
-          }
+          definitionId = GetKernelDefinitionId(
+            kFindMaxRect, kKernelFile, ktt::DimensionVector{ size.n }, { "float" });
           kernelId =
             tuner.CreateSimpleKernel(kFindMaxRect + std::to_string(strategyId), definitionId);
-          tuner.AddParameter(kernelId, "blockSizeX", std::vector<uint64_t>{ threadsX });
-          tuner.AddParameter(kernelId, "blockSizeY", std::vector<uint64_t>{ threadsY });
-          tuner.AddParameter(kernelId, "blockSize", std::vector<uint64_t>{ threadsX * threadsY });
+
+          tuner.AddParameter(
+            kernelId, "blockSizeX", std::vector<uint64_t>{ 4, 8, 16, 32, 64, 128 });
+          tuner.AddParameter(
+            kernelId, "blockSizeY", std::vector<uint64_t>{ 1, 2, 4, 8, 16, 32, 64 });
+
+          tuner.AddConstraint(kernelId,
+            { "blockSizeX", "blockSizeY" },
+            [&tuner](const std::vector<uint64_t> &params) {
+              return params[0] * params[1] <= tuner.GetCurrentDeviceInfo().GetMaxWorkGroupSize();
+            });
+
+          tuner.AddThreadModifier(kernelId,
+            { definitionId },
+            ktt::ModifierType::Local,
+            ktt::ModifierDimension::X,
+            "blockSizeX",
+            ktt::ModifierAction::Multiply);
+          tuner.AddThreadModifier(kernelId,
+            { definitionId },
+            ktt::ModifierType::Local,
+            ktt::ModifierDimension::Y,
+            "blockSizeY",
+            ktt::ModifierAction::Multiply);
+
+          tuner.SetSearcher(kernelId, std::make_unique<ktt::RandomSearcher>());
         }
         return canProcess;
       }
@@ -210,35 +217,31 @@ namespace extrema_finder {
         auto argOffY = tuner.AddArgumentScalar(searchRectOffsetY);
         auto argRectWidth = tuner.AddArgumentScalar(searchRectWidth);
         auto argRectHeight = tuner.AddArgumentScalar(searchRectHeight);
-        // allocate local memory
-        auto argLocMem = tuner.AddArgumentLocal<float>(2 * threadsX * threadsY * sizeof(float));
 
         tuner.SetArguments(definitionId,
-          { argIn,
-            argInSize,
-            argVals,
-            argLocs,
-            argOffX,
-            argOffY,
-            argRectWidth,
-            argRectHeight,
-            argLocMem });
+          { argIn, argInSize, argVals, argLocs, argOffX, argOffY, argRectWidth, argRectHeight });
 
-        // update grid dimension to properly react to batch size
-        tuner.SetLauncher(
-          kernelId, [this, &in, definitionId = definitionId](ktt::ComputeInterface &interface) {
-            const ktt::DimensionVector blockDimensions(threadsX, threadsY);
-            const ktt::DimensionVector gridDimensions(in.data.info.size.n);
-            interface.RunKernelAsync(
-              definitionId, interface.GetAllQueues().at(0), gridDimensions, blockDimensions);
-          });
+        auto &size = in.data.info.GetSize();
+        tuner.SetLauncher(kernelId, [this, &size](ktt::ComputeInterface &interface) {
+          auto blockDim = interface.GetCurrentLocalSize(definitionId);
+          ktt::DimensionVector gridDim(size.n);
+          interface.RunKernelAsync(definitionId, interface.GetAllQueues().at(0), gridDim, blockDim);
+        });
 
-        auto configuration = tuner.CreateConfiguration(kernelId,
-          { { "blockSizeX", threadsX },
-            { "blockSizeY", threadsY },
-            { "blockSize", threadsX * threadsY } });
-        tuner.Run(kernelId, configuration, {});// run is blocking call
-        // arguments shall be removed once the run is done
+        if (GetTuning()) {
+          tuner.TuneIteration(kernelId, {});
+        } else {
+          // TODO GetBestConfiguration can be used once the KTT is able to synchronize
+          // the best configuration from multiple KTT instances, or loads the best
+          // configuration from previous runs
+          // auto bestConfig = tuner.GetBestConfiguration(kernelId);
+          auto bestConfig = tuner.CreateConfiguration(kernelId,
+            { { "blockSizeX", static_cast<uint64_t>(64) },
+              { "blockSizeY", static_cast<uint64_t>(2) } });
+          tuner.Run(kernelId, bestConfig, {});// run is blocking call
+          // arguments shall be removed once the run is done
+        }
+
         return true;
       };
     };

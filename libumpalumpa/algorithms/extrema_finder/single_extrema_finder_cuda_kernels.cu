@@ -1,7 +1,9 @@
 #pragma once
 #include <libumpalumpa/data/size.hpp>
 
-// #include <type_traits>
+#ifndef blockSize
+#define blockSize (blockSizeX * blockSizeY)
+#endif
 
 template<typename T, typename T2>//, typename C>
 __device__ void update(// const C &comp,
@@ -11,11 +13,10 @@ __device__ void update(// const C &comp,
 {
   T tmp = data[index];
   //   if (comp(tmp, orig.x)) {
-  if (tmp > orig.x)
-    {
-      orig.x = tmp;
-      orig.y = (T)index;
-    }
+  if (tmp > orig.x) {
+    orig.x = tmp;
+    orig.y = (T)index;
+  }
 }
 
 template<typename T>//, typename C>
@@ -38,8 +39,7 @@ __device__ void findUniversalInSharedMem(
   unsigned int tid)
 {
   // we have read all data, one of the thread knows the result
-  extern __shared__ char smem[];
-  T *sdata = reinterpret_cast<T *>(smem);
+  __shared__ T sdata[blockSize];
   sdata[tid] = ldata;
   __syncthreads();// wait till all threads store their data
   // reduce
@@ -99,9 +99,9 @@ __device__ void findUniversalInSharedMem(
 extern "C" __global__ void findMax1D(
   // const C &comp,
   // T startVal,
-  float * in,
+  float *in,
   // float * __restrict__ outPos,
-  float * outVal,
+  float *outVal,
   unsigned samples)
 {
   // auto comp = [] (float l, float r) { return l > r; };
@@ -109,13 +109,13 @@ extern "C" __global__ void findMax1D(
   // map each thread to some sample of the signal
   unsigned int tid = threadIdx.x;
   unsigned int signal = blockIdx.x;
-  
+
   // if (signal ==0 && tid == 0) {
   //   for (int i = 0; i < 30; i++) {
   //     printf("%f ", in[i]);
   //   }
   // }
-  
+
   // load data from global memory
   const float *data = in + (signal * samples);
   // if(tid < samples) printf("signal %d %d: %f\n", signal, tid, data[tid]);
@@ -133,7 +133,7 @@ extern "C" __global__ void findMax1D(
   // if (threadIdx.x == 0) printf("%f\n", ldata.x);
   __syncthreads();// wait till all threads are ready
   findUniversalInSharedMem(//<float2, blockSize>(
-    // comp,
+                           // comp,
     ldata,
     threadIdx.x);
 
@@ -144,13 +144,15 @@ extern "C" __global__ void findMax1D(
   }
 }
 
-template <typename T>
-__global__ void findMaxRect(
-  T *in, umpalumpa::data::Size inSize,
+template<typename T>
+__global__ void findMaxRect(T *in,
+  umpalumpa::data::Size inSize,
   T *outVal,
   T *outPos,
-  unsigned offsetX, unsigned offsetY,
-  unsigned rectWidth, unsigned rectHeight)
+  unsigned offsetX,
+  unsigned offsetY,
+  unsigned rectWidth,
+  unsigned rectHeight)
 {
   unsigned signal = blockIdx.x;
 
@@ -161,16 +163,13 @@ __global__ void findMaxRect(
   ldata.y = -1;
   for (unsigned tIdy = offsetY + threadIdx.y; tIdy < offsetY + rectHeight; tIdy += blockSizeY) {
     for (unsigned tIdx = offsetX + threadIdx.x; tIdx < offsetX + rectWidth; tIdx += blockSizeX) {
-      update(
-          ldata,
-          data,
-          tIdy * inSize.x + tIdx);
+      update(ldata, data, tIdy * inSize.x + tIdx);
     }
   }
 
   __syncthreads();// wait till all threads are ready
   findUniversalInSharedMem(//<float2, blockSize>(
-    // comp,
+                           // comp,
     ldata,
     threadIdx.y * blockSizeX + threadIdx.x);
 
