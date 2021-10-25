@@ -16,6 +16,7 @@ namespace algorithm {
      * Notice that workerId != CUDA device ordinal.
      * CUDA device is detected from the first stream.
      **/
+    // FIXME why do we pass the workerID? KTT device is detected from the stream
     explicit KTT_Base(int workerId, const std::vector<CUstream> &s) : streams(s), KTTId(workerId)
     {
       this->EnsureStreams();

@@ -20,10 +20,11 @@ namespace data {
       return Dimensionality::k1Dim;
     }
 
-  // FIXME ensure that nobody creates size like x=1 y=2 ... (either exception here or check in IsValid() or both, preferably exception here)
+    // FIXME ensure that nobody creates size like x=1 y=2 ... (either exception here or check in
+    // IsValid() or both, preferably exception here)
     explicit Size(size_t xSize, size_t ySize, size_t zSize, size_t nSize)
-      : x(xSize), y(ySize), z(zSize), n(nSize), dim(GetDim(xSize, ySize, zSize)), single(xSize * ySize * zSize),
-        total(xSize * ySize * zSize * nSize)
+      : x(xSize), y(ySize), z(zSize), n(nSize), dim(GetDim(xSize, ySize, zSize)),
+        single(xSize * ySize * zSize), total(xSize * ySize * zSize * nSize)
     {}
 
     bool IsValid() const { return (0 != x) && (0 != y) && (0 != z) && (0 != n); }
@@ -32,8 +33,8 @@ namespace data {
 
     constexpr bool operator==(const Size &other) const
     {
-      return (total == other.total) && (single == other.single) && (dim == other.dim) && (n == other.n)
-             && (z == other.z) && (y == other.y) && (x == other.x);
+      return (total == other.total) && (single == other.single) && (dim == other.dim)
+             && (n == other.n) && (z == other.z) && (y == other.y) && (x == other.x);
     }
     constexpr bool operator!=(const Size &other) const { return !(*this == other); }
     constexpr bool operator<(const Size &other) const { return total < other.total; }
@@ -43,7 +44,16 @@ namespace data {
 
     constexpr Dimensionality GetDim() const { return dim; }
 
-  // these should be private + getters
+    /**
+     * Returns true if all sizes of this are the same as those of referenec except for N,
+     * which can be lower or equal than refernce.N.
+     **/
+    constexpr bool IsEquivalentTo(const Size &ref) const
+    {
+      return (x == ref.x) && (y == ref.y) && (z == ref.z) && (n <= ref.n);
+    }
+
+    // these should be private + getters
     size_t x;
     size_t y;
     size_t z;

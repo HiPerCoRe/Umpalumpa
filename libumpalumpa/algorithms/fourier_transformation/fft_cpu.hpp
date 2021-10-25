@@ -1,27 +1,19 @@
 #pragma once
 #include <libumpalumpa/algorithms/fourier_transformation/afft.hpp>
-#include <libumpalumpa/data/fourier_descriptor.hpp>
 
 namespace umpalumpa {
 namespace fourier_transformation {
-  class FFTCPU : public AFFT
+  class FFTCPU final : public AFFT
   {
   public:
-    bool Init(const ResultData &out, const InputData &in, const Settings &settings) override;
-    bool Execute(const ResultData &out, const InputData &in) override;
-    void Synchronize() override{};
+    using BasicAlgorithm::Strategy;
 
-    struct Strategy
-    {
-      virtual ~Strategy() = default;
-      virtual bool Init(const ResultData &, const InputData &, const Settings &s) = 0;
-      virtual bool
-        Execute(const ResultData &out, const InputData &in, const Settings &settings) = 0;
-      virtual std::string GetName() const = 0;
+    void Synchronize() override{
+      // nothing to do
     };
 
-  private:
-    std::unique_ptr<Strategy> strategy;
+  protected:
+    std::vector<std::unique_ptr<Strategy>> GetStrategies() const override;
   };
 }// namespace fourier_transformation
 }// namespace umpalumpa

@@ -2,8 +2,6 @@
 
 #include <libumpalumpa/data/starpu_utils.hpp>
 
-#include <iostream>
-
 #include <memory>
 namespace umpalumpa {
 namespace data {

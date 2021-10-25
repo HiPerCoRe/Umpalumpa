@@ -6,7 +6,6 @@
 #include <libumpalumpa/algorithms/fourier_transformation/locality.hpp>
 #include <libumpalumpa/algorithms/fourier_transformation/direction.hpp>
 #include <libumpalumpa/algorithms/fourier_transformation/afft.hpp>
-#include <libumpalumpa/algorithms/fourier_transformation/fft_cuda.hpp>
 #include <libumpalumpa/data/payload.hpp>
 #include <libumpalumpa/data/fourier_descriptor.hpp>
 #include <complex>
@@ -25,7 +24,7 @@ TEST_F(NAME, InpulseOriginForward)
   SetUpFFT(settings, size, PaddingDescriptor());
 
   auto inP = AFFT::InputData(Payload(dataSpatial.get(), *ldSpatial, *pdSpatial, "Input data"));
-  auto outP = AFFT::ResultData(Payload(dataFrequency.get(), *ldFrequency, *pdFrequency, "Result data"));
+  auto outP = AFFT::OutputData(Payload(dataFrequency.get(), *ldFrequency, *pdFrequency, "Result data"));
 
   testFFTInpulseOrigin(outP, inP, settings);
 }
@@ -41,7 +40,7 @@ TEST_F(NAME, InpulseOriginInverse)
   SetUpFFT(settings, size, PaddingDescriptor());
 
   auto inP = AFFT::InputData(Payload(dataFrequency.get(), *ldFrequency, *pdFrequency, "Result data"));
-  auto outP = AFFT::ResultData(Payload(dataSpatial.get(), *ldSpatial, *pdSpatial, "Input data"));
+  auto outP = AFFT::OutputData(Payload(dataSpatial.get(), *ldSpatial, *pdSpatial, "Input data"));
 
   testIFFTInpulseOrigin(outP, inP, settings);
 }
@@ -57,7 +56,7 @@ TEST_F(NAME, InpulseShiftedForward)
   SetUpFFT(settings, size, PaddingDescriptor());
 
   auto inP = AFFT::InputData(Payload(dataSpatial.get(), *ldSpatial, *pdSpatial, "Input data"));
-  auto outP = AFFT::ResultData(Payload(dataFrequency.get(), *ldFrequency, *pdFrequency, "Result data"));
+  auto outP = AFFT::OutputData(Payload(dataFrequency.get(), *ldFrequency, *pdFrequency, "Result data"));
 
   testFFTInpulseShifted(outP, inP, settings);
 }
@@ -73,7 +72,7 @@ TEST_F(NAME, FFTIFFT)
   SetUpFFT(settings, size, PaddingDescriptor());
 
   auto inP = AFFT::InputData(Payload(dataSpatial.get(), *ldSpatial, *pdSpatial, "Input data"));
-  auto outP = AFFT::ResultData(Payload(dataFrequency.get(), *ldFrequency, *pdFrequency, "Result data"));
+  auto outP = AFFT::OutputData(Payload(dataFrequency.get(), *ldFrequency, *pdFrequency, "Result data"));
 
   testFFTIFFT(outP, inP, settings);
 }

@@ -34,6 +34,12 @@ namespace data {
     inline size_t GetZBeg() const { return zBeg; }
     inline size_t GetZEnd() const { return zEnd; }
 
+    constexpr bool operator==(const PaddingDescriptor &other) const
+    {
+      return (xBeg == other.xBeg) && (xEnd == other.xEnd) && (yBeg == other.yBeg)
+             && (yEnd == other.yEnd) && (zBeg == other.zBeg) && (zEnd == other.zEnd);
+    }
+
   private:
     size_t xBeg;
     size_t xEnd;

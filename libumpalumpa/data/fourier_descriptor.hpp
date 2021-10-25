@@ -17,6 +17,11 @@ namespace data {
       bool isCentered;// FIXME: change to enum
       bool isNormalized;// FIXME: change to enum
       bool hasSymetry;// FIXME: find proper name
+      bool operator==(const FourierSpaceDescriptor &o) const
+      {
+        return (isCentered == o.isCentered) && (isNormalized == o.isNormalized)
+               && (hasSymetry == o.hasSymetry);
+      }
     };
 
     /**
@@ -114,6 +119,14 @@ namespace data {
 
     virtual size_t Elems() const { return GetPaddedSize().total; }
 
+    bool IsEquivalentTo(const FourierDescriptor &ref) const
+    {
+      return size.IsEquivalentTo(ref.size) && (padding == ref.padding)
+             && (frequencyDomainPadding == ref.frequencyDomainPadding)
+             && (isSpatial == ref.isSpatial) && (fsd == ref.fsd);
+    }
+
+    // fixme these should be private + getters / setters
   private:
     Size ComputeFrequencySize(const Size &s) { return Size(s.x / 2 + 1, s.y, s.z, s.n); }
 

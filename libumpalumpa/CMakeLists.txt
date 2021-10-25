@@ -13,7 +13,7 @@ set(umpalumpa_sources
     utils/cuda.cpp
     algorithms/extrema_finder/single_extrema_finder_cpu.cpp
     algorithms/extrema_finder/single_extrema_finder_cuda.cpp
-    algorithms/fourier_transformation/fft_cuda.hpp
+    algorithms/fourier_transformation/fft_cuda.cpp
     algorithms/fourier_transformation/fft_cpu.cpp
     algorithms/fourier_processing/fp_cpu.cpp
     algorithms/fourier_processing/fp_cuda.cpp
@@ -22,7 +22,11 @@ set(umpalumpa_sources
     tuning/ktt_base.cpp)
 
 if(USE_STARPU)
-  list(APPEND umpalumpa_sources algorithms/extrema_finder/single_extrema_finder_starpu.cpp)
+  list(
+    APPEND
+    umpalumpa_sources
+    algorithms/extrema_finder/single_extrema_finder_starpu.cpp
+    algorithms/fourier_transformation/fft_starpu.cpp)
 endif()
 
 target_include_directories(umpalumpa PUBLIC ${CMAKE_SOURCE_DIR})
