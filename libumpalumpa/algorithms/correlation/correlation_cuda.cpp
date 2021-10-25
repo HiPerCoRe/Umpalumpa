@@ -52,26 +52,64 @@ namespace correlation {
 
         if (canProcess) {
           TunableStrategy::Init(helper);
-          const ktt::DimensionVector blockDimensions(kBlockDimX, kBlockDimY, kBlockDimZ);
           const auto &size = out.data.info.GetPaddedSize();
-          const ktt::DimensionVector gridDimensions(ComputeDimension(size.x, kBlockDimX),
-            ComputeDimension(size.y, kBlockDimY),
-            ComputeDimension(size.z, kBlockDimZ));
           auto &tuner = helper.GetTuner();
+
           // ensure that we have the kernel loaded to KTT
           // this has to be done in critical section, as multiple instances of this algorithm
           // might run on the same worker
           std::lock_guard<std::mutex> lck(helper.GetMutex());
-          definitionId = tuner.GetKernelDefinitionId(kTMP, { "float2" });
-          if (definitionId == ktt::InvalidKernelDefinitionId) {
-            definitionId = tuner.AddKernelDefinitionFromFile(
-              kTMP, kKernelFile, gridDimensions, blockDimensions, { "float2" });
-          }
+          definitionId = GetKernelDefinitionId(kTMP,
+            kKernelFile,
+            ktt::DimensionVector{ size.x, size.y, size.z },
+            { "float2",
+              std::to_string(s.GetCenter()),
+              std::to_string(in.data1.ptr == in.data2.ptr) });
           kernelId = tuner.CreateSimpleKernel(kTMP + std::to_string(strategyId), definitionId);
-          tuner.AddParameter(kernelId, "center", std::vector<uint64_t>{ s.GetCenter() });
+
+          tuner.AddParameter(kernelId, "TILE", std::vector<uint64_t>{ 1, 2, 4, 8 });
+
           tuner.AddParameter(
-            kernelId, "isWithin", std::vector<uint64_t>{ in.data1.ptr == in.data2.ptr });
-          tuner.AddParameter(kernelId, "TILE", std::vector<uint64_t>{ kTile });
+            kernelId, "blockSizeX", std::vector<uint64_t>{ 1, 2, 4, 8, 16, 32, 64, 128 });
+          tuner.AddParameter(
+            kernelId, "blockSizeY", std::vector<uint64_t>{ 1, 2, 4, 8, 16, 32, 64, 128 });
+
+          tuner.AddConstraint(kernelId,
+            { "blockSizeX", "blockSizeY" },
+            [&tuner](const std::vector<uint64_t> &params) {
+              return params[0] * params[1] <= tuner.GetCurrentDeviceInfo().GetMaxWorkGroupSize();
+            });
+          tuner.AddConstraint(kernelId,
+            { "blockSizeX", "TILE" },
+            [](const std::vector<uint64_t> &params) { return params[0] >= params[1]; });
+
+          tuner.AddThreadModifier(kernelId,
+            { definitionId },
+            ktt::ModifierType::Local,
+            ktt::ModifierDimension::X,
+            "blockSizeX",
+            ktt::ModifierAction::Multiply);
+          tuner.AddThreadModifier(kernelId,
+            { definitionId },
+            ktt::ModifierType::Local,
+            ktt::ModifierDimension::Y,
+            "blockSizeY",
+            ktt::ModifierAction::Multiply);
+
+          tuner.AddThreadModifier(kernelId,
+            { definitionId },
+            ktt::ModifierType::Global,
+            ktt::ModifierDimension::X,
+            "blockSizeX",
+            ktt::ModifierAction::DivideCeil);
+          tuner.AddThreadModifier(kernelId,
+            { definitionId },
+            ktt::ModifierType::Global,
+            ktt::ModifierDimension::Y,
+            "blockSizeY",
+            ktt::ModifierAction::DivideCeil);
+
+          tuner.SetSearcher(kernelId, std::make_unique<ktt::RandomSearcher>());
         }
         return canProcess;
       }
@@ -80,7 +118,7 @@ namespace correlation {
 
       bool Execute(const Correlation_CUDA::OutputData &out,
         const Correlation_CUDA::InputData &in,
-        const Settings &s,
+        const Settings &,
         utils::KTTHelper &helper) override final
       {
         if (!in.data1.IsValid() || in.data1.IsEmpty() || !out.data.IsValid()// FIXME refactor
@@ -113,26 +151,29 @@ namespace correlation {
 
         tuner.SetArguments(definitionId, { argOut, argIn1, inSize, argIn2, in2N });
 
-        // update grid dimension to properly react to batch size
-        tuner.SetLauncher(
-          kernelId, [this, &out, definitionId = definitionId](ktt::ComputeInterface &interface) {
-            const ktt::DimensionVector blockDimensions(kBlockDimX, kBlockDimY, kBlockDimZ);
-            const auto &size = out.data.info.GetPaddedSize();
-            const ktt::DimensionVector gridDimensions(ComputeDimension(size.x, kBlockDimX),
-              ComputeDimension(size.y, kBlockDimY),
-              ComputeDimension(size.z, kBlockDimZ));
-            interface.RunKernelAsync(
-              definitionId, interface.GetAllQueues().at(0), gridDimensions, blockDimensions);
-          });
+        const auto &size = out.data.info.GetPaddedSize();
+        tuner.SetLauncher(kernelId, [this, &size](ktt::ComputeInterface &interface) {
+          auto blockDim = interface.GetCurrentLocalSize(definitionId);
+          ktt::DimensionVector gridDim(size.x, size.y, size.z);
+          gridDim.RoundUp(blockDim);
+          gridDim.Divide(blockDim);
+          interface.RunKernelAsync(definitionId, interface.GetAllQueues().at(0), gridDim, blockDim);
+        });
 
-        auto isWithin = in.data1.ptr == in.data2.ptr;
-
-        auto configuration = tuner.CreateConfiguration(kernelId,
-          { { "center", static_cast<uint64_t>(s.GetCenter()) },
-            { "isWithin", static_cast<uint64_t>(isWithin) },
-            { "TILE", static_cast<uint64_t>(kTile) } });
-        tuner.Run(kernelId, configuration, {});// run is blocking call
-        // arguments shall be removed once the run is done
+        if (GetTuning()) {
+          tuner.TuneIteration(kernelId, {});
+        } else {
+          // TODO GetBestConfiguration can be used once the KTT is able to synchronize
+          // the best configuration from multiple KTT instances, or loads the best
+          // configuration from previous runs
+          // auto bestConfig = tuner.GetBestConfiguration(kernelId);
+          auto bestConfig = tuner.CreateConfiguration(kernelId,
+            { { "blockSizeX", static_cast<uint64_t>(32) },
+              { "blockSizeY", static_cast<uint64_t>(32) },
+              { "TILE", static_cast<uint64_t>(8) } });
+          tuner.Run(kernelId, bestConfig, {});// run is blocking call
+          // arguments shall be removed once the run is done
+        }
         return true;
       };
     };

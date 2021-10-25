@@ -7,7 +7,7 @@ namespace umpalumpa::algorithm {
 class TunableStrategy
 {
 public:
-  TunableStrategy() : strategyId(GetNewStrategyId()) {}
+  TunableStrategy() : strategyId(GetNewStrategyId()), tune(false) {}
   virtual ~TunableStrategy()
   {
     AlgorithmManager::Get().Unregister(this);
@@ -25,6 +25,9 @@ public:
     return kttHelper->GetTuner().GetBestConfiguration(kernelId);
   }
 
+  void SetTuning(bool val) { tune = val; }
+  bool GetTuning() { return tune; }
+
 protected:
   // NOTE Cant be called in constructor because it needs GetHash method to work properly
   /**
@@ -37,6 +40,20 @@ protected:
     AlgorithmManager::Get().Register(this);
   }
 
+  ktt::KernelDefinitionId GetKernelDefinitionId(const std::string &kernelName,
+    const std::string &sourceFile,
+    const ktt::DimensionVector &gridDimensions,
+    const std::vector<std::string> &templateArgs = {})
+  {
+    auto &tuner = kttHelper->GetTuner();
+    auto id = tuner.GetKernelDefinitionId(kernelName, templateArgs);
+    if (id == ktt::InvalidKernelDefinitionId) {
+      id =
+        tuner.AddKernelDefinitionFromFile(kernelName, sourceFile, gridDimensions, {}, templateArgs);
+    }
+    return id;
+  }
+
   ktt::KernelId kernelId;// NOTE this might need change to a vector
   ktt::KernelDefinitionId definitionId;// NOTE this might need change to a vector
 
@@ -45,6 +62,7 @@ protected:
 
 private:
   utils::KTTHelper *kttHelper;
+  bool tune;
 
   static size_t GetNewStrategyId()
   {
