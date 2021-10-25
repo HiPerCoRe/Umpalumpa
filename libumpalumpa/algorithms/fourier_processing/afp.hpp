@@ -3,6 +3,7 @@
 #include <libumpalumpa/data/payload.hpp>
 #include <libumpalumpa/algorithms/fourier_processing/settings.hpp>
 #include <libumpalumpa/data/fourier_descriptor.hpp>
+#include <libumpalumpa/data/logical_desriptor.hpp>
 
 namespace umpalumpa {
 namespace fourier_processing {

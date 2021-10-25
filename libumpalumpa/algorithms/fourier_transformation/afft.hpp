@@ -1,48 +1,46 @@
 #pragma once
 
-#include "libumpalumpa/data/fourier_descriptor.hpp"
-#include "libumpalumpa/data/payload.hpp"
+#include <libumpalumpa/algorithms/basic_algorithm.hpp>
+#include <libumpalumpa/data/single_payload_wrapper.hpp>
+#include <libumpalumpa/data/fourier_descriptor.hpp>
+#include <libumpalumpa/data/payload.hpp>
 #include <libumpalumpa/algorithms/fourier_transformation/settings.hpp>
 #include <memory>
 
 namespace umpalumpa {
 namespace fourier_transformation {
-  class AFFT 
+  class AFFT
+    : public BasicAlgorithm<data::SinglePayloadWrapper<data::Payload<data::FourierDescriptor>>,
+        data::SinglePayloadWrapper<data::Payload<data::FourierDescriptor>>,
+        Settings>
   {
-  protected:
-    template<typename T> struct DataWrapper
-    {
-      DataWrapper(T &&d) : data(std::move(d)) {}
-      const T data;
-      typedef T type;
-    };
-
-    const Settings& GetSettings() const {
-      return *settings.get();
-    }
-
-    void SetSettings(const Settings& settings) {
-      this->settings = std::make_unique<Settings>(settings);
-    }
-
-    // FIXME IsValid needs to check the data type (either float or double)
-
   public:
-    using ResultData = DataWrapper<data::Payload<data::FourierDescriptor>>;//FIXME rename to OutputData
-    using InputData = DataWrapper<data::Payload<data::FourierDescriptor>>;
-    virtual bool Init(const ResultData &out, const InputData &in, const Settings &settings) = 0;
-    virtual bool Execute(const ResultData &out, const InputData &in) = 0;
-    virtual void Cleanup(){
-      settings.reset();
-    };
-    virtual void Synchronize() = 0;
+    static bool IsDouble(const OutputData &out, const InputData &in, Direction d)
+    {
+      if (Direction::kForward == d) {
+        return ((out.payload.dataInfo.type == data::DataType::kComplexDouble)
+                && (in.payload.dataInfo.type == data::DataType::kDouble));
+      }
+      return ((out.payload.dataInfo.type == data::DataType::kDouble)
+              && (in.payload.dataInfo.type == data::DataType::kComplexDouble));
+    }
 
-    bool IsInitialized() { return settings.get(); }
+    static bool IsFloat(const OutputData &out, const InputData &in, Direction d)
+    {
+      if (Direction::kForward == d) {
+        return ((out.payload.dataInfo.type == data::DataType::kComplexFloat)
+                && (in.payload.dataInfo.type == data::DataType::kFloat));
+      }
+      return ((out.payload.dataInfo.type == data::DataType::kFloat)
+              && (in.payload.dataInfo.type == data::DataType::kComplexFloat));
+    }
 
-    virtual ~AFFT() = default;
-
-  private:
-    std::unique_ptr<Settings> settings;
+  protected:
+    bool IsValid(const OutputData &out, const InputData &in, const Settings &s) override
+    {
+      return out.payload.IsValid() && in.payload.IsValid()
+             && (IsDouble(out, in, s.GetDirection()) || IsFloat(out, in, s.GetDirection()));
+    }
   };
-}
-}
+}// namespace fourier_transformation
+}// namespace umpalumpa

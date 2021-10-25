@@ -76,7 +76,7 @@ namespace extrema_finder {
     const SearchData &in,
     const Settings &settings)
   {
-    using LocalSearchType = data::StarpuPayload<SearchData::type::type>;
+    using LocalSearchType = data::StarpuPayload<SearchData::type::LDType>;
     auto i = StarpuSearchData(std::make_unique<LocalSearchType>(in.data));
     auto o = StarpuResultData(out);
     auto res = Execute(o, i, settings);

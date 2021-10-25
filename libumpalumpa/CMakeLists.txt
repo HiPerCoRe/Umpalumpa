@@ -13,7 +13,8 @@ set(umpalumpa_sources
     utils/cuda.cpp
     algorithms/extrema_finder/single_extrema_finder_cpu.cpp
     algorithms/extrema_finder/single_extrema_finder_cuda.cpp
-    algorithms/fourier_transformation/fft_cuda.hpp
+    algorithms/fourier_transformation/fft_cuda.cpp
+    algorithms/fourier_transformation/fft_cpu.cpp
     algorithms/fourier_processing/fp_cpu.cpp
     algorithms/fourier_processing/fp_cuda.cpp
     algorithms/correlation/correlation_cuda.cpp
@@ -22,13 +23,22 @@ set(umpalumpa_sources
     tuning/ktt_base.cpp)
 
 if(USE_STARPU)
-  list(APPEND umpalumpa_sources algorithms/extrema_finder/single_extrema_finder_starpu.cpp)
+  list(
+    APPEND
+    umpalumpa_sources
+    algorithms/extrema_finder/single_extrema_finder_starpu.cpp
+    algorithms/fourier_transformation/fft_starpu.cpp)
 endif()
 
 target_include_directories(umpalumpa PUBLIC ${CMAKE_SOURCE_DIR})
 
 target_sources(umpalumpa PRIVATE ${umpalumpa_sources})
 target_link_libraries(umpalumpa PRIVATE project_options project_warnings spdlog)
-target_link_libraries(umpalumpa PUBLIC library_starpu library_ktt cuda)
+target_link_libraries(
+  umpalumpa
+  PUBLIC library_starpu
+         library_ktt
+         cuda
+         library_fftw)
 
 target_compile_definitions(umpalumpa PUBLIC PROJECT_ROOT="${CMAKE_SOURCE_DIR}")

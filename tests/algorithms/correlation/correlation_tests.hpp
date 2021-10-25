@@ -152,20 +152,17 @@ protected:
           outImages++;
     }
 
-    auto &paddedInSize = inSize;
     auto in2Size = Size(inSize.x, inSize.y, inSize.z, in2N);
-    auto &paddedIn2Size = in2Size;
     auto outSize = Size(inSize.x, inSize.y, inSize.z, outImages);
-    auto &paddedOutSize = outSize;
 
-    ldIn1 = std::make_unique<FourierDescriptor>(inSize, paddedInSize, FourierDescriptor::FourierSpaceDescriptor{});
+    ldIn1 = std::make_unique<FourierDescriptor>(inSize, PaddingDescriptor(), FourierDescriptor::FourierSpaceDescriptor{});
     auto inputSizeInBytes = ldIn1->GetPaddedSize().total * Sizeof(DataType::kComplexFloat);
     pdIn1 = std::make_unique<PhysicalDescriptor>(inputSizeInBytes, DataType::kComplexFloat);
 
     inData1 = std::shared_ptr<void>(Allocate(pdIn1->bytes), GetFree());
     memset(inData1.get(), 0, pdIn1->bytes);
 
-    ldIn2 = std::make_unique<FourierDescriptor>(in2Size, paddedIn2Size, FourierDescriptor::FourierSpaceDescriptor{});
+    ldIn2 = std::make_unique<FourierDescriptor>(in2Size, PaddingDescriptor(), FourierDescriptor::FourierSpaceDescriptor{});
     auto input2SizeInBytes = ldIn2->GetPaddedSize().total * Sizeof(DataType::kComplexFloat);
     pdIn2 = std::make_unique<PhysicalDescriptor>(input2SizeInBytes, DataType::kComplexFloat);
 
@@ -176,7 +173,7 @@ protected:
       memset(inData2.get(), 0, pdIn2->bytes);
     }
 
-    ldOut = std::make_unique<FourierDescriptor>(outSize, paddedOutSize, FourierDescriptor::FourierSpaceDescriptor{});
+    ldOut = std::make_unique<FourierDescriptor>(outSize, PaddingDescriptor(), FourierDescriptor::FourierSpaceDescriptor{});
     auto outputSizeInBytes = ldOut->GetPaddedSize().total * Sizeof(DataType::kComplexFloat);
     pdOut = std::make_unique<PhysicalDescriptor>(outputSizeInBytes, DataType::kComplexFloat);
 

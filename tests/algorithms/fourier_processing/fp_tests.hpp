@@ -156,11 +156,8 @@ protected:
   // Assumes size == paddedSize
   void SetUpFP(const Settings &settings, const Size &inSize, const Size &outSize)
   {
-    auto &paddedInSize = inSize;
-    auto &paddedOutSize = outSize;
-
     ldIn = std::make_unique<FourierDescriptor>(
-      inSize, paddedInSize, FourierDescriptor::FourierSpaceDescriptor{});
+      inSize, PaddingDescriptor(), FourierDescriptor::FourierSpaceDescriptor{});
     auto inputSizeInBytes = ldIn->GetPaddedSize().total * Sizeof(DataType::kComplexFloat);
     pdIn = std::make_unique<PhysicalDescriptor>(inputSizeInBytes, DataType::kComplexFloat);
 
@@ -168,7 +165,7 @@ protected:
     memset(inData.get(), 0, pdIn->bytes);
 
     ldOut = std::make_unique<FourierDescriptor>(
-      outSize, paddedOutSize, FourierDescriptor::FourierSpaceDescriptor{});
+      outSize, PaddingDescriptor(), FourierDescriptor::FourierSpaceDescriptor{});
     auto outputSizeInBytes = ldOut->GetPaddedSize().total * Sizeof(DataType::kComplexFloat);
     pdOut = std::make_unique<PhysicalDescriptor>(outputSizeInBytes, DataType::kComplexFloat);
 
@@ -178,7 +175,7 @@ protected:
       outData = inData;
     }
 
-    ldFilter = std::make_unique<LogicalDescriptor>(outSize, paddedOutSize, "Filter");
+    ldFilter = std::make_unique<LogicalDescriptor>(outSize);
     auto filterSizeInBytes = ldOut->GetPaddedSize().total * Sizeof(DataType::kFloat);
     pdFilter = std::make_unique<PhysicalDescriptor>(filterSizeInBytes, DataType::kFloat);
 

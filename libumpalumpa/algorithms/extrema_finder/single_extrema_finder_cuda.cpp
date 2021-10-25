@@ -32,7 +32,7 @@ namespace extrema_finder {
       {
         bool canProcess = (s.version == 1) && (s.location == SearchLocation::kEntire)
                           && (s.type == SearchType::kMax) && (s.result == SearchResult::kValue)
-                          && (in.data.info.size == in.data.info.paddedSize)
+                          && (!in.data.info.IsPadded())
                           && (in.data.dataInfo.type == umpalumpa::data::DataType::kFloat);
         if (canProcess) {
           TunableStrategy::Init(helper);
@@ -74,17 +74,17 @@ namespace extrema_finder {
         // prepare input data
         auto &tuner = helper.GetTuner();
         auto argIn = tuner.AddArgumentVector<float>(in.data.ptr,
-          in.data.info.size.total,
+          in.data.info.GetSize().total,
           ktt::ArgumentAccessType::ReadOnly,
           ktt::ArgumentMemoryLocation::Unified);
 
         // prepare output data
         auto argVals = tuner.AddArgumentVector<float>(out.values.ptr,
-          out.values.info.size.total,
+          out.values.info.GetSize().total,
           ktt::ArgumentAccessType::WriteOnly,
           ktt::ArgumentMemoryLocation::Unified);
 
-        auto argSize = tuner.AddArgumentScalar(in.data.info.size.single);
+        auto argSize = tuner.AddArgumentScalar(in.data.info.GetSize().single);
 
         tuner.SetArguments(definitionId, { argIn, argVals, argSize });
 
@@ -134,12 +134,13 @@ namespace extrema_finder {
       {
         bool canProcess = (s.version == 1) && (s.location == SearchLocation::kRectCenter)
                           && (s.type == SearchType::kMax) && (s.result == SearchResult::kLocation)
-                          && (in.data.info.size == in.data.info.paddedSize)
+                          && (!in.data.info.IsPadded())
                           && (in.data.dataInfo.type == umpalumpa::data::DataType::kFloat);
         if (canProcess) {
           TunableStrategy::Init(helper);
           auto &size = in.data.info.GetSize();
           auto &tuner = helper.GetTuner();
+
           // ensure that we have the kernel loaded to KTT
           // this has to be done in critical section, as multiple instances of this algorithm
           // might run on the same worker
@@ -192,16 +193,16 @@ namespace extrema_finder {
         // prepare input data
         auto &tuner = helper.GetTuner();
         auto argIn = tuner.AddArgumentVector<float>(in.data.ptr,
-          in.data.info.size.total,
+          in.data.info.GetSize().total,
           ktt::ArgumentAccessType::ReadOnly,
           ktt::ArgumentMemoryLocation::Unified);
 
-        auto argInSize = tuner.AddArgumentScalar(in.data.info.size);
+        auto argInSize = tuner.AddArgumentScalar(in.data.info.GetSize());
 
         // prepare output data
         auto argVals = tuner.AddArgumentScalar(NULL);
         auto argLocs = tuner.AddArgumentVector<float>(out.locations.ptr,
-          out.values.info.size.total,
+          out.values.info.GetSize().total,
           ktt::ArgumentAccessType::WriteOnly,
           ktt::ArgumentMemoryLocation::Unified);
 

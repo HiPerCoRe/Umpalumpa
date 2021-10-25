@@ -62,9 +62,9 @@ namespace extrema_finder {
         // is the type correct?
         result = result && (in.data.dataInfo.type == out.values.dataInfo.type);
         // we need to have enough space for results
-        result = result && (in.data.info.size.n == out.values.info.size.n);
+        result = result && (in.data.info.GetSize().n == out.values.info.GetSize().n);
         // output should be N 1D values
-        result = result && (out.values.info.size.total == out.values.info.size.n);
+        result = result && (out.values.info.GetSize().total == out.values.info.GetSize().n);
       }
       return result;
     }
