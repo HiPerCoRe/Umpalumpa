@@ -85,6 +85,19 @@ namespace data {
     }
 
     /**
+     * Returns true if this Payload is equivalent to reference one,
+     * i.e. it has:
+     * - equivalent Logical Descriptor
+     *   - the size of this Paylod is the same, except for N,
+     *     which can be lower or equal to reference
+     * - the data type
+     **/
+    bool IsEquivalentTo(const Payload<T> ref) const
+    {
+      return info.IsEquivalentTo(ref.info) && (dataInfo.type == ref.dataInfo.type);
+    }
+
+    /**
      * Returns minimal number of bytes necessary to fit this data.
      * Returned amount might be smaller than bytes provided by Physical descriptor,
      * as data represented by this Payload might not span the entire memory block.

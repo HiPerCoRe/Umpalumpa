@@ -22,7 +22,7 @@ namespace fourier_transformation {
       auto in = AFFT::InputData(std::move(*inP));
       auto *args = reinterpret_cast<ExecuteArgs *>(func_arg);
       auto &alg = args->algs->at(static_cast<size_t>(starpu_worker_get_id()));
-      alg->Execute(out, in);
+      std::ignore = alg->Execute(out, in);// we have no way of comunicate the result
       alg->Synchronize();// this codelet is run asynchronously, but we have to wait till it's done
                          // to be able to use starpu task synchronization properly
     }
@@ -55,9 +55,16 @@ namespace fourier_transformation {
     }
   }// namespace
 
-  bool FFTStarPU::Init(const OutputData &out, const InputData &in, const Settings &s)
+  bool FFTStarPU::Init(const StarpuOutputData &out, const StarpuInputData &in, const Settings &s)
   {
-    this->SetSettings(s);
+    return AFFT::Init(out.payload->GetPayload(), in.payload->GetPayload(), s);
+  }
+
+  bool FFTStarPU::InitImpl()
+  {
+    const auto &out = this->GetOutputRef();
+    const auto &in = this->GetInputRef();
+    const auto &s = this->GetSettings();
     algs.clear();
     algs.resize(starpu_worker_get_count());
     InitArgs args = { out, in, s, algs };
@@ -70,22 +77,42 @@ namespace fourier_transformation {
     return (algs.size()) > 0;
   }
 
-  bool FFTStarPU::Execute(const OutputData &out, const InputData &in)
+  bool FFTStarPU::ExecuteImpl(const OutputData &out, const InputData &in)
   {
-    using Type = data::StarpuPayload<InputData::PayloadType::LDType>;
-    auto o = StarpuOutputData(std::make_unique<Type>(out.data));
-    auto i = StarpuInputData(std::make_unique<Type>(in.data));
-    auto res = Execute(o, i);
-    // assume that results are requested
-    o.data->Unregister();
+    bool res = false;
+    if ((nullptr == outPtr) && (nullptr == inPtr)) {
+      // input and output data are not Starpu Payloads
+      using Type = data::StarpuPayload<InputData::PayloadType::LDType>;
+      auto o = StarpuOutputData(std::make_unique<Type>(out.payload));
+      auto i = StarpuInputData(std::make_unique<Type>(in.payload));
+      res = ExecuteImpl(o, i);
+      // assume that results are requested
+      o.payload->Unregister();
+    } else {
+      // input and output are Starpu Payload, stored locally
+      res = ExecuteImpl(*outPtr, *inPtr);
+    }
     return res;
   }
 
   bool FFTStarPU::Execute(const StarpuOutputData &out, const StarpuInputData &in)
   {
+    // store the reference to payloads locally
+    outPtr = &out;
+    inPtr = &in;
+    // call normal execute with the normal Payloads to get all checks etc.
+    auto res = AFFT::Execute(out.payload->GetPayload(), in.payload->GetPayload());
+    // cleanup
+    outPtr = nullptr;
+    inPtr = nullptr;
+    return res;
+  }
+
+  bool FFTStarPU::ExecuteImpl(const StarpuOutputData &out, const StarpuInputData &in)
+  {
     struct starpu_task *task = starpu_task_create();
-    task->handles[0] = out.data->GetHandle();
-    task->handles[1] = in.data->GetHandle();
+    task->handles[0] = out.payload->GetHandle();
+    task->handles[1] = in.payload->GetHandle();
     task->workerids = CreateWorkerMask(task->workerids_len,
       algs);// FIXME bug in the StarPU? If the mask is completely 0, codelet is being invoked anyway
     task->cl_arg = new ExecuteArgs{ this->GetSettings(), &algs };
@@ -105,7 +132,5 @@ namespace fourier_transformation {
     STARPU_CHECK_RETURN_VALUE(starpu_task_submit(task), "starpu_task_submit %s", this->taskName);
     return true;
   }
-
-
 }// namespace fourier_transformation
 }// namespace umpalumpa

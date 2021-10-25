@@ -1,6 +1,5 @@
 #include <libumpalumpa/algorithms/fourier_transformation/fft_cuda.hpp>
 #include <gtest/gtest.h>
-#include <libumpalumpa/utils/cuda.hpp>
 #include <tests/algorithms/fourier_transformation/fft_tests.hpp>
 
 #include <cuda_runtime.h>
