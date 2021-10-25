@@ -15,7 +15,7 @@ namespace extrema_finder {
         const AExtremaFinder::SearchData &in,
         const Settings &s) override final
       {
-        return (s.version == 1) && (in.data.info.size == in.data.info.paddedSize)
+        return (s.version == 1) && (!in.data.info.IsPadded())
                && (s.location == SearchLocation::kEntire) && (s.type == SearchType::kMax)
                && (s.result == SearchResult::kValue)
                && (in.data.dataInfo.type == umpalumpa::data::DataType::kFloat);
@@ -32,7 +32,7 @@ namespace extrema_finder {
           return false;
         FindSingleExtremaValXDCPU(reinterpret_cast<float *>(out.values.ptr),
           reinterpret_cast<float *>(in.data.ptr),
-          in.data.info.size,
+          in.data.info.GetSize(),
           std::greater<float>());
         return true;
       }
@@ -46,7 +46,7 @@ namespace extrema_finder {
         const AExtremaFinder::SearchData &in,
         const Settings &s) override final
       {
-        return (s.version == 1) && (in.data.info.size == in.data.info.paddedSize)
+        return (s.version == 1) && (!in.data.info.IsPadded())
                && (s.location == SearchLocation::kRectCenter) && (s.type == SearchType::kMax)
                && (s.result == SearchResult::kLocation)
                && (in.data.dataInfo.type == umpalumpa::data::DataType::kFloat);
@@ -76,7 +76,7 @@ namespace extrema_finder {
             reinterpret_cast<float *>(in.data.ptr),
             searchRectOffsetX, searchRectOffsetY,
             data::Size(searchRectWidth, searchRectHeight, 1, 1),
-            in.data.info.size,
+            in.data.info.GetSize(),
             std::greater<float>());
         return true;
       }
