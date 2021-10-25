@@ -7,6 +7,10 @@ set(tests
     ../../empty.cu # needs to be here so that CMAKE links CUDA libraries
 )
 
+if(USE_STARPU)
+  list(APPEND tests fft_starpu.cpp)
+endif()
+
 target_sources(fft_tests PRIVATE ${tests})
 
 target_link_libraries(

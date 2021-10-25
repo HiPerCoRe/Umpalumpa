@@ -1,6 +1,7 @@
 #include <libumpalumpa/algorithms/fourier_transformation/fft_cpu.hpp>
 #include <libumpalumpa/system_includes/spdlog.hpp>
 #include <fftw3.h>
+#include <mutex>
 
 namespace umpalumpa {
 namespace fourier_transformation {
@@ -9,8 +10,11 @@ namespace fourier_transformation {
     // FIXME for inverse transformation, we need to either copy data to aux array or
     // add some flag to settings stating that user is fine with data rewriting
 
+    // Since planning is not thread safe, we need to have a single mutex for all instances
+    static std::mutex mutex;
+
     template<typename F>
-    auto PlanHelper(const AFFT::ResultData &out,
+    auto PlanHelper(const AFFT::OutputData &out,
       const AFFT::InputData &in,
       const Settings &settings,
       F function)
@@ -45,7 +49,9 @@ namespace fourier_transformation {
       // set threads
       // fftw_plan_with_nthreads(threads);
       // fftwf_plan_with_nthreads(threads);
-
+      
+      // only one thread can create a plan
+      std::lock_guard<std::mutex> lck(mutex);
       auto tmp = function(rank,
         &n[offset],
         static_cast<int>(in.data.info.GetPaddedSize().n),
@@ -61,7 +67,7 @@ namespace fourier_transformation {
       return tmp;
     }
 
-    bool IsDouble(const AFFT::ResultData &out, const AFFT::InputData &in, Direction d)
+    bool IsDouble(const AFFT::OutputData &out, const AFFT::InputData &in, Direction d)
     {
       if (Direction::kForward == d) {
         return ((out.data.dataInfo.type == data::DataType::kComplexDouble)
@@ -71,7 +77,7 @@ namespace fourier_transformation {
               && (in.data.dataInfo.type == data::DataType::kComplexDouble));
     }
 
-    bool IsFloat(const AFFT::ResultData &out, const AFFT::InputData &in, Direction d)
+    bool IsFloat(const AFFT::OutputData &out, const AFFT::InputData &in, Direction d)
     {
       if (Direction::kForward == d) {
         return ((out.data.dataInfo.type == data::DataType::kComplexFloat)
@@ -87,7 +93,7 @@ namespace fourier_transformation {
 
       static constexpr auto kStrategyName = "StrategyFloat";
 
-      bool Init(const AFFT::ResultData &out,
+      bool Init(const AFFT::OutputData &out,
         const AFFT::InputData &in,
         const Settings &settings) override final
       {
@@ -139,7 +145,7 @@ namespace fourier_transformation {
 
       std::string GetName() const override final { return kStrategyName; }
 
-      bool Execute(const AFFT::ResultData &out,
+      bool Execute(const AFFT::OutputData &out,
         const AFFT::InputData &in,
         const Settings &s) override final
       {
@@ -175,7 +181,7 @@ namespace fourier_transformation {
 
       static constexpr auto kStrategyName = "StrategyDouble";
 
-      bool Init(const AFFT::ResultData &out,
+      bool Init(const AFFT::OutputData &out,
         const AFFT::InputData &in,
         const Settings &settings) override final
       {
@@ -227,7 +233,7 @@ namespace fourier_transformation {
 
       std::string GetName() const override final { return kStrategyName; }
 
-      bool Execute(const AFFT::ResultData &out,
+      bool Execute(const AFFT::OutputData &out,
         const AFFT::InputData &in,
         const Settings &s) override final
       {
@@ -258,7 +264,7 @@ namespace fourier_transformation {
 
   }// namespace
 
-  bool FFTCPU::Init(const ResultData &out, const InputData &in, const Settings &s)
+  bool FFTCPU::Init(const OutputData &out, const InputData &in, const Settings &s)
   {
     if (IsInitialized()) { strategy.reset(); }
     SetSettings(s);
@@ -275,8 +281,9 @@ namespace fourier_transformation {
            || tryToAdd(std::make_unique<StrategyDouble>());
   }
 
-  bool FFTCPU::Execute(const ResultData &out, const InputData &in)
+  bool FFTCPU::Execute(const OutputData &out, const InputData &in)
   {
+    if (!this->IsInitialized()) return false;
     return strategy->Execute(out, in, GetSettings());
   }
 }// namespace fourier_transformation

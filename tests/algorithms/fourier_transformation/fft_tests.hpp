@@ -33,7 +33,7 @@ public:
   virtual void *Allocate(size_t bytes) = 0;
   virtual void Free(void *ptr) = 0;
 
-  void testFFTInpulseOrigin(AFFT::ResultData &out, AFFT::InputData &in, const Settings &settings) {
+  void testFFTInpulseOrigin(AFFT::OutputData &out, AFFT::InputData &in, const Settings &settings) {
     auto *inData = reinterpret_cast<float*>(in.data.ptr);
     auto *outData = reinterpret_cast<std::complex<float>*>(out.data.ptr);
 
@@ -60,7 +60,7 @@ public:
     }
   }
 
-  void testIFFTInpulseOrigin(AFFT::ResultData &out, AFFT::InputData &in, const Settings &settings) {
+  void testIFFTInpulseOrigin(AFFT::OutputData &out, AFFT::InputData &in, const Settings &settings) {
     auto *inData = reinterpret_cast<std::complex<float>*>(in.data.ptr);
     auto *outData = reinterpret_cast<float*>(out.data.ptr);
 
@@ -101,7 +101,7 @@ public:
     }
   }
 
-  void testFFTInpulseShifted(AFFT::ResultData &out, AFFT::InputData &in, const Settings &settings) {
+  void testFFTInpulseShifted(AFFT::OutputData &out, AFFT::InputData &in, const Settings &settings) {
     auto *inData = reinterpret_cast<float*>(in.data.ptr);
     auto *outData = reinterpret_cast<std::complex<float>*>(out.data.ptr);
 
@@ -130,7 +130,7 @@ public:
     }
   }
 
-  void testFFTIFFT(AFFT::ResultData &out, AFFT::InputData &in, const Settings &settings) {
+  void testFFTIFFT(AFFT::OutputData &out, AFFT::InputData &in, const Settings &settings) {
     auto *inData = reinterpret_cast<float*>(in.data.ptr);
     auto *outData = reinterpret_cast<std::complex<float>*>(out.data.ptr);
     auto &inverseIn = out;
