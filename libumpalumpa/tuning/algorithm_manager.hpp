@@ -12,6 +12,10 @@ class AlgorithmManager
   std::map<size_t, TunableStrategy *> strategies;
   std::vector<ktt::KernelDefinitionId> definitionIds;// Might not be needed
 
+  AlgorithmManager() = default;
+  AlgorithmManager(const AlgorithmManager &) = default;
+  AlgorithmManager &operator=(const AlgorithmManager &) = default;
+
 public:
   static AlgorithmManager &Get();
 
