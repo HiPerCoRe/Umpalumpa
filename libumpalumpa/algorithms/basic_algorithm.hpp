@@ -106,9 +106,7 @@ protected:
     const auto &s = this->GetSettings();
     auto tryToInit = [this, &out, &in, &s](auto &i) {
       bool canUse = i->Init(out, in, s);
-      if (canUse) {
-        strategy = std::move(i);
-      }
+      if (canUse) { strategy = std::move(i); }
       return canUse;
     };
     auto availableStrategies = this->GetStrategies();
@@ -137,7 +135,7 @@ protected:
    **/
   virtual std::vector<std::unique_ptr<Strategy>> GetStrategies() const { return {}; };
 
-  const InputData &GetOutputRef() const { return *outputRef.get(); }
+  const OutputData &GetOutputRef() const { return *outputRef.get(); }
 
   const InputData &GetInputRef() const { return *inputRef.get(); }
 
