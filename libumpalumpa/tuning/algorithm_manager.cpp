@@ -12,18 +12,18 @@ AlgorithmManager &AlgorithmManager::Get()
 
 void AlgorithmManager::Register(TunableStrategy *strat)
 {
+  std::lock_guard<std::mutex> lck(mutex);
   strategies[strat->GetHash()] = strat;
-  // std::cout << "Strategy " << strat << " registered\n";
 }
 void AlgorithmManager::Unregister(TunableStrategy *strat)
 {
+  std::lock_guard<std::mutex> lck(mutex);
   // TODO save best configuration
 
   // Cannot be done using strat->GetHash(), GetHash is not defined during Unregister
   for (auto it = strategies.begin(); it != strategies.end(); ++it) {
     if ((*it).second == strat) {
       strategies.erase(it);
-      // std::cout << "Strategy " << strat << " unregistered\n";
       return;
     }
   }
@@ -31,6 +31,7 @@ void AlgorithmManager::Unregister(TunableStrategy *strat)
 
 ktt::KernelConfiguration AlgorithmManager::GetBestConfiguration(size_t stratHash)
 {
+  std::lock_guard<std::mutex> lck(mutex);
   auto it = strategies.find(stratHash);
   if (it != strategies.end()) { return it->second->GetBestConfiguration(); }
   // TODO Access DB

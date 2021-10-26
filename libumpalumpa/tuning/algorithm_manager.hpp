@@ -1,4 +1,5 @@
 #pragma once
+#include <mutex>
 #include <vector>
 #include <libumpalumpa/system_includes/ktt.hpp>
 
@@ -11,10 +12,13 @@ class AlgorithmManager
 {
   std::map<size_t, TunableStrategy *> strategies;
   std::vector<ktt::KernelDefinitionId> definitionIds;// Might not be needed
+  std::mutex mutex;
 
   AlgorithmManager() = default;
-  AlgorithmManager(const AlgorithmManager &) = default;
-  AlgorithmManager &operator=(const AlgorithmManager &) = default;
+  AlgorithmManager(AlgorithmManager &&) = delete;
+  AlgorithmManager &operator=(AlgorithmManager &&) = delete;
+  // Copy constructor and assign operator are implicitly deleted because of the mutex
+
 
 public:
   static AlgorithmManager &Get();
