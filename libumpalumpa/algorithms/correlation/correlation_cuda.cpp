@@ -19,9 +19,9 @@ namespace correlation {
       // Z dimension, ie. create more threads, each thread processing fewer images.
 
       size_t GetHash() const override { return 0; }
-      bool IsSimilar(const TunableStrategy &other) const override
+      bool IsSimilarTo(const TunableStrategy &ref) const override
       {
-        if (GetFullName() != other.GetFullName()) { return false; }
+        if (GetFullName() != ref.GetFullName()) { return false; }
         // Now we know that type of 'other' is the same as 'this' and we can safely cast it to the
         // needed type
         // auto &o = dynamic_cast<const Strategy1 &>(other);
@@ -149,7 +149,7 @@ namespace correlation {
           interface.RunKernelAsync(definitionId, interface.GetAllQueues().at(0), gridDim, blockDim);
         });
 
-        if (GetTuning()) {
+        if (ShouldTune()) {
           tuner.TuneIteration(kernelId, {});
         } else {
           // TODO GetBestConfiguration can be used once the KTT is able to synchronize

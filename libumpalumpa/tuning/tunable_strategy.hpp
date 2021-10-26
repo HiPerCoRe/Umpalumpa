@@ -17,8 +17,8 @@ public:
   }
 
   virtual size_t GetHash() const = 0;
-  virtual bool IsSimilar(const TunableStrategy &other) const = 0;// Leads to a use of dynamic_cast
-  bool IsEquivalent(const TunableStrategy &other) const { return GetHash() == other.GetHash(); }
+  virtual bool IsSimilarTo(const TunableStrategy &ref) const = 0;
+  bool IsEqualTo(const TunableStrategy &ref) const { return GetHash() == ref.GetHash(); }
   std::string GetFullName() const { return typeid(*this).name(); }
   ktt::KernelConfiguration GetBestConfiguration() const
   {
@@ -26,7 +26,7 @@ public:
   }
 
   void SetTuning(bool val) { tune = val; }
-  bool GetTuning() { return tune; }
+  bool ShouldTune() { return tune; }
 
 protected:
   // NOTE Cant be called in constructor because it needs GetHash method to work properly
