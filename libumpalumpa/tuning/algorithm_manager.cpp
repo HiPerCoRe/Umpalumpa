@@ -6,7 +6,7 @@ namespace umpalumpa::algorithm {
 
 AlgorithmManager &AlgorithmManager::Get()
 {
-  static auto instance = std::make_unique<AlgorithmManager>();
+  static auto instance = std::unique_ptr<AlgorithmManager>(new AlgorithmManager());
   return *instance;
 }
 
