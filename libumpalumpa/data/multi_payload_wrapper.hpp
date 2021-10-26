@@ -49,13 +49,13 @@ namespace data {
     template<size_t... I>
     auto InternalEquivalent(const std::tuple<Args...> &t1,
       const std::tuple<Args...> &t2,
-      std::index_sequence<I...>)
+      std::index_sequence<I...>) const
     {
       return ReduceBools(AreEquivalent(std::get<I>(t1), std::get<I>(t2))...);
     }
 
     bool ReduceBools(bool b, bool rest...) const { return b && ReduceBools(rest); }
-    bool ReduceBools() const { return true; }
+    bool ReduceBools(bool b) const { return b; }
   };
 }// namespace data
 }// namespace umpalumpa
