@@ -2,25 +2,20 @@
 
 #include <tuple>
 
-/**
- * This is a wrapper for multiple Payloads
- * It can be used for algorithms which require
- * multiple Payloads on input or output
- **/
 namespace umpalumpa {
 namespace data {
+  /**
+   * This is a wrapper for multiple Payloads
+   * Intended usage:
+   * Derived class will provide Constructor and Getters
+   * for the payloads, so that they can be algorithm-specific
+   **/
   template<typename... Args> struct MultiPayloadWrapper
   {
-    // NOTE not sure if the following constructor is needed
-    // All 'args' would have to be copy-constructible
-    // MultiPayloadWrapper(const Args &... args) : payload(args...) {}
-    MultiPayloadWrapper(Args &&... args) : payload(std::move(args)...) {}
-    const std::tuple<Args...> payload;
-
     MultiPayloadWrapper CopyWithoutData() const
     {
       return std::apply(
-        [this](const auto &... p) { return MultiPayloadWrapper(RemoveData(p)...); }, payload);
+        [this](const auto &... p) { return MultiPayloadWrapper(RemoveData(p)...); }, payloads);
     }
 
     /**
@@ -28,7 +23,7 @@ namespace data {
      **/
     bool IsValid() const
     {
-      return std::apply([this](const auto &... p) { return ReduceBools(IsValid(p)...); }, payload);
+      return std::apply([this](const auto &... p) { return ReduceBools(IsValid(p)...); }, payloads);
     }
 
     /**
@@ -37,8 +32,31 @@ namespace data {
      **/
     bool IsEquivalentTo(const MultiPayloadWrapper<Args...> &ref) const
     {
-      return InternalEquivalent(payload, ref.payload, std::make_index_sequence<sizeof...(Args)>{});
+      return InternalEquivalent(
+        payloads, ref.payloads, std::make_index_sequence<sizeof...(Args)>{});
     }
+
+    // NOTE: Needs to be public because of testing
+    /**
+     * WARNING: Don't use this method unless you are sure you know what you are doing.
+     *          Use getters of derived class to access the Payloads.
+     *
+     * Returns std::tuple of all the saved Payloads.
+     */
+    const auto &GetPayloads() const { return payloads; }
+
+  protected:
+    // NOTE not sure if the following constructor is needed
+    // All 'args' would have to be copy-constructible
+    // MultiPayloadWrapper(const Args &... args) : payload(args...) {}
+
+    MultiPayloadWrapper(Args &&... args) : payloads(std::move(args)...) {}
+
+    /**
+     * Specific Payload can be accessed using std::get<N>(payloads) function, where N is a position
+     * of the requested Payload.
+     */
+    const std::tuple<Args...> payloads;
 
   private:
     template<typename T> T RemoveData(const T &t) const { return t.CopyWithoutData(); }
