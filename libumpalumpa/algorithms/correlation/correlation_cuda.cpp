@@ -35,13 +35,13 @@ namespace correlation {
         utils::KTTHelper &helper) override final
       {
         // FIXME check settings
-        bool canProcess = (in.data1.dataInfo.type == data::DataType::kComplexFloat)
-                          && (in.data2.dataInfo.type == data::DataType::kComplexFloat)
-                          && (out.data.dataInfo.type == data::DataType::kComplexFloat);
+        bool canProcess = (in.GetData1().dataInfo.type == data::DataType::kComplexFloat)
+                          && (in.GetData2().dataInfo.type == data::DataType::kComplexFloat)
+                          && (out.GetCorrelations().dataInfo.type == data::DataType::kComplexFloat);
 
         if (canProcess) {
           TunableStrategy::Init(helper);
-          const auto &size = out.data.info.GetPaddedSize();
+          const auto &size = out.GetCorrelations().info.GetPaddedSize();
           auto &tuner = helper.GetTuner();
 
           // ensure that we have the kernel loaded to KTT
@@ -53,7 +53,7 @@ namespace correlation {
             ktt::DimensionVector{ size.x, size.y, size.z },
             { "float2",
               std::to_string(s.GetCenter()),
-              std::to_string(in.data1.ptr == in.data2.ptr) });
+              std::to_string(in.GetData1().ptr == in.GetData2().ptr) });
           kernelId = tuner.CreateSimpleKernel(kTMP + std::to_string(strategyId), definitionId);
 
           tuner.AddParameter(kernelId, "TILE", std::vector<uint64_t>{ 1, 2, 4, 8 });
@@ -110,37 +110,38 @@ namespace correlation {
         const Settings &,
         utils::KTTHelper &helper) override final
       {
-        if (!in.data1.IsValid() || in.data1.IsEmpty() || !out.data.IsValid()// FIXME refactor
-            || out.data.IsEmpty())
+        if (!in.GetData1().IsValid() || in.GetData1().IsEmpty()
+            || !out.GetCorrelations().IsValid()// FIXME refactor
+            || out.GetCorrelations().IsEmpty())
           return false;
 
         auto &tuner = helper.GetTuner();
-        // prepare input data1
-        auto argIn1 = tuner.AddArgumentVector<float2>(in.data1.ptr,
-          in.data1.info.GetSize().total,
+        // prepare input GetData1()
+        auto argIn1 = tuner.AddArgumentVector<float2>(in.GetData1().ptr,
+          in.GetData1().info.GetSize().total,
           ktt::ArgumentAccessType::ReadOnly,// FIXME these information should be stored in the
                                             // physical descriptor
           ktt::ArgumentMemoryLocation::Unified);// ^
 
-        auto argIn2 = tuner.AddArgumentVector<float2>(in.data2.ptr,
-          in.data2.info.GetSize().total,
+        auto argIn2 = tuner.AddArgumentVector<float2>(in.GetData2().ptr,
+          in.GetData2().info.GetSize().total,
           ktt::ArgumentAccessType::ReadOnly,// FIXME these information should be stored in the
                                             // physical descriptor
           ktt::ArgumentMemoryLocation::Unified);// ^
 
-        // prepare output data1
-        auto argOut = tuner.AddArgumentVector<float2>(out.data.ptr,
-          out.data.info.GetSize().total,
+        // prepare output GetData1()
+        auto argOut = tuner.AddArgumentVector<float2>(out.GetCorrelations().ptr,
+          out.GetCorrelations().info.GetSize().total,
           ktt::ArgumentAccessType::WriteOnly,// FIXME these information should be stored in the
                                              // physical descriptor
           ktt::ArgumentMemoryLocation::Unified);// ^
 
-        auto inSize = tuner.AddArgumentScalar(in.data1.info.GetSize());
-        auto in2N = tuner.AddArgumentScalar(static_cast<int>(in.data2.info.GetSize().n));
+        auto inSize = tuner.AddArgumentScalar(in.GetData1().info.GetSize());
+        auto in2N = tuner.AddArgumentScalar(static_cast<int>(in.GetData2().info.GetSize().n));
 
         tuner.SetArguments(definitionId, { argOut, argIn1, inSize, argIn2, in2N });
 
-        const auto &size = out.data.info.GetPaddedSize();
+        const auto &size = out.GetCorrelations().info.GetPaddedSize();
         tuner.SetLauncher(kernelId, [this, &size](ktt::ComputeInterface &interface) {
           auto blockDim = interface.GetCurrentLocalSize(definitionId);
           ktt::DimensionVector gridDim(size.x, size.y, size.z);

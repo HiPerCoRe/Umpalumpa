@@ -11,7 +11,7 @@
 using namespace umpalumpa::correlation;
 using namespace umpalumpa::data;
 
-class Correlation_Tests 
+class Correlation_Tests
 {
 public:
   virtual ACorrelation &GetTransformer() = 0;
@@ -19,44 +19,48 @@ public:
   virtual void Free(void *ptr) = 0;
 
   // Works correctly only with float
-  void testCorrelationSimple(ACorrelation::OutputData &out, ACorrelation::InputData &in, const Settings &settings) {
+  void testCorrelationSimple(ACorrelation::OutputData &out,
+    ACorrelation::InputData &in,
+    const Settings &settings)
+  {
     auto f = [](std::complex<float> *arr, size_t size) {
-        for (size_t i = 0; i < size; i++) {
-          arr[i] = {1.f, 1.f};
-        }
-      };
+      for (size_t i = 0; i < size; i++) { arr[i] = { 1.f, 1.f }; }
+    };
     testCorrelation(out, in, settings, f);
   }
 
   // Works correctly only with float
-  void testCorrelationRandomData(ACorrelation::OutputData &out, ACorrelation::InputData &in, const Settings &settings) {
+  void testCorrelationRandomData(ACorrelation::OutputData &out,
+    ACorrelation::InputData &in,
+    const Settings &settings)
+  {
     // Not part of the function f, so that more invocations produce different output
     auto mt = std::mt19937(42);
     auto dist = std::normal_distribution<float>((float)0, (float)1);
     auto f = [&mt, &dist](std::complex<float> *arr, size_t size) {
-        for (size_t i = 0; i < size; i++) {
-          arr[i] = {dist(mt), dist(mt)};
-        }
-      };
+      for (size_t i = 0; i < size; i++) { arr[i] = { dist(mt), dist(mt) }; }
+    };
     testCorrelation(out, in, settings, f);
   }
 
 protected:
   template<typename InputProvider>
-  void testCorrelation(ACorrelation::OutputData &out, ACorrelation::InputData &in, const Settings &settings, InputProvider ip) {
-    auto *input1 = reinterpret_cast<std::complex<float>*>(in.data1.ptr);
-    auto *input2 = reinterpret_cast<std::complex<float>*>(in.data2.ptr);
-    auto *output = reinterpret_cast<std::complex<float>*>(out.data.ptr);
-    auto inSize = in.data1.info.GetSize();
-    auto inSize2 = in.data2.info.GetSize();
-    //auto outSize = out.data.info.GetSize();
+  void testCorrelation(ACorrelation::OutputData &out,
+    ACorrelation::InputData &in,
+    const Settings &settings,
+    InputProvider ip)
+  {
+    auto *input1 = reinterpret_cast<std::complex<float> *>(in.GetData1().ptr);
+    auto *input2 = reinterpret_cast<std::complex<float> *>(in.GetData2().ptr);
+    auto *output = reinterpret_cast<std::complex<float> *>(out.GetCorrelations().ptr);
+    auto inSize = in.GetData1().info.GetSize();
+    auto inSize2 = in.GetData2().info.GetSize();
+    // auto outSize = out.GetCorrelations().info.GetSize();
 
     ip(input1, inSize.total);
-    if (input1 != input2) {
-      ip(input2, inSize2.total);
-    }
+    if (input1 != input2) { ip(input2, inSize2.total); }
 
-    //PrintData(input1, inSize);
+    // PrintData(input1, inSize);
 
     auto &corr = GetTransformer();
 
@@ -64,14 +68,20 @@ protected:
     corr.Execute(out, in);
     corr.Synchronize();
 
-    //PrintData(output, outSize);
+    // PrintData(output, outSize);
 
     float delta = 0.00001f;
     check(output, settings, input1, inSize, input2, inSize2, delta);
   }
 
-  void check(const std::complex<float> *output, const Settings &s, const std::complex<float> *input1,
-      const Size &inSize, const std::complex<float> *input2, const Size &in2Size, float delta = 0.00001f) const {
+  void check(const std::complex<float> *output,
+    const Settings &s,
+    const std::complex<float> *input1,
+    const Size &inSize,
+    const std::complex<float> *input2,
+    const Size &in2Size,
+    float delta = 0.00001f) const
+  {
     auto imageCounter = 0;
     // all pairs (combination without repetitions), in reasonable ordering
     for (size_t i1 = 0; i1 < inSize.n; i1++) {
@@ -84,15 +94,17 @@ protected:
             auto totalOffset = imageOffset + pixelOffset;
             auto val1 = input1[i1 * inSize.single + y * inSize.x + x];
             auto val2 = input2[i2 * inSize.single + y * inSize.x + x];
-            auto realRes = val1.real()*val2.real() + val1.imag()*val2.imag();
-            auto imagRes = val1.imag()*val2.real() - val1.real()*val2.imag();
+            auto realRes = val1.real() * val2.real() + val1.imag() * val2.imag();
+            auto imagRes = val1.imag() * val2.real() - val1.real() * val2.imag();
             if (s.GetCenter()) {
-              float centerCoef = 1 - 2*((static_cast<int>(x)+static_cast<int>(y))&1);
+              float centerCoef = 1 - 2 * ((static_cast<int>(x) + static_cast<int>(y)) & 1);
               realRes *= centerCoef;
               imagRes *= centerCoef;
             }
-            ASSERT_NEAR(realRes, output[totalOffset].real(), delta) << " at <" << i1 << "," << i2 << "> (" << x << "," << y << ")";
-            ASSERT_NEAR(imagRes, output[totalOffset].imag(), delta) << " at <" << i1 << "," << i2 << "> (" << x << "," << y << ")";
+            ASSERT_NEAR(realRes, output[totalOffset].real(), delta)
+              << " at <" << i1 << "," << i2 << "> (" << x << "," << y << ")";
+            ASSERT_NEAR(imagRes, output[totalOffset].imag(), delta)
+              << " at <" << i1 << "," << i2 << "> (" << x << "," << y << ")";
           }
         }
         imageCounter++;
@@ -121,7 +133,7 @@ protected:
       for (size_t y = 0; y < size.y; ++y) {
         for (size_t x = 0; x < size.x; ++x) {
           auto v = data[offset + y * size.x + x];
-          printf("(%+.3f,%+.3f)\t", v.real(), v.imag() );
+          printf("(%+.3f,%+.3f)\t", v.real(), v.imag());
         }
         std::cout << "\n";
       }
@@ -129,40 +141,40 @@ protected:
     }
   }
 
-  using FreeFunction = std::function<void(void*)>;
+  using FreeFunction = std::function<void(void *)>;
 
   // Could be left as pure virtual, but in case of an error, it might be
   // difficult to realize, where the pure virtual method was called. Instead
   // throw reasonable exception.
-  virtual FreeFunction GetFree() {
-    throw std::logic_error("GetFree() method not overridden!");
-  }
+  virtual FreeFunction GetFree() { throw std::logic_error("GetFree() method not overridden!"); }
 
   // Deliberately not using gtest's SetUp method, because we need to know Settings and
   // Size of the current test to properly initialize memory
   // ONLY float currently supported!!
   // Assumes size == paddedSize
-  void SetUpCorrelation(const Settings &settings, const Size &inSize, int in2N = 0) {
+  void SetUpCorrelation(const Settings &settings, const Size &inSize, int in2N = 0)
+  {
     bool isWithin = in2N == 0;
     size_t outImages = inSize.n * in2N;
     if (isWithin) {
       in2N = inSize.n;
       for (size_t i = 0; i < inSize.n; i++)
-        for (size_t j = i + 1; j < inSize.n; j++)
-          outImages++;
+        for (size_t j = i + 1; j < inSize.n; j++) outImages++;
     }
 
     auto in2Size = Size(inSize.x, inSize.y, inSize.z, in2N);
     auto outSize = Size(inSize.x, inSize.y, inSize.z, outImages);
 
-    ldIn1 = std::make_unique<FourierDescriptor>(inSize, PaddingDescriptor(), FourierDescriptor::FourierSpaceDescriptor{});
+    ldIn1 = std::make_unique<FourierDescriptor>(
+      inSize, PaddingDescriptor(), FourierDescriptor::FourierSpaceDescriptor{});
     auto inputSizeInBytes = ldIn1->GetPaddedSize().total * Sizeof(DataType::kComplexFloat);
     pdIn1 = std::make_unique<PhysicalDescriptor>(inputSizeInBytes, DataType::kComplexFloat);
 
     inData1 = std::shared_ptr<void>(Allocate(pdIn1->bytes), GetFree());
     memset(inData1.get(), 0, pdIn1->bytes);
 
-    ldIn2 = std::make_unique<FourierDescriptor>(in2Size, PaddingDescriptor(), FourierDescriptor::FourierSpaceDescriptor{});
+    ldIn2 = std::make_unique<FourierDescriptor>(
+      in2Size, PaddingDescriptor(), FourierDescriptor::FourierSpaceDescriptor{});
     auto input2SizeInBytes = ldIn2->GetPaddedSize().total * Sizeof(DataType::kComplexFloat);
     pdIn2 = std::make_unique<PhysicalDescriptor>(input2SizeInBytes, DataType::kComplexFloat);
 
@@ -173,7 +185,8 @@ protected:
       memset(inData2.get(), 0, pdIn2->bytes);
     }
 
-    ldOut = std::make_unique<FourierDescriptor>(outSize, PaddingDescriptor(), FourierDescriptor::FourierSpaceDescriptor{});
+    ldOut = std::make_unique<FourierDescriptor>(
+      outSize, PaddingDescriptor(), FourierDescriptor::FourierSpaceDescriptor{});
     auto outputSizeInBytes = ldOut->GetPaddedSize().total * Sizeof(DataType::kComplexFloat);
     pdOut = std::make_unique<PhysicalDescriptor>(outputSizeInBytes, DataType::kComplexFloat);
 
