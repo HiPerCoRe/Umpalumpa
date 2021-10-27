@@ -11,7 +11,10 @@ namespace umpalumpa {
 namespace data {
   template<typename... Args> struct MultiPayloadWrapper
   {
-    MultiPayloadWrapper(Args... args) : payload(std::forward_as_tuple(args...)) {}
+    // NOTE not sure if the following constructor is needed
+    // All 'args' would have to be copy-constructible
+    // MultiPayloadWrapper(const Args &... args) : payload(args...) {}
+    MultiPayloadWrapper(Args &&... args) : payload(std::move(args)...) {}
     const std::tuple<Args...> payload;
 
     MultiPayloadWrapper CopyWithoutData() const
