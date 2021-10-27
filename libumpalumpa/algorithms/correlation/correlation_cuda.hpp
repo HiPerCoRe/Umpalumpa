@@ -2,6 +2,7 @@
 
 #include <libumpalumpa/algorithms/correlation/acorrelation.hpp>
 #include <libumpalumpa/tuning/ktt_base.hpp>
+#include <libumpalumpa/tuning/tunable_strategy.hpp>
 #include <vector>
 #include <memory>
 #include <map>
@@ -19,7 +20,7 @@ namespace correlation {
       Init(const OutputData &out, const InputData &in, const Settings &settings) override;
     virtual bool Execute(const OutputData &out, const InputData &in) override;
 
-    struct Strategy
+    struct Strategy : algorithm::TunableStrategy
     {
       virtual ~Strategy() = default;
       virtual bool Init(const OutputData &,

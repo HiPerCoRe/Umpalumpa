@@ -2,6 +2,7 @@
 
 #include <libumpalumpa/algorithms/fourier_processing/afp.hpp>
 #include <libumpalumpa/tuning/ktt_base.hpp>
+#include <libumpalumpa/tuning/tunable_strategy.hpp>
 #include <vector>
 #include <memory>
 #include <map>
@@ -19,7 +20,7 @@ namespace fourier_processing {
       Init(const OutputData &out, const InputData &in, const Settings &settings) override;
     virtual bool Execute(const OutputData &out, const InputData &in) override;
 
-    struct Strategy
+    struct Strategy : public algorithm::TunableStrategy
     {
       virtual ~Strategy() = default;
       virtual bool Init(const OutputData &,
