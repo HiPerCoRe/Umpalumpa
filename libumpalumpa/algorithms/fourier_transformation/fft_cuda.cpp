@@ -87,7 +87,8 @@ namespace fourier_transformation {
         &plan, rank, n, inembed, istride, idist, onembed, ostride, odist, type, batch));
     };
     manyHelper(f);
-    CudaErrchk(cufftSetStream(plan, stream));
+    // CudaErrchk(cufftSetStream(plan, stream)); // FIXME this causes CUFFT_EXEC_FAILED in Xmipp for
+    // no apparent reason
   }
 
   FFTCUDA::FFTCUDA(int deviceOrdinal) : shouldDestroyStream(true)
@@ -102,7 +103,11 @@ namespace fourier_transformation {
 
   FFTCUDA::~FFTCUDA()
   {
-    if (shouldDestroyStream) { CudaErrchk(cuStreamDestroy(stream)); }
+    this->Cleanup();
+    if (shouldDestroyStream) {
+      // stream will be deleted once there's no more work on it
+      CudaErrchk(cuStreamDestroy(stream));
+    }
   }
 
   void FFTCUDA::Synchronize() { CudaErrchk(cudaStreamSynchronize(stream)); }
