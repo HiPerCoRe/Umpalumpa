@@ -16,10 +16,10 @@ namespace fourier_transformation {
     explicit FFTCUDA(int deviceOrdinal);
     ~FFTCUDA();
     void Synchronize() override;
+    void Cleanup() override;
 
   protected:
     bool InitImpl() override;
-    void Cleanup() override;
     bool ExecuteImpl(const OutputData &out, const InputData &in);
     bool IsValid(const OutputData &out, const InputData &in, const Settings &s) override;
 
