@@ -21,7 +21,7 @@ namespace fourier_transformation {
   protected:
     bool InitImpl() override;
     bool ExecuteImpl(const OutputData &out, const InputData &in);
-    bool IsValid(const OutputData &out, const InputData &in, const Settings &s) override;
+    bool IsValid(const OutputData &out, const InputData &in, const Settings &s) const override;
 
   private:
     template<typename F> void manyHelper(F function);

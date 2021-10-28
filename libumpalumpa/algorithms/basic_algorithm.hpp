@@ -79,19 +79,40 @@ public:
 
   bool IsInitialized() const { return isInitialized; }
 
+  /**
+   * Method to obtain reference to this instance.
+   * It is meant to be used by Strategies to get additional
+   * information stored in the Algorithm.
+   * By using Covariant return types, derived classes can
+   * override this method and thus provide more specific
+   * type for their Strategies.
+   **/
+  const BasicAlgorithm &Get() const { return *this; }
+
+  const OutputData &GetOutputRef() const { return *outputRef.get(); }
+
+  const InputData &GetInputRef() const { return *inputRef.get(); }
+
+  const Settings &GetSettings() const { return *settings.get(); }
+
 protected:
   struct Strategy
   {
+    Strategy(const BasicAlgorithm &a) : alg(a) {}
     virtual ~Strategy() = default;
-    virtual bool Init(const OutputData &, const InputData &, const Settings &s) = 0;
-    virtual bool Execute(const OutputData &out, const InputData &in, const Settings &settings) = 0;
+    virtual bool Init() = 0;
+    virtual bool Execute(const OutputData &out, const InputData &in) = 0;
     virtual std::string GetName() const = 0;
+
+  protected:
+    const BasicAlgorithm &alg;
   };
+
 
   /**
    * Returns true if output, input and settings are not logically conflicting or malformed.
    **/
-  virtual bool IsValid(const OutputData &out, const InputData &in, const Settings &s) = 0;
+  virtual bool IsValid(const OutputData &out, const InputData &in, const Settings &s) const = 0;
 
   /**
    * Perform specific initialization of the algorithm.
@@ -101,11 +122,8 @@ protected:
    **/
   virtual bool InitImpl()
   {
-    const auto &out = this->GetOutputRef();
-    const auto &in = this->GetInputRef();
-    const auto &s = this->GetSettings();
-    auto tryToInit = [this, &out, &in, &s](auto &i) {
-      bool canUse = i->Init(out, in, s);
+    auto tryToInit = [this](auto &i) {
+      bool canUse = i->Init();
       if (canUse) { strategy = std::move(i); }
       return canUse;
     };
@@ -125,7 +143,7 @@ protected:
    **/
   virtual bool ExecuteImpl(const OutputData &out, const InputData &in)
   {
-    return strategy->Execute(out, in, this->GetSettings());
+    return strategy->Execute(out, in);
   }
 
   /**
@@ -134,12 +152,6 @@ protected:
    * initialization method will be used during the execution.
    **/
   virtual std::vector<std::unique_ptr<Strategy>> GetStrategies() const { return {}; };
-
-  const OutputData &GetOutputRef() const { return *outputRef.get(); }
-
-  const InputData &GetInputRef() const { return *inputRef.get(); }
-
-  const Settings &GetSettings() const { return *settings.get(); }
 
 
 private:

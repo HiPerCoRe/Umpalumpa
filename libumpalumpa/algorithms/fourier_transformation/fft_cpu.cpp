@@ -94,13 +94,19 @@ namespace fourier_transformation {
       return tmp;
     }
 
-    template<typename T> struct UniversalStrategy : public FFTCPU::Strategy
+    template<typename T> struct UniversalStrategy final : public FFTCPU::Strategy
     {
-      ~UniversalStrategy() { T::kPlanDestructor(plan); }
+      using FFTCPU::Strategy::Strategy;
 
-      bool Init(const AFFT::OutputData &out,
-        const AFFT::InputData &in,
-        const Settings &settings) override final
+      ~UniversalStrategy()
+      {
+        if (alg.Get().IsInitialized()) {
+          // fftw does not like destroying uninitialized plan
+          T::kPlanDestructor(plan);
+        }
+      }
+
+      bool Init(const AFFT::OutputData &out, const AFFT::InputData &in, const Settings &settings)
       {
         bool canProcess = T::kCondition(out, in, settings.GetDirection());
         if (!canProcess) return false;
@@ -148,11 +154,17 @@ namespace fourier_transformation {
         return true;
       }
 
+      bool Init()
+      {
+        const auto &out = alg.Get().GetOutputRef();
+        const auto &in = alg.Get().GetInputRef();
+        const auto &settings = alg.Get().GetSettings();
+        return Init(out, in, settings);
+      }
+
       std::string GetName() const override final { return T::kStrategyName; }
 
-      bool Execute(const AFFT::OutputData &out,
-        const AFFT::InputData &in,
-        const Settings &s) override final
+      bool Execute(const AFFT::OutputData &out, const AFFT::InputData &in) override final
       {
         // FIXME Since FFTW is very picky about the data alignment etc.,
         // we currently internally reinitialize the algorithm each time Execute() is called
@@ -160,6 +172,7 @@ namespace fourier_transformation {
         // still this should be refactored in the future
 
         T::kPlanDestructor(plan);// plan has to be valid because Init() should have been called
+        const auto &s = alg.Get().GetSettings();
         this->Init(out, in, s);
         if (s.IsForward()) {
           T::kForwardPlanExecutor(plan,
@@ -181,8 +194,8 @@ namespace fourier_transformation {
   std::vector<std::unique_ptr<FFTCPU::Strategy>> FFTCPU::GetStrategies() const
   {
     std::vector<std::unique_ptr<FFTCPU::Strategy>> vec;
-    vec.emplace_back(std::make_unique<UniversalStrategy<FloatFFTWHelper>>());
-    vec.emplace_back(std::make_unique<UniversalStrategy<DoubleFFTWHelper>>());
+    vec.emplace_back(std::make_unique<UniversalStrategy<FloatFFTWHelper>>(*this));
+    vec.emplace_back(std::make_unique<UniversalStrategy<DoubleFFTWHelper>>(*this));
     return vec;
   }
 }// namespace fourier_transformation
