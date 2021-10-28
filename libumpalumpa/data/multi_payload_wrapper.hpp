@@ -36,16 +36,17 @@ namespace data {
     // MultiPayloadWrapper(const Args &... args) : payload(args...) {}
 
     MultiPayloadWrapper(Args &&... args) : payloads(std::move(args)...) {}
-    MultiPayloadWrapper(std::tuple<Args...> &&t) : payloads(std::move(t)) {}
 
     /**
-     * Intended usage: Derived class can use this method to get std::tuple of Payloads without data
-     * to construct new instance.
+     * Intended usage: Derived class can use this method to get its copy without data.
+     *
+     * Example for derived class Derived:
+     *
+     * MultiPayloadWrapper<Args...>::template CopyWithoutData<Derived>();
      */
-    auto CopyWithoutData() const
+    template<typename T> T CopyWithoutData() const
     {
-      return std::apply(
-        [this](const auto &... p) { return std::make_tuple(RemoveData(p)...); }, payloads);
+      return std::apply([this](const auto &... p) { return T(RemoveData(p)...); }, payloads);
     }
 
     /**

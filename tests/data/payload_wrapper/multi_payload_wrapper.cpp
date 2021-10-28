@@ -34,12 +34,11 @@ struct AllFalsePayload : public BasePayload
 template<typename... Args> struct TestPayloadWrapper : public MultiPayloadWrapper<Args...>
 {
   TestPayloadWrapper(Args &&... args) : MultiPayloadWrapper<Args...>(std::move(args)...) {}
-  TestPayloadWrapper(std::tuple<Args...> &&t) : MultiPayloadWrapper<Args...>(std::move(t)) {}
 
   const auto &GetPayloads() { return MultiPayloadWrapper<Args...>::payloads; }
   TestPayloadWrapper CopyWithoutData() const
   {
-    return TestPayloadWrapper(MultiPayloadWrapper<Args...>::CopyWithoutData());
+    return MultiPayloadWrapper<Args...>::template CopyWithoutData<TestPayloadWrapper>();
   }
 };
 
