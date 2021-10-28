@@ -1,7 +1,5 @@
 #include <libumpalumpa/algorithms/correlation/correlation_cuda.hpp>
-#include <libumpalumpa/system_includes/spdlog.hpp>
-#include <libumpalumpa/utils/system.hpp>
-#include <libumpalumpa/utils/cuda.hpp>
+#include <libumpalumpa/tuning/tunable_strategy.hpp>
 
 namespace umpalumpa::correlation {
 
@@ -169,11 +167,7 @@ namespace {// to avoid poluting
   };
 }// namespace
 
-void Correlation_CUDA::Synchronize()
-{
-  spdlog::info("Synch called");
-  GetHelper().GetTuner().Synchronize();
-}
+void Correlation_CUDA::Synchronize() { GetHelper().GetTuner().Synchronize(); }
 
 std::vector<std::unique_ptr<Correlation_CUDA::Strategy>> Correlation_CUDA::GetStrategies() const
 {

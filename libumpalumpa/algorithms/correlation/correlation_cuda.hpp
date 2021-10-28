@@ -2,10 +2,6 @@
 
 #include <libumpalumpa/algorithms/correlation/acorrelation.hpp>
 #include <libumpalumpa/tuning/ktt_base.hpp>
-#include <libumpalumpa/tuning/tunable_strategy.hpp>
-#include <vector>
-#include <memory>
-#include <map>
 
 namespace umpalumpa::correlation {
 class Correlation_CUDA
