@@ -7,38 +7,19 @@
 #include <memory>
 #include <map>
 
-namespace umpalumpa {
-namespace correlation {
-  class Correlation_CUDA
-    : public ACorrelation
-    , public algorithm::KTT_Base
-  {
-  public:
-    using algorithm::KTT_Base::KTT_Base;
+namespace umpalumpa::correlation {
+class Correlation_CUDA
+  : public ACorrelation
+  , public algorithm::KTT_Base
+{
+public:
+  using algorithm::KTT_Base::KTT_Base;
+  using BasicAlgorithm::Strategy;
+  void Synchronize() override;
 
-    virtual bool
-      Init(const OutputData &out, const InputData &in, const Settings &settings) override;
-    virtual bool Execute(const OutputData &out, const InputData &in) override;
+  const Correlation_CUDA &Get() const override { return *this; }
 
-    struct Strategy : algorithm::TunableStrategy
-    {
-      virtual ~Strategy() = default;
-      virtual bool Init(const OutputData &,
-        const InputData &,
-        const Settings &s,
-        utils::KTTHelper &helper) = 0;
-      virtual bool Execute(const OutputData &out,
-        const InputData &in,
-        const Settings &settings,
-        utils::KTTHelper &helper) = 0;
-      virtual std::string GetName() const = 0;
-      std::string GetFullName() const { return typeid(*this).name(); }
-    };
-
-    void Synchronize() override;
-
-  private:
-    std::unique_ptr<Strategy> strategy;
-  };
-}// namespace correlation
-}// namespace umpalumpa
+protected:
+  std::vector<std::unique_ptr<Strategy>> GetStrategies() const override;
+};
+}// namespace umpalumpa::correlation

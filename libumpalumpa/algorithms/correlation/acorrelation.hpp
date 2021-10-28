@@ -2,6 +2,7 @@
 
 #include <libumpalumpa/data/multi_payload_wrapper.hpp>
 #include <libumpalumpa/data/payload.hpp>
+#include <libumpalumpa/algorithms/basic_algorithm.hpp>
 #include <libumpalumpa/algorithms/correlation/settings.hpp>
 #include <libumpalumpa/data/fourier_descriptor.hpp>
 
@@ -10,6 +11,7 @@ namespace umpalumpa::correlation {
 template<typename T = data::Payload<data::FourierDescriptor>>
 struct InputDataWrapper : public data::MultiPayloadWrapper<T, T>
 {
+  InputDataWrapper(std::tuple<T, T> &&t) : data::MultiPayloadWrapper<T,T>(std::move(t)) {}
   InputDataWrapper(T d1, T d2) : data::MultiPayloadWrapper<T, T>(std::move(d1), std::move(d2)) {}
   const T &GetData1() const { return std::get<0>(this->payloads); };
   const T &GetData2() const { return std::get<1>(this->payloads); };
@@ -18,36 +20,26 @@ struct InputDataWrapper : public data::MultiPayloadWrapper<T, T>
 template<typename T = data::Payload<data::FourierDescriptor>>
 struct OutputDataWrapper : public data::MultiPayloadWrapper<T>
 {
+  OutputDataWrapper(std::tuple<T> &&t) : data::MultiPayloadWrapper<T>(std::move(t)) {}
   OutputDataWrapper(T correlations) : data::MultiPayloadWrapper<T>(std::move(correlations)) {}
   const T &GetCorrelations() const { return std::get<0>(this->payloads); };
 };
 
-class ACorrelation
+class ACorrelation : public BasicAlgorithm<OutputDataWrapper<>, InputDataWrapper<>, Settings>
 {
-protected:
-  const Settings &GetSettings() const { return *settings.get(); }
-
-  void SetSettings(const Settings &s) { this->settings = std::make_unique<Settings>(s); }
-
 public:
-  using OutputData = OutputDataWrapper<>;
-  using InputData = InputDataWrapper<>;
-
-  virtual bool Init(const OutputData &out, const InputData &in, const Settings &settings) = 0;
-  virtual bool Execute(const OutputData &out, const InputData &in) = 0;
-  virtual void Cleanup(){};
-  virtual void Synchronize() = 0;
-
-  virtual ~ACorrelation() = default;
-
-protected:
-  virtual bool IsValid(const OutputData &, const InputData &) const// move to cpp
+  static bool IsFloat(const OutputData &out, const InputData &in)
   {
-    bool result = true;
-    return result;
+    return (in.GetData1().dataInfo.type == data::DataType::kComplexFloat)
+           && (in.GetData2().dataInfo.type == data::DataType::kComplexFloat)
+           && (out.GetCorrelations().dataInfo.type == data::DataType::kComplexFloat);
   }
 
-  std::unique_ptr<Settings> settings;
+protected:
+  virtual bool IsValid(const OutputData &out, const InputData &in, const Settings &) const
+  {
+    return out.IsValid() && in.IsValid();
+  }
 };
 
 }// namespace umpalumpa::correlation

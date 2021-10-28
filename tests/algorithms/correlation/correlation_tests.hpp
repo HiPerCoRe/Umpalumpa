@@ -64,8 +64,8 @@ protected:
 
     auto &corr = GetTransformer();
 
-    corr.Init(out, in, settings);
-    corr.Execute(out, in);
+    ASSERT_TRUE(corr.Init(out, in, settings));
+    ASSERT_TRUE(corr.Execute(out, in));
     corr.Synchronize();
 
     // PrintData(output, outSize);

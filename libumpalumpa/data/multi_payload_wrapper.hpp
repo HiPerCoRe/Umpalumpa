@@ -29,14 +29,6 @@ template<typename... Args> struct MultiPayloadWrapper
     return InternalEquivalent(payloads, ref.payloads, std::make_index_sequence<sizeof...(Args)>{});
   }
 
-protected:
-  // NOTE not sure if the following constructor is needed
-  // All 'args' would have to be copy-constructible
-  // MultiPayloadWrapper(const Args &... args) : payload(args...) {}
-
-  MultiPayloadWrapper(Args &&...args) : payloads(std::move(args)...) {}
-  MultiPayloadWrapper(std::tuple<Args...> &&t) : payloads(std::move(t)) {}
-
   /**
    * Intended usage: Derived class can use this method to get std::tuple of Payloads without data
    * to construct new instance.
@@ -46,6 +38,14 @@ protected:
     return std::apply(
       [this](const auto &...p) { return std::make_tuple(RemoveData(p)...); }, payloads);
   }
+
+protected:
+  // NOTE not sure if the following constructor is needed
+  // All 'args' would have to be copy-constructible
+  // MultiPayloadWrapper(const Args &... args) : payload(args...) {}
+
+  MultiPayloadWrapper(Args &&...args) : payloads(std::move(args)...) {}
+  MultiPayloadWrapper(std::tuple<Args...> &&t) : payloads(std::move(t)) {}
 
   /**
    * Specific Payload can be accessed using std::get<N>(payloads) function, where N is a position

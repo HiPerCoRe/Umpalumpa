@@ -34,7 +34,7 @@ namespace algorithm {
       umpalumpa::utils::KTTProvider::Ensure(KTTId, CreateComputeQueues());
     }
 
-    virtual ~KTT_Base() = default;
+    virtual ~KTT_Base() = default; // FIXME release streams if necessary
 
     utils::KTTHelper &GetHelper() const { return utils::KTTProvider::Get(KTTId); }
 

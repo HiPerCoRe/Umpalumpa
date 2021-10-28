@@ -87,13 +87,14 @@ public:
    * override this method and thus provide more specific
    * type for their Strategies.
    **/
-  const BasicAlgorithm &Get() const { return *this; }
+  virtual const BasicAlgorithm &Get() const { return *this; }
 
   const OutputData &GetOutputRef() const { return *outputRef.get(); }
 
   const InputData &GetInputRef() const { return *inputRef.get(); }
 
   const Settings &GetSettings() const { return *settings.get(); }
+
 
 protected:
   struct Strategy
@@ -107,8 +108,7 @@ protected:
   protected:
     const BasicAlgorithm &alg;
   };
-
-
+  
   /**
    * Returns true if output, input and settings are not logically conflicting or malformed.
    **/
