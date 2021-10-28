@@ -31,7 +31,7 @@ namespace {// to avoid poluting
       return false;
     }
 
-    bool Init() override final
+    bool Init() override
     {
       // FIXME check settings
       const auto &out = alg.Get().GetOutputRef();
