@@ -12,7 +12,7 @@ public:
   {
     AlgorithmManager::Get().Unregister(this);
     if (kttHelper != nullptr) {
-      kttHelper->GetTuner().RemoveKernel(kernelId);
+      kttHelper->GetTuner().RemoveKernel(kernelId); // FIXME remove kernel only if it was added (e.g. try to return false in the Strategy::Init())
     }// FIXME not working properly can be leak or something
   }
 

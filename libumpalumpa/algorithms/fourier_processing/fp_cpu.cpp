@@ -4,65 +4,49 @@
 #include <libumpalumpa/algorithms/fourier_processing/fp_cpu_kernels.hpp>
 #include <libumpalumpa/system_includes/spdlog.hpp>
 
-namespace umpalumpa {
-namespace fourier_processing {
+namespace umpalumpa::fourier_processing {
 
-  namespace {// to avoid poluting
-    struct Strategy1 : public FP_CPU::Strategy
+namespace {// to avoid poluting
+  struct Strategy1 final : public FP_CPU::Strategy
+  {
+    // Inherit constructor
+    using FP_CPU::Strategy::Strategy;
+
+    bool Init() override
     {
-      static constexpr auto kStrategyName = "Strategy1";
+      // FIXME check settings
+      const auto &out = alg.Get().GetOutputRef();
+      const auto &in = alg.Get().GetInputRef();
+      return AFP::IsFloat(out, in);
+    }
 
-      bool
-        Init(const AFP::OutputData &out, const AFP::InputData &in, const Settings &) override final
-      {
-        // FIXME check settings
-        return (in.data.dataInfo.type == data::DataType::kComplexFloat)
-               && (in.filter.dataInfo.type == data::DataType::kFloat)
-               && (out.data.dataInfo.type == data::DataType::kComplexFloat);
-      }
+    std::string GetName() const override { return "Strategy1"; }
 
-      std::string GetName() const override final { return kStrategyName; }
+    bool Execute(const AFP::OutputData &out, const AFP::InputData &in) override
+    {
+      if (!in.GetData().IsValid() || in.GetData().IsEmpty() || !out.GetData().IsValid()
+          || out.GetData().IsEmpty())
+        return false;
 
-      bool Execute(const AFP::OutputData &out,
-        const AFP::InputData &in,
-        const Settings &s) override final
-      {
-        if (!in.data.IsValid() || in.data.IsEmpty() || !out.data.IsValid() || out.data.IsEmpty())
-          return false;
-        scaleFFT2DCPU(reinterpret_cast<std::complex<float> *>(in.data.ptr),
-          reinterpret_cast<std::complex<float> *>(out.data.ptr),
-          in.data.info.GetSize(),
-          out.data.info.GetSize(),
-          reinterpret_cast<float *>(in.filter.ptr),
-          1.f / static_cast<float>(in.data.info.GetPaddedSpatialSize().single),
-          s.GetApplyFilter(),
-          s.GetNormalize(),
-          s.GetCenter());
-        return true;
-      }
-    };
-  }// namespace
+      const auto &s = alg.GetSettings();
+      scaleFFT2DCPU(reinterpret_cast<std::complex<float> *>(in.GetData().ptr),
+        reinterpret_cast<std::complex<float> *>(out.GetData().ptr),
+        in.GetData().info.GetSize(),
+        out.GetData().info.GetSize(),
+        reinterpret_cast<float *>(in.GetFilter().ptr),
+        1.f / static_cast<float>(in.GetData().info.GetPaddedSpatialSize().single),
+        s.GetApplyFilter(),
+        s.GetNormalize(),
+        s.GetCenter());
+      return true;
+    }
+  };
+}// namespace
 
-  bool FP_CPU::Init(const OutputData &out, const InputData &in, const Settings &s)
-  {
-    SetSettings(s);
-    auto tryToAdd = [this, &out, &in, &s](auto i) {
-      bool canAdd = i->Init(out, in, s);
-      if (canAdd) {
-        spdlog::debug("Found valid strategy {}", i->GetName());
-        strategy = std::move(i);
-      }
-      return canAdd;
-    };
-
-    return tryToAdd(std::make_unique<Strategy1>());
-  }
-
-  bool FP_CPU::Execute(const OutputData &out, const InputData &in)
-  {
-    if (!this->IsValid(out, in)) return false;
-    return strategy->Execute(out, in, GetSettings());
-  }
-}// namespace fourier_processing
-}// namespace umpalumpa
-
+std::vector<std::unique_ptr<FP_CPU::Strategy>> FP_CPU::GetStrategies() const
+{
+  std::vector<std::unique_ptr<FP_CPU::Strategy>> vec;
+  vec.emplace_back(std::make_unique<Strategy1>(*this));
+  return vec;
+}
+}// namespace umpalumpa::fourier_processing
