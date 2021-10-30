@@ -64,7 +64,7 @@ namespace fourier_transformation {
     return true;
   }
 
-  bool FFTCUDA::IsValid(const OutputData &out, const InputData &in, const Settings &s)
+  bool FFTCUDA::IsValid(const OutputData &out, const InputData &in, const Settings &s) const
   {
     // Too many elements for Fourier Transformation. It would cause int overflow in the cuda kernel
     return AFFT::IsValid(out, in, s)
@@ -110,7 +110,13 @@ namespace fourier_transformation {
     }
   }
 
-  void FFTCUDA::Synchronize() { CudaErrchk(cudaStreamSynchronize(stream)); }
+  void FFTCUDA::Synchronize()
+  {
+    // FIXME we want to synchronize the right stream only, but we don't use it yet,
+    // so we have to synchronize whole device (default stream 0)
+    CudaErrchk(cudaStreamSynchronize(0));
+    // CudaErrchk(cudaStreamSynchronize(stream));
+  }
 
 }// namespace fourier_transformation
 }// namespace umpalumpa

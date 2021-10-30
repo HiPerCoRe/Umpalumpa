@@ -1,9 +1,7 @@
 add_executable(correlation_tests)
 
 # list of test files
-set(tests
-    correlation_cuda.cpp
-    ../../empty.cu # needs to be here so that CMAKE links CUDA libraries
+set(tests correlation_cuda.cpp correlation_cpu.cpp ../../empty.cu # needs to be here so that CMAKE links CUDA libraries
 )
 
 target_sources(correlation_tests PRIVATE ${tests})

@@ -1,17 +1,13 @@
 #pragma once
 
 #include <libumpalumpa/algorithms/correlation/acorrelation.hpp>
-#include <libumpalumpa/tuning/ktt_base.hpp>
 
 namespace umpalumpa::correlation {
-class Correlation_CUDA
-  : public ACorrelation
-  , public algorithm::KTT_Base
+class Correlation_CPU : public ACorrelation
 {
 public:
-  using algorithm::KTT_Base::KTT_Base;
   using BasicAlgorithm::Strategy;
-  void Synchronize() override;
+  void Synchronize() override{};
 
 protected:
   std::vector<std::unique_ptr<Strategy>> GetStrategies() const override;

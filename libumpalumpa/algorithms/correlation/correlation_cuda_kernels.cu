@@ -1,11 +1,11 @@
 #include <libumpalumpa/data/size.hpp>
 
-template<typename T, bool center, bool isWithin>
+template<typename T, bool center>
 __global__ void correlate2D(T *__restrict__ correlations,
   const T *__restrict__ in1,
   umpalumpa::data::Size in1Size,
   const T *__restrict__ in2,
-  int in2N)
+  int in2N, bool isWithin)
 {
   // assign pixel to thread
 #if TILE > 1

@@ -36,7 +36,7 @@ namespace fourier_transformation {
     }
 
   protected:
-    bool IsValid(const OutputData &out, const InputData &in, const Settings &s) override
+    bool IsValid(const OutputData &out, const InputData &in, const Settings &s) const override
     {
       return out.payload.IsValid() && in.payload.IsValid()
              && (IsDouble(out, in, s.GetDirection()) || IsFloat(out, in, s.GetDirection()));
