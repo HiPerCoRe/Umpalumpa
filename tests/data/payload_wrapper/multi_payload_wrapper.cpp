@@ -33,13 +33,14 @@ struct AllFalsePayload : public BasePayload
 
 template<typename... Args> struct TestPayloadWrapper : public MultiPayloadWrapper<Args...>
 {
+  TestPayloadWrapper(std::tuple<Args...> &&t) : MultiPayloadWrapper<Args...>(std::move(t)) {}
   TestPayloadWrapper(Args &&... args) : MultiPayloadWrapper<Args...>(std::move(args)...) {}
 
   const auto &GetPayloads() { return MultiPayloadWrapper<Args...>::payloads; }
-  TestPayloadWrapper CopyWithoutData() const
-  {
-    return MultiPayloadWrapper<Args...>::template CopyWithoutData<TestPayloadWrapper>();
-  }
+  // TestPayloadWrapper CopyWithoutData() const
+  // {
+  //   return MultiPayloadWrapper<Args...>::template CopyWithoutData<TestPayloadWrapper>();
+  // }
 };
 
 // NOTE currently not supported, might not be needed
@@ -150,7 +151,7 @@ TEST(TestPayloadWrapperTest, CopyWithoutData_no_data)
 {
   auto mpw = TestPayloadWrapper(AllTruePayload(), AllFalsePayload());
 
-  auto noDataCopy = mpw.CopyWithoutData();
+  TestPayloadWrapper noDataCopy = mpw.CopyWithoutData();
   const auto &p0 = std::get<0>(noDataCopy.GetPayloads());
   const auto &p1 = std::get<1>(noDataCopy.GetPayloads());
 
@@ -164,7 +165,7 @@ TEST(TestPayloadWrapperTest, CopyWithoutData_original_payloads_have_data)
   const int val1 = 42;
   auto mpw = TestPayloadWrapper(AllTruePayload(val0), AllFalsePayload(val1));
 
-  auto noDataCopy = mpw.CopyWithoutData();
+  TestPayloadWrapper noDataCopy = mpw.CopyWithoutData();
   const auto &noDataP0 = std::get<0>(noDataCopy.GetPayloads());
   const auto &noDataP1 = std::get<1>(noDataCopy.GetPayloads());
   const auto &p0 = std::get<0>(mpw.GetPayloads());

@@ -15,6 +15,7 @@ struct InputDataWrapper : public data::MultiPayloadWrapper<T, T>
   InputDataWrapper(T d1, T d2) : data::MultiPayloadWrapper<T, T>(std::move(d1), std::move(d2)) {}
   const T &GetData1() const { return std::get<0>(this->payloads); };
   const T &GetData2() const { return std::get<1>(this->payloads); };
+  typedef T PayloadType;
 };
 
 template<typename T = data::Payload<data::FourierDescriptor>>
@@ -23,6 +24,7 @@ struct OutputDataWrapper : public data::MultiPayloadWrapper<T>
   OutputDataWrapper(std::tuple<T> &&t) : data::MultiPayloadWrapper<T>(std::move(t)) {}
   OutputDataWrapper(T correlations) : data::MultiPayloadWrapper<T>(std::move(correlations)) {}
   const T &GetCorrelations() const { return std::get<0>(this->payloads); };
+  typedef T PayloadType;
 };
 
 class ACorrelation : public BasicAlgorithm<OutputDataWrapper<>, InputDataWrapper<>, Settings>
