@@ -29,6 +29,7 @@ if(USE_STARPU)
     umpalumpa_sources
     algorithms/extrema_finder/single_extrema_finder_starpu.cpp
     algorithms/correlation/correlation_starpu.cpp
+    algorithms/fourier_processing/fp_starpu.cpp
     algorithms/fourier_transformation/fft_starpu.cpp)
 endif()
 
