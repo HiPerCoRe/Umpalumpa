@@ -1,6 +1,6 @@
 #include <libumpalumpa/tuning/algorithm_manager.hpp>
 #include <libumpalumpa/tuning/tunable_strategy.hpp>
-#include <iostream>
+#include <libumpalumpa/system_includes/spdlog.hpp>
 
 namespace umpalumpa::algorithm {
 
@@ -13,30 +13,61 @@ AlgorithmManager &AlgorithmManager::Get()
 void AlgorithmManager::Register(TunableStrategy *strat)
 {
   std::lock_guard<std::mutex> lck(mutex);
-  strategies[strat->GetHash()] = strat;
+
+  spdlog::info("Strategy at address {0} registered", reinterpret_cast<size_t>(this));// tmp
+
+  for (auto &v : strategies) {
+    if (strat->IsSimilarTo(*v[0])) {
+      v.push_back(strat);
+      return;
+    }
+  }
+  // 'strat' is not similar to any other registered strategy, add 'strat' to a new vector
+  strategies.emplace_back().push_back(strat);
 }
+
 void AlgorithmManager::Unregister(TunableStrategy *strat)
 {
   std::lock_guard<std::mutex> lck(mutex);
   // TODO save best configuration
 
-  // Cannot be done using strat->GetHash(), GetHash is not defined during Unregister
-  for (auto it = strategies.begin(); it != strategies.end(); ++it) {
-    if ((*it).second == strat) {
-      strategies.erase(it);
-      return;
+  // FIXME mega in need of refactor
+  auto outerIt = strategies.end();
+  for (auto &v : strategies) {
+    auto it = std::find(v.begin(), v.end(), strat);
+    if (it != v.end()) {
+      outerIt = std::find(strategies.begin(), strategies.end(), v);
+      v.erase(it);
+      spdlog::info("Strategy at address {0} unregistered", reinterpret_cast<size_t>(this));// tmp
+      break;
     }
+  }
+  if (outerIt != strategies.end()) {
+    if (outerIt->empty()) { strategies.erase(outerIt); }
+  } else {
+    spdlog::warn("You are trying to unregister strategy which wasn't previously registered.");// tmp
   }
 }
 
 ktt::KernelConfiguration AlgorithmManager::GetBestConfiguration(size_t stratHash)
 {
   std::lock_guard<std::mutex> lck(mutex);
-  auto it = strategies.find(stratHash);
-  if (it != strategies.end()) { return it->second->GetBestConfiguration(); }
+
+  // auto it = strategies.find(stratHash);
+  // if (it != strategies.end()) { return it->second->GetBestConfiguration(); }
+
+  // FIXME refactor
+  for (auto &v : strategies) {
+    for (auto s : v) {
+      if (s->GetHash() == stratHash) { return s->GetBestConfiguration(); }
+    }
+  }
+
   // TODO Access DB
+
   return {};// or throw?
 }
+
 ktt::KernelDefinitionId AlgorithmManager::GetDefinitionId(const std::string & /*sourceFile*/,
   const std::string & /*kernelName*/,
   const std::vector<std::string> & /*templateArgs*/)

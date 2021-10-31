@@ -7,13 +7,14 @@ namespace umpalumpa::algorithm {
 class TunableStrategy
 {
 public:
-  TunableStrategy() : strategyId(GetNewStrategyId()), tune(false) {}
+  TunableStrategy(utils::KTTHelper &helper)
+    : kttHelper(helper), strategyId(GetNewStrategyId()), tune(false), isRegistered(false)
+  {}
+
   virtual ~TunableStrategy()
   {
     AlgorithmManager::Get().Unregister(this);
-    if (kttHelper != nullptr) {
-      kttHelper->GetTuner().RemoveKernel(kernelId);
-    }// FIXME not working properly can be leak or something
+    if (isRegistered) { kttHelper.GetTuner().RemoveKernel(kernelId); }
   }
 
   virtual size_t GetHash() const = 0;
@@ -22,22 +23,20 @@ public:
   std::string GetFullName() const { return typeid(*this).name(); }
   ktt::KernelConfiguration GetBestConfiguration() const
   {
-    return kttHelper->GetTuner().GetBestConfiguration(kernelId);
+    return kttHelper.GetTuner().GetBestConfiguration(kernelId);
   }
 
   void SetTuning(bool val) { tune = val; }
   bool ShouldTune() { return tune; }
 
 protected:
-  // NOTE Cant be called in constructor because it needs GetHash method to work properly
   /**
-   * Needs to be called only once in the Init method of a successor strategy and GetHash method has
-   * to return valid output.
+   * This method is called automatically when the successor class successfully initializes.
    */
-  void Init(utils::KTTHelper &helper)
+  void Register()
   {
-    kttHelper = &helper;
     AlgorithmManager::Get().Register(this);
+    isRegistered = true;
   }
 
   ktt::KernelDefinitionId GetKernelDefinitionId(const std::string &kernelName,
@@ -45,7 +44,7 @@ protected:
     const ktt::DimensionVector &gridDimensions,
     const std::vector<std::string> &templateArgs = {})
   {
-    auto &tuner = kttHelper->GetTuner();
+    auto &tuner = kttHelper.GetTuner();
     auto id = tuner.GetKernelDefinitionId(kernelName, templateArgs);
     if (id == ktt::InvalidKernelDefinitionId) {
       id =
@@ -57,12 +56,14 @@ protected:
   ktt::KernelId kernelId;// NOTE this might need change to a vector
   ktt::KernelDefinitionId definitionId;// NOTE this might need change to a vector
 
+  utils::KTTHelper &kttHelper;
+
   // KTT needs different names for each kernel, this id serves as a simple unique identifier
   const size_t strategyId;
 
 private:
-  utils::KTTHelper *kttHelper;
   bool tune;
+  bool isRegistered;
 
   static size_t GetNewStrategyId()
   {

@@ -10,7 +10,7 @@ class TunableStrategy;
 
 class AlgorithmManager
 {
-  std::map<size_t, TunableStrategy *> strategies;
+  std::vector<std::vector<TunableStrategy *>> strategies;
   std::vector<ktt::KernelDefinitionId> definitionIds;// Might not be needed
   std::mutex mutex;
 
