@@ -4,6 +4,10 @@ add_executable(correlation_tests)
 set(tests correlation_cuda.cpp correlation_cpu.cpp ../../empty.cu # needs to be here so that CMAKE links CUDA libraries
 )
 
+if(USE_STARPU)
+  list(APPEND tests correlation_starpu.cpp)
+endif()
+
 target_sources(correlation_tests PRIVATE ${tests})
 
 target_link_libraries(

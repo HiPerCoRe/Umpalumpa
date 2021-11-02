@@ -16,7 +16,7 @@ namespace fourier_transformation {
 
     void Codelet(void *buffers[], void *func_arg)
     {
-      auto *outP = reinterpret_cast<AFFT::InputData::PayloadType *>(buffers[0]);
+      auto *outP = reinterpret_cast<AFFT::OutputData::PayloadType *>(buffers[0]);
       auto out = AFFT::OutputData(std::move(*outP));
       auto *inP = reinterpret_cast<AFFT::InputData::PayloadType *>(buffers[1]);
       auto in = AFFT::InputData(std::move(*inP));
