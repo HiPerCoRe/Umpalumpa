@@ -1,6 +1,6 @@
 #pragma once
 
-#include <libumpalumpa/data/multi_payload_wrapper.hpp>
+#include <libumpalumpa/data/payload_wrapper.hpp>
 #include <libumpalumpa/data/payload.hpp>
 #include <libumpalumpa/algorithms/basic_algorithm.hpp>
 #include <libumpalumpa/algorithms/correlation/settings.hpp>
@@ -9,20 +9,20 @@
 namespace umpalumpa::correlation {
 
 template<typename T = data::Payload<data::FourierDescriptor>>
-struct InputDataWrapper : public data::MultiPayloadWrapper<T, T>
+struct InputDataWrapper : public data::PayloadWrapper<T, T>
 {
-  InputDataWrapper(std::tuple<T, T> &&t) : data::MultiPayloadWrapper<T,T>(std::move(t)) {}
-  InputDataWrapper(T d1, T d2) : data::MultiPayloadWrapper<T, T>(std::move(d1), std::move(d2)) {}
+  InputDataWrapper(std::tuple<T, T> &&t) : data::PayloadWrapper<T,T>(std::move(t)) {}
+  InputDataWrapper(T d1, T d2) : data::PayloadWrapper<T, T>(std::move(d1), std::move(d2)) {}
   const T &GetData1() const { return std::get<0>(this->payloads); };
   const T &GetData2() const { return std::get<1>(this->payloads); };
   typedef T PayloadType;
 };
 
 template<typename T = data::Payload<data::FourierDescriptor>>
-struct OutputDataWrapper : public data::MultiPayloadWrapper<T>
+struct OutputDataWrapper : public data::PayloadWrapper<T>
 {
-  OutputDataWrapper(std::tuple<T> &&t) : data::MultiPayloadWrapper<T>(std::move(t)) {}
-  OutputDataWrapper(T correlations) : data::MultiPayloadWrapper<T>(std::move(correlations)) {}
+  OutputDataWrapper(std::tuple<T> &&t) : data::PayloadWrapper<T>(std::move(t)) {}
+  OutputDataWrapper(T correlations) : data::PayloadWrapper<T>(std::move(correlations)) {}
   const T &GetCorrelations() const { return std::get<0>(this->payloads); };
   typedef T PayloadType;
 };

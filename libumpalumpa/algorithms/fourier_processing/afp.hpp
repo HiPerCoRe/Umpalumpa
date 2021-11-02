@@ -1,6 +1,6 @@
 #pragma once
 
-#include <libumpalumpa/data/multi_payload_wrapper.hpp>
+#include <libumpalumpa/data/payload_wrapper.hpp>
 #include <libumpalumpa/data/payload.hpp>
 #include <libumpalumpa/algorithms/fourier_processing/settings.hpp>
 #include <libumpalumpa/algorithms/basic_algorithm.hpp>
@@ -9,11 +9,11 @@
 
 namespace umpalumpa::fourier_processing {
 
-template<typename T, typename U> struct InputDataWrapper : public data::MultiPayloadWrapper<T, U>
+template<typename T, typename U> struct InputDataWrapper : public data::PayloadWrapper<T, U>
 {
-  InputDataWrapper(std::tuple<T, U> &&t) : data::MultiPayloadWrapper<T, U>(std::move(t)) {}
+  InputDataWrapper(std::tuple<T, U> &&t) : data::PayloadWrapper<T, U>(std::move(t)) {}
   InputDataWrapper(T data, U filter)
-    : data::MultiPayloadWrapper<T, U>(std::move(data), std::move(filter))
+    : data::PayloadWrapper<T, U>(std::move(data), std::move(filter))
   {}
   const T &GetData() const { return std::get<0>(this->payloads); };
   const U &GetFilter() const { return std::get<1>(this->payloads); };
@@ -21,10 +21,10 @@ template<typename T, typename U> struct InputDataWrapper : public data::MultiPay
   typedef U FilterType;
 };
 
-template<typename T> struct OutputDataWrapper : public data::MultiPayloadWrapper<T>
+template<typename T> struct OutputDataWrapper : public data::PayloadWrapper<T>
 {
-  OutputDataWrapper(std::tuple<T> &&t) : data::MultiPayloadWrapper<T>(std::move(t)) {}
-  OutputDataWrapper(T data) : data::MultiPayloadWrapper<T>(std::move(data)) {}
+  OutputDataWrapper(std::tuple<T> &&t) : data::PayloadWrapper<T>(std::move(t)) {}
+  OutputDataWrapper(T data) : data::PayloadWrapper<T>(std::move(data)) {}
   const T &GetData() const { return std::get<0>(this->payloads); };
   typedef T DataType;
 };
