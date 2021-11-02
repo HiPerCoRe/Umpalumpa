@@ -25,24 +25,24 @@ namespace extrema_finder {
     };
 
   public:
-    struct ResultData final
+    struct OutputData final
       : public ResultDataWrapper<data::Payload<umpalumpa::data::LogicalDescriptor>>
     {
-      ResultData(type &&vals, type &&locs) : ResultDataWrapper(std::move(vals), std::move(locs)) {}
+      OutputData(type &&vals, type &&locs) : ResultDataWrapper(std::move(vals), std::move(locs)) {}
 
-      static ResultData ValuesOnly(type vals)
+      static OutputData ValuesOnly(type vals)
       {
-        return ResultData(std::move(vals), type(vals.info, "Default Locations"));
+        return OutputData(std::move(vals), type(vals.info, "Default Locations"));
       }
 
-      static ResultData LocationsOnly(type locs)
+      static OutputData LocationsOnly(type locs)
       {
-        return ResultData(type(locs.info, "Default Values"), std::move(locs));
+        return OutputData(type(locs.info, "Default Values"), std::move(locs));
       }
     };
-    using SearchData = SearchDataWrapper<data::Payload<data::LogicalDescriptor>>;
-    virtual bool Init(const ResultData &out, const SearchData &in, const Settings &settings) = 0; // FIXME add nodiscard?
-    virtual bool Execute(const ResultData &out, const SearchData &in, const Settings &settings) = 0; // setting is probably useless here, save it in Init()
+    using InputData = SearchDataWrapper<data::Payload<data::LogicalDescriptor>>;
+    virtual bool Init(const OutputData &out, const InputData &in, const Settings &settings) = 0; // FIXME add nodiscard?
+    virtual bool Execute(const OutputData &out, const InputData &in, const Settings &settings) = 0; // setting is probably useless here, save it in Init()
     virtual void Cleanup(){};
     virtual void Synchronize() = 0;
 
@@ -50,7 +50,7 @@ namespace extrema_finder {
 
   protected:
     virtual bool
-      IsValid(const ResultData &out, const SearchData &in, const Settings &settings) const // move to cpp
+      IsValid(const OutputData &out, const InputData &in, const Settings &settings) const // move to cpp
     {
       // is input valid?
       bool result = in.data.IsValid() && !in.data.IsEmpty();

@@ -11,8 +11,8 @@ namespace extrema_finder {
     {
       static constexpr auto kStrategyName = "Strategy1";
 
-      bool Init(const AExtremaFinder::ResultData &,
-        const AExtremaFinder::SearchData &in,
+      bool Init(const AExtremaFinder::OutputData &,
+        const AExtremaFinder::InputData &in,
         const Settings &s) override final
       {
         return (s.version == 1) && (!in.data.info.IsPadded())
@@ -23,8 +23,8 @@ namespace extrema_finder {
 
       std::string GetName() const override final { return kStrategyName; }
 
-      bool Execute(const AExtremaFinder::ResultData &out,
-        const AExtremaFinder::SearchData &in,
+      bool Execute(const AExtremaFinder::OutputData &out,
+        const AExtremaFinder::InputData &in,
         const Settings &) override final
       {
         if (!in.data.IsValid() || in.data.IsEmpty() || !out.values.IsValid()
@@ -42,8 +42,8 @@ namespace extrema_finder {
     {
       static constexpr auto kStrategyName = "Strategy2";
 
-      bool Init(const AExtremaFinder::ResultData &,
-        const AExtremaFinder::SearchData &in,
+      bool Init(const AExtremaFinder::OutputData &,
+        const AExtremaFinder::InputData &in,
         const Settings &s) override final
       {
         return (s.version == 1) && (!in.data.info.IsPadded())
@@ -54,8 +54,8 @@ namespace extrema_finder {
 
       std::string GetName() const override final { return kStrategyName; }
 
-      bool Execute(const AExtremaFinder::ResultData &out,
-        const AExtremaFinder::SearchData &in,
+      bool Execute(const AExtremaFinder::OutputData &out,
+        const AExtremaFinder::InputData &in,
         const Settings &) override final
       {
         if (!in.data.IsValid() || in.data.IsEmpty() || !out.locations.IsValid()
@@ -83,8 +83,8 @@ namespace extrema_finder {
     };
   }// namespace
 
-  bool SingleExtremaFinderCPU::Init(const ResultData &out,
-    const SearchData &in,
+  bool SingleExtremaFinderCPU::Init(const OutputData &out,
+    const InputData &in,
     const Settings &settings)
   {
     auto tryToAdd = [this, &out, &in, &settings](auto i) {
@@ -99,8 +99,8 @@ namespace extrema_finder {
     return tryToAdd(std::make_unique<Strategy1>()) || tryToAdd(std::make_unique<Strategy2>());
   }
 
-  bool SingleExtremaFinderCPU::Execute(const ResultData &out,
-    const SearchData &in,
+  bool SingleExtremaFinderCPU::Execute(const OutputData &out,
+    const InputData &in,
     const Settings &settings)
   {
     if (!this->IsValid(out, in, settings)) return false;

@@ -8,15 +8,15 @@ namespace extrema_finder {
   class SingleExtremaFinderCPU : public AExtremaFinder
   {
   public:
-    bool Init(const ResultData &out, const SearchData &in, const Settings &settings) override;
-    bool Execute(const ResultData &out, const SearchData &in, const Settings &settings) override;
+    bool Init(const OutputData &out, const InputData &in, const Settings &settings) override;
+    bool Execute(const OutputData &out, const InputData &in, const Settings &settings) override;
     void Synchronize(){};
     struct Strategy
     {
       virtual ~Strategy() = default;
-      virtual bool Init(const ResultData &, const SearchData &, const Settings &s) = 0;
+      virtual bool Init(const OutputData &, const InputData &, const Settings &s) = 0;
       virtual bool
-        Execute(const ResultData &out, const SearchData &in, const Settings &settings) = 0;
+        Execute(const OutputData &out, const InputData &in, const Settings &settings) = 0;
       virtual std::string GetName() const = 0;
     };
 

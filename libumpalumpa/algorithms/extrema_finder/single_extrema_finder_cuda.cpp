@@ -25,8 +25,8 @@ namespace extrema_finder {
         return false;
       }
 
-      bool Init(const AExtremaFinder::ResultData &,
-        const AExtremaFinder::SearchData &in,
+      bool Init(const AExtremaFinder::OutputData &,
+        const AExtremaFinder::InputData &in,
         const Settings &s,
         utils::KTTHelper &helper) override final
       {
@@ -62,8 +62,8 @@ namespace extrema_finder {
 
       std::string GetName() const override final { return "Strategy1"; }
 
-      bool Execute(const AExtremaFinder::ResultData &out,
-        const AExtremaFinder::SearchData &in,
+      bool Execute(const AExtremaFinder::OutputData &out,
+        const AExtremaFinder::InputData &in,
         const Settings &,
         utils::KTTHelper &helper) override final
       {
@@ -127,8 +127,8 @@ namespace extrema_finder {
         return false;
       }
 
-      bool Init(const AExtremaFinder::ResultData &,
-        const AExtremaFinder::SearchData &in,
+      bool Init(const AExtremaFinder::OutputData &,
+        const AExtremaFinder::InputData &in,
         const Settings &s,
         utils::KTTHelper &helper) override final
       {
@@ -181,8 +181,8 @@ namespace extrema_finder {
 
       std::string GetName() const override final { return "Strategy2"; }
 
-      bool Execute(const AExtremaFinder::ResultData &out,
-        const AExtremaFinder::SearchData &in,
+      bool Execute(const AExtremaFinder::OutputData &out,
+        const AExtremaFinder::InputData &in,
         const Settings &,
         utils::KTTHelper &helper) override final
       {
@@ -250,8 +250,8 @@ namespace extrema_finder {
 
   void SingleExtremaFinderCUDA::Synchronize() { GetHelper().GetTuner().Synchronize(); }
 
-  bool SingleExtremaFinderCUDA::Init(const ResultData &out,
-    const SearchData &in,
+  bool SingleExtremaFinderCUDA::Init(const OutputData &out,
+    const InputData &in,
     const Settings &settings)
   {
     auto tryToAdd = [this, &out, &in, &settings](auto i) {
@@ -266,8 +266,8 @@ namespace extrema_finder {
     return tryToAdd(std::make_unique<Strategy1>()) || tryToAdd(std::make_unique<Strategy2>());
   }
 
-  bool SingleExtremaFinderCUDA::Execute(const ResultData &out,
-    const SearchData &in,
+  bool SingleExtremaFinderCUDA::Execute(const OutputData &out,
+    const InputData &in,
     const Settings &settings)
   {
     if (!this->IsValid(out, in, settings)) return false;

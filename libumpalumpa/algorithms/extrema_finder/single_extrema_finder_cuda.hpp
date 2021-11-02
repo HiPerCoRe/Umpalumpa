@@ -16,18 +16,18 @@ namespace extrema_finder {
   public:
     using algorithm::KTT_Base::KTT_Base;
 
-    bool Init(const ResultData &out, const SearchData &in, const Settings &settings) override;
-    bool Execute(const ResultData &out, const SearchData &in, const Settings &settings) override;
+    bool Init(const OutputData &out, const InputData &in, const Settings &settings) override;
+    bool Execute(const OutputData &out, const InputData &in, const Settings &settings) override;
 
     struct Strategy : public algorithm::TunableStrategy
     {
       virtual ~Strategy() = default;
-      virtual bool Init(const ResultData &,
-        const SearchData &,
+      virtual bool Init(const OutputData &,
+        const InputData &,
         const Settings &s,
         utils::KTTHelper &helper) = 0;
-      virtual bool Execute(const ResultData &out,
-        const SearchData &in,
+      virtual bool Execute(const OutputData &out,
+        const InputData &in,
         const Settings &settings,
         utils::KTTHelper &helper) = 0;
       virtual std::string GetName() const = 0;

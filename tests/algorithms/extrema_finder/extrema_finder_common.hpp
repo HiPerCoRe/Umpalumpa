@@ -42,7 +42,7 @@ TEST_F(NAME, SearchData_Subset)
   const auto ldIn = LogicalDescriptor(sizeIn);
   const auto dt = DataType::kFloat;
   const auto pdIn = PhysicalDescriptor(sizeIn.total * Sizeof(dt) + 13, dt);// add some extra bytes
-  const auto in = AExtremaFinder::SearchData(Payload(data.get(), ldIn, pdIn, "Random data"));
+  const auto in = AExtremaFinder::InputData(Payload(data.get(), ldIn, pdIn, "Random data"));
 
   for (size_t i = 0; i < sizeIn.total; ++i) { ASSERT_FLOAT_EQ(data[i], i) << " for i=" << i; }
 
@@ -78,7 +78,7 @@ TEST_F(NAME, 1D_batch_noPadd_max_valOnly)
   auto dataOrig = std::unique_ptr<float[]>(new float[sizeIn.total]);
   auto ldIn = LogicalDescriptor(sizeIn);
   auto pdIn = PhysicalDescriptor(sizeIn.total * sizeof(float), DataType::kFloat);
-  auto in = AExtremaFinder::SearchData(Payload(data, ldIn, pdIn, "Random data"));
+  auto in = AExtremaFinder::InputData(Payload(data, ldIn, pdIn, "Random data"));
 
   GenerateData(data, sizeIn.total);
   memcpy(dataOrig.get(), data, sizeIn.total * sizeof(float));
@@ -89,7 +89,7 @@ TEST_F(NAME, 1D_batch_noPadd_max_valOnly)
   auto ldVal = LogicalDescriptor(sizeValues);
   auto pdVal = PhysicalDescriptor(sizeValues.total * sizeof(float), DataType::kFloat);
   auto valuesP = Payload(values, ldVal, pdVal, "Resulting maxima");
-  auto out = AExtremaFinder::ResultData::ValuesOnly(valuesP);
+  auto out = AExtremaFinder::OutputData::ValuesOnly(valuesP);
 
   auto &searcher = GetSearcher();
   ASSERT_TRUE(searcher.Init(out, in, settings));// including data, on purpose
@@ -138,14 +138,14 @@ TEST_F(NAME, 3D_manyBatches_noPadd_max_valOnly)
   bool isFirstIter = true;
   for (size_t offset = 0; offset < sizeIn.n; offset += batchSize) {
     auto i = inP.Subset(offset, batchSize);
-    auto in = AExtremaFinder::SearchData(std::move(i));
+    auto in = AExtremaFinder::InputData(std::move(i));
     auto o = valuesP.Subset(offset, batchSize);
-    auto out = AExtremaFinder::ResultData::ValuesOnly(std::move(o));
+    auto out = AExtremaFinder::OutputData::ValuesOnly(std::move(o));
 
     if (isFirstIter) {
       isFirstIter = false;
-      auto tmpOut = AExtremaFinder::ResultData::ValuesOnly(o.CopyWithoutData());
-      auto tmpIn = AExtremaFinder::SearchData(
+      auto tmpOut = AExtremaFinder::OutputData::ValuesOnly(o.CopyWithoutData());
+      auto tmpIn = AExtremaFinder::InputData(
         i.CopyWithoutData());// CopyWithoutData() should be done within StarPU (or Init() methods of
                              // specific algorithms)
 
@@ -188,8 +188,8 @@ TEST_F(NAME, 2D_batch_noPadd_max_rectCenter_posOnly)
 
   auto &searcher = GetSearcher();
 
-  auto in = AExtremaFinder::SearchData(std::move(inP));
-  auto out = AExtremaFinder::ResultData::LocationsOnly(std::move(locationsP));
+  auto in = AExtremaFinder::InputData(std::move(inP));
+  auto out = AExtremaFinder::OutputData::LocationsOnly(std::move(locationsP));
 
   ASSERT_TRUE(searcher.Init(out, in, settings));
   ASSERT_TRUE(searcher.Execute(out, in, settings));

@@ -17,11 +17,11 @@ namespace extrema_finder {
     void Codelet(void *buffers[], void *func_arg)
     {
       auto *args = reinterpret_cast<ExecuteArgs *>(func_arg);
-      auto *valsP = reinterpret_cast<AExtremaFinder::ResultData::type *>(buffers[1]);
-      auto *locsP = reinterpret_cast<AExtremaFinder::ResultData::type *>(buffers[2]);
-      auto out = AExtremaFinder::ResultData(std::move(*valsP), std::move(*locsP));
-      auto *inP = reinterpret_cast<AExtremaFinder::SearchData::type *>(buffers[0]);
-      auto in = AExtremaFinder::SearchData(std::move(*inP));
+      auto *valsP = reinterpret_cast<AExtremaFinder::OutputData::type *>(buffers[1]);
+      auto *locsP = reinterpret_cast<AExtremaFinder::OutputData::type *>(buffers[2]);
+      auto out = AExtremaFinder::OutputData(std::move(*valsP), std::move(*locsP));
+      auto *inP = reinterpret_cast<AExtremaFinder::InputData::type *>(buffers[0]);
+      auto in = AExtremaFinder::InputData(std::move(*inP));
       auto &alg = args->algs->at(static_cast<size_t>(starpu_worker_get_id()));
       alg->Execute(out, in, args->settings);
       alg->Synchronize();// this codelet is run asynchronously, but we have to wait till it's done
@@ -30,8 +30,8 @@ namespace extrema_finder {
 
     struct InitArgs
     {
-      const AExtremaFinder::ResultData &out;
-      const AExtremaFinder::SearchData &in;
+      const AExtremaFinder::OutputData &out;
+      const AExtremaFinder::InputData &in;
       const Settings &settings;
       std::vector<std::unique_ptr<AExtremaFinder>> &algs;
     };
@@ -56,8 +56,8 @@ namespace extrema_finder {
     }
   }// namespace
 
-  bool SingleExtremaFinderStarPU::Init(const ResultData &out,
-    const SearchData &in,
+  bool SingleExtremaFinderStarPU::Init(const OutputData &out,
+    const InputData &in,
     const Settings &settings)
   {
     algs.clear();
@@ -72,11 +72,11 @@ namespace extrema_finder {
     return (algs.size()) > 0;
   }
 
-  bool SingleExtremaFinderStarPU::Execute(const ResultData &out,
-    const SearchData &in,
+  bool SingleExtremaFinderStarPU::Execute(const OutputData &out,
+    const InputData &in,
     const Settings &settings)
   {
-    using LocalSearchType = data::StarpuPayload<SearchData::type::LDType>;
+    using LocalSearchType = data::StarpuPayload<InputData::type::LDType>;
     auto i = StarpuSearchData(std::make_unique<LocalSearchType>(in.data));
     auto o = StarpuResultData(out);
     auto res = Execute(o, i, settings);
