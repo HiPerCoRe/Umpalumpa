@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
-#include <libumpalumpa/data/multi_payload_wrapper.hpp>
+#include <libumpalumpa/data/payload_wrapper.hpp>
 
 using namespace umpalumpa::data;
 
@@ -31,15 +31,16 @@ struct AllFalsePayload : public BasePayload
   bool IsEquivalentTo(const BasePayload &) const override { return false; }
 };
 
-template<typename... Args> struct TestPayloadWrapper : public MultiPayloadWrapper<Args...>
+template<typename... Args> struct TestPayloadWrapper : public PayloadWrapper<Args...>
 {
-  TestPayloadWrapper(Args &&... args) : MultiPayloadWrapper<Args...>(std::move(args)...) {}
+  TestPayloadWrapper(std::tuple<Args...> &&t) : PayloadWrapper<Args...>(std::move(t)) {}
+  TestPayloadWrapper(Args &&... args) : PayloadWrapper<Args...>(std::move(args)...) {}
 
-  const auto &GetPayloads() { return MultiPayloadWrapper<Args...>::payloads; }
-  TestPayloadWrapper CopyWithoutData() const
-  {
-    return MultiPayloadWrapper<Args...>::template CopyWithoutData<TestPayloadWrapper>();
-  }
+  const auto &GetPayloads() { return PayloadWrapper<Args...>::payloads; }
+  // TestPayloadWrapper CopyWithoutData() const
+  // {
+  //   return PayloadWrapper<Args...>::template CopyWithoutData<TestPayloadWrapper>();
+  // }
 };
 
 // NOTE currently not supported, might not be needed
@@ -150,7 +151,7 @@ TEST(TestPayloadWrapperTest, CopyWithoutData_no_data)
 {
   auto mpw = TestPayloadWrapper(AllTruePayload(), AllFalsePayload());
 
-  auto noDataCopy = mpw.CopyWithoutData();
+  TestPayloadWrapper noDataCopy = mpw.CopyWithoutData();
   const auto &p0 = std::get<0>(noDataCopy.GetPayloads());
   const auto &p1 = std::get<1>(noDataCopy.GetPayloads());
 
@@ -164,7 +165,7 @@ TEST(TestPayloadWrapperTest, CopyWithoutData_original_payloads_have_data)
   const int val1 = 42;
   auto mpw = TestPayloadWrapper(AllTruePayload(val0), AllFalsePayload(val1));
 
-  auto noDataCopy = mpw.CopyWithoutData();
+  TestPayloadWrapper noDataCopy = mpw.CopyWithoutData();
   const auto &noDataP0 = std::get<0>(noDataCopy.GetPayloads());
   const auto &noDataP1 = std::get<1>(noDataCopy.GetPayloads());
   const auto &p0 = std::get<0>(mpw.GetPayloads());

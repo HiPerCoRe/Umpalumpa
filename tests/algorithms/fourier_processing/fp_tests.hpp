@@ -21,39 +21,39 @@ public:
 
   void testFP(AFP::OutputData &out, AFP::InputData &in, const Settings &settings)
   {
-    auto *input = reinterpret_cast<std::complex<float> *>(in.data.ptr);
-    auto *output = reinterpret_cast<std::complex<float> *>(out.data.ptr);
-    auto *filter = reinterpret_cast<float *>(in.filter.ptr);
-    auto inSize = in.data.info.GetSize();
-    auto outSize = out.data.info.GetSize();
+    auto *input = reinterpret_cast<std::complex<float> *>(in.GetData().ptr);
+    auto *output = reinterpret_cast<std::complex<float> *>(out.GetData().ptr);
+    auto *filter = reinterpret_cast<float *>(in.GetFilter().ptr);
+    auto inSize = in.GetData().info.GetSize();
+    auto outSize = out.GetData().info.GetSize();
 
     for (size_t i = 0; i < inSize.total; i++) {
       input[i] = { static_cast<float>(i), static_cast<float>(i) };
     }
 
     if (settings.GetApplyFilter()) {
-      for (size_t i = 0; i < in.filter.info.GetSize().total; i += 2) {
+      for (size_t i = 0; i < in.GetFilter().info.GetSize().total; i += 2) {
         reinterpret_cast<float *>(filter)[i] = -1.0f;
       }
-      for (size_t i = 1; i < in.filter.info.GetSize().total; i += 2) {
+      for (size_t i = 1; i < in.GetFilter().info.GetSize().total; i += 2) {
         reinterpret_cast<float *>(filter)[i] = 0.5f;
       }
     }
 
     // PrintData(input, inSize);
-    // PrintData(filter, in.filter.info.GetSize());
+    // PrintData(filter, in.GetFilter().info.GetSize());
 
     auto &fp = GetFourierProcessor();
 
-    fp.Init(out, in, settings);
-    fp.Execute(out, in);
+    ASSERT_TRUE(fp.Init(out, in, settings));
+    ASSERT_TRUE(fp.Execute(out, in));
     fp.Synchronize();
 
     // PrintData(output, outSize);
 
     float delta = 0.00001f;
     checkEdges(output, outSize, delta);
-    float normFactor = 1.f / in.data.info.GetSpatialSize().single;
+    float normFactor = 1.f / in.GetData().info.GetSpatialSize().single;
     checkInside(output, outSize, input, inSize, normFactor, filter, settings, delta);
   }
 
@@ -176,7 +176,7 @@ protected:
     }
 
     ldFilter = std::make_unique<LogicalDescriptor>(outSize);
-    auto filterSizeInBytes = ldOut->GetPaddedSize().total * Sizeof(DataType::kFloat);
+    auto filterSizeInBytes = ldFilter->GetPaddedSize().total * Sizeof(DataType::kFloat);
     pdFilter = std::make_unique<PhysicalDescriptor>(filterSizeInBytes, DataType::kFloat);
 
     filterData = std::shared_ptr<void>(Allocate(pdOut->bytes), GetFree());

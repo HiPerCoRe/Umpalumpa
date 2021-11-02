@@ -18,10 +18,10 @@ namespace {// to avoid poluting
       return ACorrelation::IsFloat(out, in);
     }
 
-    std::string GetName() const override final { return "Strategy1"; }
+    std::string GetName() const override { return "Strategy1"; }
 
     bool Execute(const Correlation_CPU::OutputData &out,
-      const Correlation_CPU::InputData &in) override final
+      const Correlation_CPU::InputData &in) override
     {
       if (!in.GetData1().IsValid() || in.GetData1().IsEmpty()
           || !out.GetCorrelations().IsValid()// FIXME refactor

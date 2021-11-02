@@ -1,74 +1,63 @@
 #pragma once
 
-#include <libumpalumpa/algorithms/extrema_finder/search_settings.hpp>
+#include <libumpalumpa/data/payload_wrapper.hpp>
 #include <libumpalumpa/data/payload.hpp>
+#include <libumpalumpa/algorithms/basic_algorithm.hpp>
+#include <libumpalumpa/algorithms/extrema_finder/search_settings.hpp>
 #include <libumpalumpa/data/logical_desriptor.hpp>
 
-namespace umpalumpa {
-namespace extrema_finder {
-  class AExtremaFinder
+namespace umpalumpa::extrema_finder {
+
+template<typename T> struct OutputDataWrapper : public data::PayloadWrapper<T, T>
+{
+  OutputDataWrapper(std::tuple<T, T> &&t) : data::PayloadWrapper<T, T>(std::move(t)) {}
+  OutputDataWrapper(T vals, T locs)
+    : data::PayloadWrapper<T, T>(std::move(vals), std::move(locs))
+  {}
+  const T &GetValues() const { return std::get<0>(this->payloads); };
+  const T &GetLocations() const { return std::get<1>(this->payloads); };
+  static OutputDataWrapper ValuesOnly(T vals)
   {
-  protected:
-    template<typename T> struct ResultDataWrapper
-    {
-      ResultDataWrapper(T &&vals, T &&locs) : values(std::move(vals)), locations(std::move(locs)) {}
-      const T values;
-      const T locations;
-      typedef T type;
-    };
+    return OutputDataWrapper(std::move(vals), T(vals.info, "Default Locations"));
+  }
 
-    template<typename T> struct SearchDataWrapper
-    {
-      SearchDataWrapper(T &&d) : data(std::move(d)) {}
-      const T data;
-      typedef T type;
-    };
+  static OutputDataWrapper LocationsOnly(T locs)
+  {
+    return OutputDataWrapper(T(locs.info, "Default Values"), std::move(locs));
+  }
+  typedef T PayloadType;
+};
 
-  public:
-    struct ResultData final
-      : public ResultDataWrapper<data::Payload<umpalumpa::data::LogicalDescriptor>>
-    {
-      ResultData(type &&vals, type &&locs) : ResultDataWrapper(std::move(vals), std::move(locs)) {}
+template<typename T> struct InputDataWrapper : public data::PayloadWrapper<T>
+{
+  InputDataWrapper(std::tuple<T> &&t) : data::PayloadWrapper<T>(std::move(t)) {}
+  InputDataWrapper(T data) : data::PayloadWrapper<T>(std::move(data)) {}
+  const T &GetData() const { return std::get<0>(this->payloads); };
+  typedef T PayloadType;
+};
 
-      static ResultData ValuesOnly(type vals)
-      {
-        return ResultData(std::move(vals), type(vals.info, "Default Locations"));
-      }
+class AExtremaFinder
+  : public BasicAlgorithm<OutputDataWrapper<data::Payload<data::LogicalDescriptor>>,
+      InputDataWrapper<data::Payload<data::LogicalDescriptor>>,
+      Settings>
+{
+protected:
+  virtual bool IsValid(const OutputData &out, const InputData &in, const Settings &s) const
+  {
+    // is input valid?
+    bool result = in.GetData().IsValid();
 
-      static ResultData LocationsOnly(type locs)
-      {
-        return ResultData(type(locs.info, "Default Values"), std::move(locs));
-      }
-    };
-    using SearchData = SearchDataWrapper<data::Payload<data::LogicalDescriptor>>;
-    virtual bool Init(const ResultData &out, const SearchData &in, const Settings &settings) = 0; // FIXME add nodiscard?
-    virtual bool Execute(const ResultData &out, const SearchData &in, const Settings &settings) = 0; // setting is probably useless here, save it in Init()
-    virtual void Cleanup(){};
-    virtual void Synchronize() = 0;
-
-    virtual ~AExtremaFinder() = default;
-
-  protected:
-    virtual bool
-      IsValid(const ResultData &out, const SearchData &in, const Settings &settings) const // move to cpp
-    {
-      // is input valid?
-      bool result = in.data.IsValid() && !in.data.IsEmpty();
-
-      if (settings.result == SearchResult::kValue) {
-        // is output valid?
-        result = result && (out.values.IsValid());
-        result = result && !out.values.IsEmpty();
-        // is the type correct?
-        result = result && (in.data.dataInfo.type == out.values.dataInfo.type);
-        // we need to have enough space for results
-        result = result && (in.data.info.GetSize().n == out.values.info.GetSize().n);
-        // output should be N 1D values
-        result = result && (out.values.info.GetSize().total == out.values.info.GetSize().n);
-      }
-      return result;
+    if (s.result == SearchResult::kValue) {
+      // is output valid?
+      result = result && (out.GetValues().IsValid());
+      // is the type correct?
+      result = result && (in.GetData().dataInfo.type == out.GetValues().dataInfo.type);
+      // we need to have enough space for results
+      result = result && (in.GetData().info.GetSize().n == out.GetValues().info.GetSize().n);
+      // output should be N 1D GetValues()
+      result = result && (out.GetValues().info.GetSize().total == out.GetValues().info.GetSize().n);
     }
-  };
-
-}// namespace extrema_finder
-}// namespace umpalumpa
+    return result;
+  }
+};
+}// namespace umpalumpa::extrema_finder

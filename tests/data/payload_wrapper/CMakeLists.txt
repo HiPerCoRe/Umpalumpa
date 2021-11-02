@@ -1,7 +1,7 @@
 add_executable(payload_wrapper_tests)
 
 set(tests
-    multi_payload_wrapper.cpp
+    payload_wrapper.cpp
 )
 
 target_sources(payload_wrapper_tests PRIVATE ${tests})

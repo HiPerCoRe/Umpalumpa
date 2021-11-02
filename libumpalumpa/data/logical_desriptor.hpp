@@ -53,6 +53,11 @@ namespace data {
 
     virtual size_t Elems() const { return paddedSize.total; }
 
+    bool IsEquivalentTo(const LogicalDescriptor &ref) const
+    {
+      return size.IsEquivalentTo(ref.size) && (padding == ref.padding);
+    }
+
   private:
     Size ComputePaddedSize(const Size &s, const PaddingDescriptor &p) const
     {

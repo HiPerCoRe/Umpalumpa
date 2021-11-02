@@ -1,11 +1,11 @@
 #pragma once
-
-#include <libumpalumpa/algorithms/extrema_finder/aextrema_finder.hpp>
+#include <libumpalumpa/algorithms/fourier_processing/afp.hpp>
 #include <libumpalumpa/data/starpu_payload.hpp>
 
-namespace umpalumpa::extrema_finder {
-class SingleExtremaFinderStarPU : public AExtremaFinder
+namespace umpalumpa::fourier_processing {
+class FPStarPU final : public AFP
 {
+
 public:
   void Synchronize() override{
     // don't do anything. Each task is synchronized, now it's StarPU's problem
@@ -13,9 +13,10 @@ public:
   };
 
   using StarpuOutputData =
-    OutputDataWrapper<std::unique_ptr<data::StarpuPayload<data::LogicalDescriptor>>>;
+    OutputDataWrapper<std::unique_ptr<data::StarpuPayload<data::FourierDescriptor>>>;
   using StarpuInputData =
-    InputDataWrapper<std::unique_ptr<data::StarpuPayload<data::LogicalDescriptor>>>;
+    InputDataWrapper<std::unique_ptr<data::StarpuPayload<data::FourierDescriptor>>,
+      std::unique_ptr<data::StarpuPayload<data::LogicalDescriptor>>>;
 
   [[nodiscard]] bool
     Init(const StarpuOutputData &out, const StarpuInputData &in, const Settings &s);
@@ -27,10 +28,10 @@ protected:
   bool ExecuteImpl(const StarpuOutputData &out, const StarpuInputData &in);
 
 private:
-  inline static const std::string taskName = "Single Extrema Finder StarPU";
+  inline static const std::string taskName = "Fourier Processing StarPU";
 
-  std::vector<std::unique_ptr<AExtremaFinder>> algs;
+  std::vector<std::unique_ptr<AFP>> algs;
   const StarpuOutputData *outPtr = nullptr;
   const StarpuInputData *inPtr = nullptr;
 };
-}// namespace umpalumpa::extrema_finder
+}// namespace umpalumpa::fourier_processing
