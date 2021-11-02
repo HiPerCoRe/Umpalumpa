@@ -15,7 +15,8 @@ public:
   {
     if (isRegistered) {
       AlgorithmManager::Get().Unregister(*this);
-      kttHelper.GetTuner().RemoveKernel(kernelId);
+      // FIXME tmp solution for errors in tests, 'if' shouldn't be needed here
+      if (kernelId != ktt::InvalidKernelId) { kttHelper.GetTuner().RemoveKernel(kernelId); }
     }
   }
 
@@ -60,8 +61,9 @@ protected:
     return id;
   }
 
-  ktt::KernelId kernelId;// NOTE this might need change to a vector
-  ktt::KernelDefinitionId definitionId;// NOTE this might need change to a vector
+  // NOTE these might need change to vectors
+  ktt::KernelId kernelId = ktt::InvalidKernelId;
+  ktt::KernelDefinitionId definitionId = ktt::InvalidKernelDefinitionId;
 
   utils::KTTHelper &kttHelper;
 

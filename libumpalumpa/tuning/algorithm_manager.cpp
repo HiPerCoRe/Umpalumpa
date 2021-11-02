@@ -14,6 +14,16 @@ void AlgorithmManager::Register(TunableStrategy &strat)
 {
   std::lock_guard<std::mutex> lck(mutex);
 
+  // FIXME refactor
+  for (auto &v : strategies) {
+    for (auto *s : v) {
+      if (s == &strat) {
+        spdlog::warn("You are trying to register the same strategy multiple times.");// tmp
+        return;
+      }
+    }
+  }
+
   spdlog::info("Strategy at address {0} registered", reinterpret_cast<size_t>(this));// tmp
 
   for (auto &v : strategies) {
