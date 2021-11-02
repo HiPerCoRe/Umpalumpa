@@ -11,7 +11,6 @@ class TunableStrategy;
 class AlgorithmManager
 {
   std::vector<std::vector<TunableStrategy *>> strategies;
-  std::vector<ktt::KernelDefinitionId> definitionIds;// Might not be needed
   std::mutex mutex;
 
   AlgorithmManager() = default;
@@ -19,16 +18,12 @@ class AlgorithmManager
   AlgorithmManager &operator=(AlgorithmManager &&) = delete;
   // Copy constructor and assign operator are implicitly deleted because of the mutex
 
-
 public:
   static AlgorithmManager &Get();
 
-  void Register(TunableStrategy *strat);
-  void Unregister(TunableStrategy *strat);
+  void Register(TunableStrategy &strat);
+  void Unregister(TunableStrategy &strat);
   ktt::KernelConfiguration GetBestConfiguration(size_t stratHash);
-  ktt::KernelDefinitionId GetDefinitionId(const std::string &sourceFile,
-    const std::string &kernelName,
-    const std::vector<std::string> &templateArgs);
 };
 
 }// namespace umpalumpa::algorithm

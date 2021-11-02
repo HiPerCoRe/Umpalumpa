@@ -13,20 +13,27 @@ public:
 
   virtual ~TunableStrategy()
   {
-    AlgorithmManager::Get().Unregister(this);
-    if (isRegistered) { kttHelper.GetTuner().RemoveKernel(kernelId); }
+    if (isRegistered) {
+      AlgorithmManager::Get().Unregister(*this);
+      kttHelper.GetTuner().RemoveKernel(kernelId);
+    }
   }
 
   virtual size_t GetHash() const = 0;
+
   virtual bool IsSimilarTo(const TunableStrategy &ref) const = 0;
+
   bool IsEqualTo(const TunableStrategy &ref) const { return GetHash() == ref.GetHash(); }
+
   std::string GetFullName() const { return typeid(*this).name(); }
+
   ktt::KernelConfiguration GetBestConfiguration() const
   {
     return kttHelper.GetTuner().GetBestConfiguration(kernelId);
   }
 
   void SetTuning(bool val) { tune = val; }
+
   bool ShouldTune() { return tune; }
 
 protected:
@@ -35,7 +42,7 @@ protected:
    */
   void Register()
   {
-    AlgorithmManager::Get().Register(this);
+    AlgorithmManager::Get().Register(*this);
     isRegistered = true;
   }
 

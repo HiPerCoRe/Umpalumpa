@@ -34,15 +34,14 @@ namespace {// to avoid poluting
       const auto &in = alg.Get().GetInputRef();
       if (!AFP::IsFloat(out, in)) return false;
 
-      auto &helper = dynamic_cast<const FP_CUDA &>(alg.Get()).GetHelper();
       const auto &size = out.GetData().info.GetPaddedSize();
-      auto &tuner = helper.GetTuner();
+      auto &tuner = kttHelper.GetTuner();
 
       // ensure that we have the kernel loaded to KTT
       // this has to be done in critical section, as multiple instances of this algorithm
       // might run on the same worker
       const auto &s = alg.Get().GetSettings();
-      std::lock_guard<std::mutex> lck(helper.GetMutex());
+      std::lock_guard<std::mutex> lck(kttHelper.GetMutex());
       definitionId = GetKernelDefinitionId(kTMP,
         kKernelFile,
         ktt::DimensionVector{ size.x, size.y, size.z },
@@ -99,7 +98,7 @@ namespace {// to avoid poluting
           || out.GetData().IsEmpty())
         return false;
 
-      auto &tuner = dynamic_cast<const FP_CUDA &>(alg.Get()).GetHelper().GetTuner();
+      auto &tuner = kttHelper.GetTuner();
       // prepare input data
       auto argIn = tuner.AddArgumentVector<float2>(in.GetData().ptr,
         in.GetData().info.GetSize().total,

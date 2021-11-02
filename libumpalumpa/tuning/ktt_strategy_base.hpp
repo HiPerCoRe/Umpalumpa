@@ -5,6 +5,7 @@
 #include <libumpalumpa/tuning/tunable_strategy.hpp>
 
 namespace umpalumpa::algorithm {
+
 template<typename O, typename I, typename S>
 class KTTStrategyBase
   : public BasicAlgorithm<O, I, S>::Strategy
@@ -35,5 +36,6 @@ public:
     return initSuccessful;
   }
 };
+
 }// namespace umpalumpa::algorithm
 

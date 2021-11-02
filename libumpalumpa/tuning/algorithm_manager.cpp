@@ -10,23 +10,23 @@ AlgorithmManager &AlgorithmManager::Get()
   return *instance;
 }
 
-void AlgorithmManager::Register(TunableStrategy *strat)
+void AlgorithmManager::Register(TunableStrategy &strat)
 {
   std::lock_guard<std::mutex> lck(mutex);
 
   spdlog::info("Strategy at address {0} registered", reinterpret_cast<size_t>(this));// tmp
 
   for (auto &v : strategies) {
-    if (strat->IsSimilarTo(*v[0])) {
-      v.push_back(strat);
+    if (strat.IsSimilarTo(*v[0])) {
+      v.push_back(&strat);
       return;
     }
   }
   // 'strat' is not similar to any other registered strategy, add 'strat' to a new vector
-  strategies.emplace_back().push_back(strat);
+  strategies.emplace_back().push_back(&strat);
 }
 
-void AlgorithmManager::Unregister(TunableStrategy *strat)
+void AlgorithmManager::Unregister(TunableStrategy &strat)
 {
   std::lock_guard<std::mutex> lck(mutex);
   // TODO save best configuration
@@ -34,7 +34,7 @@ void AlgorithmManager::Unregister(TunableStrategy *strat)
   // FIXME mega in need of refactor
   auto outerIt = strategies.end();
   for (auto &v : strategies) {
-    auto it = std::find(v.begin(), v.end(), strat);
+    auto it = std::find(v.begin(), v.end(), &strat);
     if (it != v.end()) {
       outerIt = std::find(strategies.begin(), strategies.end(), v);
       v.erase(it);
@@ -66,13 +66,6 @@ ktt::KernelConfiguration AlgorithmManager::GetBestConfiguration(size_t stratHash
   // TODO Access DB
 
   return {};// or throw?
-}
-
-ktt::KernelDefinitionId AlgorithmManager::GetDefinitionId(const std::string & /*sourceFile*/,
-  const std::string & /*kernelName*/,
-  const std::vector<std::string> & /*templateArgs*/)
-{
-  return {};
 }
 
 }// namespace umpalumpa::algorithm

@@ -32,14 +32,13 @@ namespace {// to avoid poluting
                         && (in.GetData().dataInfo.type == umpalumpa::data::DataType::kFloat);
       if (!canProcess) return false;
 
-      auto &helper = dynamic_cast<const SingleExtremaFinderCUDA &>(alg.Get()).GetHelper();
       auto &size = in.GetData().info.GetSize();
-      auto &tuner = helper.GetTuner();
+      auto &tuner = kttHelper.GetTuner();
 
       // ensure that we have the kernel loaded to KTT
       // this has to be done in critical section, as multiple instances of this algorithm
       // might run on the same worker
-      std::lock_guard<std::mutex> lck(helper.GetMutex());
+      std::lock_guard<std::mutex> lck(kttHelper.GetMutex());
       definitionId = GetKernelDefinitionId(kFindMax1D, kKernelFile, ktt::DimensionVector{ size.n });
       kernelId = tuner.CreateSimpleKernel(kFindMax1D + std::to_string(strategyId), definitionId);
 
@@ -64,8 +63,7 @@ namespace {// to avoid poluting
         return false;
 
       // prepare input data
-      auto &helper = dynamic_cast<const SingleExtremaFinderCUDA &>(alg.Get()).GetHelper();
-      auto &tuner = helper.GetTuner();
+      auto &tuner = kttHelper.GetTuner();
       auto argIn = tuner.AddArgumentVector<float>(in.GetData().ptr,
         in.GetData().info.GetSize().total,
         ktt::ArgumentAccessType::ReadOnly,
@@ -130,14 +128,13 @@ namespace {// to avoid poluting
                         && (in.GetData().dataInfo.type == umpalumpa::data::DataType::kFloat);
       if (!canProcess) return false;
 
-      auto &helper = dynamic_cast<const SingleExtremaFinderCUDA &>(alg.Get()).GetHelper();
       auto &size = in.GetData().info.GetSize();
-      auto &tuner = helper.GetTuner();
+      auto &tuner = kttHelper.GetTuner();
 
       // ensure that we have the kernel loaded to KTT
       // this has to be done in critical section, as multiple instances of this algorithm
       // might run on the same worker
-      std::lock_guard<std::mutex> lck(helper.GetMutex());
+      std::lock_guard<std::mutex> lck(kttHelper.GetMutex());
       definitionId = GetKernelDefinitionId(
         kFindMaxRect, kKernelFile, ktt::DimensionVector{ size.n }, { "float" });
       kernelId = tuner.CreateSimpleKernel(kFindMaxRect + std::to_string(strategyId), definitionId);
@@ -177,8 +174,7 @@ namespace {// to avoid poluting
         return false;
 
       // prepare input data
-      auto &helper = dynamic_cast<const SingleExtremaFinderCUDA &>(alg.Get()).GetHelper();
-      auto &tuner = helper.GetTuner();
+      auto &tuner = kttHelper.GetTuner();
       auto argIn = tuner.AddArgumentVector<float>(in.GetData().ptr,
         in.GetData().info.GetSize().total,
         ktt::ArgumentAccessType::ReadOnly,
