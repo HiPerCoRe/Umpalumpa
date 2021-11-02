@@ -7,27 +7,22 @@ namespace {// to avoid poluting
   inline static const auto kKernelFile = utils::GetSourceFilePath(
     "libumpalumpa/algorithms/extrema_finder/single_extrema_finder_cuda_kernels.cu");
 
-  struct Strategy1 final
-    : public SingleExtremaFinderCUDA::Strategy
-    , public algorithm::TunableStrategy
+  struct Strategy1 final : public SingleExtremaFinderCUDA::KTTStrategy
   {
     // Inherit constructor
-    using SingleExtremaFinderCUDA::Strategy::Strategy;
+    using SingleExtremaFinderCUDA::KTTStrategy::KTTStrategy;
 
     static constexpr auto kFindMax1D = "findMax1D";
 
     size_t GetHash() const override { return 0; }
-    bool IsSimilarTo(const TunableStrategy &ref) const override
+    bool IsSimilarTo(const TunableStrategy &) const override
     {
-      if (GetFullName() != ref.GetFullName()) { return false; }
-      // Now we know that type of 'other' is the same as 'this' and we can safely cast it to the
-      // needed type
       // auto &o = dynamic_cast<const Strategy1 &>(other);
       // TODO real similarity check
       return false;
     }
 
-    bool Init() override
+    bool InitImpl() override
     {
       const auto &in = alg.Get().GetInputRef();
       const auto &s = alg.Get().GetSettings();
@@ -38,7 +33,6 @@ namespace {// to avoid poluting
       if (!canProcess) return false;
 
       auto &helper = dynamic_cast<const SingleExtremaFinderCUDA &>(alg.Get()).GetHelper();
-      TunableStrategy::Init(helper);
       auto &size = in.GetData().info.GetSize();
       auto &tuner = helper.GetTuner();
 
@@ -111,27 +105,22 @@ namespace {// to avoid poluting
     };
   };
 
-  struct Strategy2 final
-    : public SingleExtremaFinderCUDA::Strategy
-    , public algorithm::TunableStrategy
+  struct Strategy2 final : public SingleExtremaFinderCUDA::KTTStrategy
   {
     // Inherit constructor
-    using SingleExtremaFinderCUDA::Strategy::Strategy;
+    using SingleExtremaFinderCUDA::KTTStrategy::KTTStrategy;
 
     static constexpr auto kFindMaxRect = "findMaxRect";
 
     size_t GetHash() const override { return 0; }
-    bool IsSimilarTo(const TunableStrategy &ref) const override
+    bool IsSimilarTo(const TunableStrategy &) const override
     {
-      if (GetFullName() != ref.GetFullName()) { return false; }
-      // Now we know that type of 'other' is the same as 'this' and we can safely cast it to the
-      // needed type
       // auto &o = dynamic_cast<const Strategy2 &>(other);
       // TODO real similarity check
       return false;
     }
 
-    bool Init() override
+    bool InitImpl() override
     {
       const auto &in = alg.Get().GetInputRef();
       const auto &s = alg.Get().GetSettings();
@@ -142,7 +131,6 @@ namespace {// to avoid poluting
       if (!canProcess) return false;
 
       auto &helper = dynamic_cast<const SingleExtremaFinderCUDA &>(alg.Get()).GetHelper();
-      TunableStrategy::Init(helper);
       auto &size = in.GetData().info.GetSize();
       auto &tuner = helper.GetTuner();
 
