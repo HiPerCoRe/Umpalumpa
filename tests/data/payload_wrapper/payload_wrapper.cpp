@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
-#include <libumpalumpa/data/multi_payload_wrapper.hpp>
+#include <libumpalumpa/data/payload_wrapper.hpp>
 
 using namespace umpalumpa::data;
 
@@ -31,15 +31,15 @@ struct AllFalsePayload : public BasePayload
   bool IsEquivalentTo(const BasePayload &) const override { return false; }
 };
 
-template<typename... Args> struct TestPayloadWrapper : public MultiPayloadWrapper<Args...>
+template<typename... Args> struct TestPayloadWrapper : public PayloadWrapper<Args...>
 {
-  TestPayloadWrapper(std::tuple<Args...> &&t) : MultiPayloadWrapper<Args...>(std::move(t)) {}
-  TestPayloadWrapper(Args &&... args) : MultiPayloadWrapper<Args...>(std::move(args)...) {}
+  TestPayloadWrapper(std::tuple<Args...> &&t) : PayloadWrapper<Args...>(std::move(t)) {}
+  TestPayloadWrapper(Args &&... args) : PayloadWrapper<Args...>(std::move(args)...) {}
 
-  const auto &GetPayloads() { return MultiPayloadWrapper<Args...>::payloads; }
+  const auto &GetPayloads() { return PayloadWrapper<Args...>::payloads; }
   // TestPayloadWrapper CopyWithoutData() const
   // {
-  //   return MultiPayloadWrapper<Args...>::template CopyWithoutData<TestPayloadWrapper>();
+  //   return PayloadWrapper<Args...>::template CopyWithoutData<TestPayloadWrapper>();
   // }
 };
 

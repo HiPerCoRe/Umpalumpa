@@ -33,15 +33,15 @@ public:
   virtual void Free(void *ptr) = 0;
 
   void testFFTInpulseOrigin(AFFT::OutputData &out, AFFT::InputData &in, const Settings &settings) {
-    auto *inData = reinterpret_cast<float*>(in.payload.ptr);
-    auto *outData = reinterpret_cast<std::complex<float>*>(out.payload.ptr);
+    auto *inData = reinterpret_cast<float*>(in.GetData().ptr);
+    auto *outData = reinterpret_cast<std::complex<float>*>(out.GetData().ptr);
 
-    for (size_t n = 0; n < in.payload.info.GetSize().n; ++n) {
+    for (size_t n = 0; n < in.GetData().info.GetSize().n; ++n) {
       // impulse at the origin ...
-      inData[n * in.payload.info.GetPaddedSize().single] = 1.f;
+      inData[n * in.GetData().info.GetPaddedSize().single] = 1.f;
     }
 
-    //PrintData(inData, in.payload.info.GetSize());
+    //PrintData(inData, in.GetData().info.GetSize());
 
     auto &ft = GetTransformer();
 
@@ -49,10 +49,10 @@ public:
     ASSERT_TRUE(ft.Execute(out, in));
     ft.Synchronize();
 
-    //PrintData(outData, out.payload.info.GetPaddedSize());
+    //PrintData(outData, out.GetData().info.GetPaddedSize());
 
     float delta = 0.00001f;
-    for (size_t i = 0; i < out.payload.info.GetPaddedSize().total; ++i) {
+    for (size_t i = 0; i < out.GetData().info.GetPaddedSize().total; ++i) {
       // ... will result in constant real value, and no imag value
       ASSERT_NEAR(1, outData[i].real(), delta) << " at " << i;
       ASSERT_NEAR(0, outData[i].imag(), delta) << " at " << i;
@@ -60,15 +60,15 @@ public:
   }
 
   void testIFFTInpulseOrigin(AFFT::OutputData &out, AFFT::InputData &in, const Settings &settings) {
-    auto *inData = reinterpret_cast<std::complex<float>*>(in.payload.ptr);
-    auto *outData = reinterpret_cast<float*>(out.payload.ptr);
+    auto *inData = reinterpret_cast<std::complex<float>*>(in.GetData().ptr);
+    auto *outData = reinterpret_cast<float*>(out.GetData().ptr);
 
-    for (size_t n = 0; n < in.payload.info.GetPaddedSize().single; ++n) {
+    for (size_t n = 0; n < in.GetData().info.GetPaddedSize().single; ++n) {
       // constant real value, and no imag value ...
       inData[n] = {1.f, 0};
     }
 
-    // PrintData(inData, in.payload.info.GetPaddedSize());
+    // PrintData(inData, in.GetData().info.GetPaddedSize());
 
     auto &ft = GetTransformer();
 
@@ -76,23 +76,23 @@ public:
     ASSERT_TRUE(ft.Execute(out, in));
     ft.Synchronize();
 
-    // PrintData(outData, out.payload.info.GetSize());
+    // PrintData(outData, out.GetData().info.GetSize());
 
     float delta = 0.00001f;
-    for (size_t n = 0; n < out.payload.info.GetSize().n; ++n) {
-      size_t offset = n * out.payload.info.GetPaddedSize().single;
+    for (size_t n = 0; n < out.GetData().info.GetSize().n; ++n) {
+      size_t offset = n * out.GetData().info.GetPaddedSize().single;
       // skip the padded area, it can contain garbage data
-      for (size_t z = 0; z < out.payload.info.GetSize().z; ++z) {
-        for (size_t y = 0; y < out.payload.info.GetSize().y; ++y) {
-          for (size_t x = 0; x < out.payload.info.GetSize().x; ++x) {
-            size_t index = offset + z * out.payload.info.GetSize().x * out.payload.info.GetSize().y + y * out.payload.info.GetSize().x + x;
+      for (size_t z = 0; z < out.GetData().info.GetSize().z; ++z) {
+        for (size_t y = 0; y < out.GetData().info.GetSize().y; ++y) {
+          for (size_t x = 0; x < out.GetData().info.GetSize().x; ++x) {
+            size_t index = offset + z * out.GetData().info.GetSize().x * out.GetData().info.GetSize().y + y * out.GetData().info.GetSize().x + x;
             // output is not normalized, so normalize it to make the the test more stable
             if (index == offset) {
               // ... will result in impulse at the origin ...
-              ASSERT_NEAR(1.f, outData[index] / out.payload.info.GetSize().single, delta) << "at " << index;
+              ASSERT_NEAR(1.f, outData[index] / out.GetData().info.GetSize().single, delta) << "at " << index;
             } else {
               // ... and zeros elsewhere
-              ASSERT_NEAR(0.f, outData[index] / out.payload.info.GetSize().single, delta) << "at " << index;
+              ASSERT_NEAR(0.f, outData[index] / out.GetData().info.GetSize().single, delta) << "at " << index;
             }
           }
         }
@@ -101,15 +101,15 @@ public:
   }
 
   void testFFTInpulseShifted(AFFT::OutputData &out, AFFT::InputData &in, const Settings &settings) {
-    auto *inData = reinterpret_cast<float*>(in.payload.ptr);
-    auto *outData = reinterpret_cast<std::complex<float>*>(out.payload.ptr);
+    auto *inData = reinterpret_cast<float*>(in.GetData().ptr);
+    auto *outData = reinterpret_cast<std::complex<float>*>(out.GetData().ptr);
 
-    for (size_t n = 0; n < in.payload.info.GetSize().n; ++n) {
+    for (size_t n = 0; n < in.GetData().info.GetSize().n; ++n) {
       // impulse at the origin ...
-      inData[n * in.payload.info.GetPaddedSize().single + 1] = 1.f;
+      inData[n * in.GetData().info.GetPaddedSize().single + 1] = 1.f;
     }
 
-    //PrintData(inData, in.payload.info.GetSize());
+    //PrintData(inData, in.GetData().info.GetSize());
 
     auto &ft = GetTransformer();
 
@@ -117,10 +117,10 @@ public:
     ASSERT_TRUE(ft.Execute(out, in));
     ft.Synchronize();
 
-    //PrintData(outData, out.payload.info.GetPaddedSize());
+    //PrintData(outData, out.GetData().info.GetPaddedSize());
 
     float delta = 0.00001f;
-    for (size_t i = 0; i < out.payload.info.GetPaddedSize().total; ++i) {
+    for (size_t i = 0; i < out.GetData().info.GetPaddedSize().total; ++i) {
       // ... will result in constant magnitude
       auto re = outData[i].real();
       auto im = outData[i].imag();
@@ -130,16 +130,16 @@ public:
   }
 
   void testFFTIFFT(AFFT::OutputData &out, AFFT::InputData &in, const Settings &settings) {
-    auto *inData = reinterpret_cast<float*>(in.payload.ptr);
-    auto *outData = reinterpret_cast<std::complex<float>*>(out.payload.ptr);
-    auto &inverseIn = out;
-    auto &inverseOut = in;
+    auto *inData = reinterpret_cast<float*>(in.GetData().ptr);
+    auto *outData = reinterpret_cast<std::complex<float>*>(out.GetData().ptr);
+    auto inverseIn = AFFT::InputData(out.GetData());
+    auto inverseOut = AFFT::OutputData(in.GetData());
 
-    auto *ref = new float[in.payload.info.GetPaddedSize().total];
-    GenerateData(ref, in.payload.info.GetPaddedSize().total);
-    memcpy(in.payload.ptr, ref, in.payload.info.GetPaddedSize().total * sizeof(float));
+    auto *ref = new float[in.GetData().info.GetPaddedSize().total];
+    GenerateData(ref, in.GetData().info.GetPaddedSize().total);
+    memcpy(in.GetData().ptr, ref, in.GetData().info.GetPaddedSize().total * sizeof(float));
 
-    //PrintData(inData, in.payload.info.GetPaddedSize());
+    //PrintData(inData, in.GetData().info.GetPaddedSize());
 
     auto &ft = GetTransformer();
 
@@ -148,23 +148,23 @@ public:
     ASSERT_TRUE(ft.Execute(out, in));
     ft.Synchronize();
 
-    //PrintData(outData, out.payload.info.GetPaddedSize());
+    //PrintData(outData, out.GetData().info.GetPaddedSize());
 
     ASSERT_TRUE(ft.Init(inverseOut, inverseIn, settings.CreateInverse()));
     ASSERT_TRUE(ft.Execute(inverseOut, inverseIn));
     ft.Synchronize();
 
-    //PrintData(inData, in.payload.info.GetPaddedSize());
+    //PrintData(inData, in.GetData().info.GetPaddedSize());
 
     float delta = 0.00001f;
-    for (size_t n = 0; n < inverseOut.payload.info.GetSize().n; ++n) {
-      size_t offset = n * inverseOut.payload.info.GetPaddedSize().single;
+    for (size_t n = 0; n < inverseOut.GetData().info.GetSize().n; ++n) {
+      size_t offset = n * inverseOut.GetData().info.GetPaddedSize().single;
       // skip the padded area, it can contain garbage data
-      for (size_t z = 0; z < inverseOut.payload.info.GetSize().z; ++z) {
-        for (size_t y = 0; y < inverseOut.payload.info.GetSize().y; ++y) {
-          for (size_t x = 0; x < inverseOut.payload.info.GetSize().x; ++x) {
-            size_t index = offset + z * inverseOut.payload.info.GetSize().x * inverseOut.payload.info.GetSize().y + y * inverseOut.payload.info.GetSize().x + x;
-            ASSERT_NEAR(ref[index], inData[index] / inverseOut.payload.info.GetSize().single, delta) << "at " << index;
+      for (size_t z = 0; z < inverseOut.GetData().info.GetSize().z; ++z) {
+        for (size_t y = 0; y < inverseOut.GetData().info.GetSize().y; ++y) {
+          for (size_t x = 0; x < inverseOut.GetData().info.GetSize().x; ++x) {
+            size_t index = offset + z * inverseOut.GetData().info.GetSize().x * inverseOut.GetData().info.GetSize().y + y * inverseOut.GetData().info.GetSize().x + x;
+            ASSERT_NEAR(ref[index], inData[index] / inverseOut.GetData().info.GetSize().single, delta) << "at " << index;
           }
         }
       }
