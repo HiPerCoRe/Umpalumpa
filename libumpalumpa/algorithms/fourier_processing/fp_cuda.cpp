@@ -7,12 +7,10 @@ namespace {// to avoid poluting
   inline static const auto kKernelFile =
     utils::GetSourceFilePath("libumpalumpa/algorithms/fourier_processing/fp_cuda_kernels.cu");
 
-  struct Strategy1 final
-    : public FP_CUDA::Strategy
-    , public algorithm::TunableStrategy
+  struct Strategy1 final : public FP_CUDA::KTTStrategy
   {
     // Inherit constructor
-    using FP_CUDA::Strategy::Strategy;
+    using FP_CUDA::KTTStrategy::KTTStrategy;
 
     // FIXME improve name of the kernel and variable
     static constexpr auto kTMP = "scaleFFT2DKernel";
@@ -22,17 +20,14 @@ namespace {// to avoid poluting
     // FIXME  this should be tuned by the KTT
 
     size_t GetHash() const override { return 0; }
-    bool IsSimilarTo(const TunableStrategy &ref) const override
+    bool IsSimilarTo(const TunableStrategy &) const override
     {
-      if (GetFullName() != ref.GetFullName()) { return false; }
-      // Now we know that type of 'other' is the same as 'this' and we can safely cast it to the
-      // needed type
       // auto &o = dynamic_cast<const Strategy1 &>(other);
       // TODO real similarity check
       return false;
     }
 
-    bool Init() override
+    bool InitImpl() override
     {
       // FIXME check settings
       const auto &out = alg.Get().GetOutputRef();
@@ -40,7 +35,6 @@ namespace {// to avoid poluting
       if (!AFP::IsFloat(out, in)) return false;
 
       auto &helper = dynamic_cast<const FP_CUDA &>(alg.Get()).GetHelper();
-      TunableStrategy::Init(helper);
       const auto &size = out.GetData().info.GetPaddedSize();
       auto &tuner = helper.GetTuner();
 
