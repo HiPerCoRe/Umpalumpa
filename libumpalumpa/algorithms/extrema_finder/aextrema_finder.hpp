@@ -1,6 +1,6 @@
 #pragma once
 
-#include <libumpalumpa/data/multi_payload_wrapper.hpp>
+#include <libumpalumpa/data/payload_wrapper.hpp>
 #include <libumpalumpa/data/payload.hpp>
 #include <libumpalumpa/algorithms/basic_algorithm.hpp>
 #include <libumpalumpa/algorithms/extrema_finder/search_settings.hpp>
@@ -8,11 +8,11 @@
 
 namespace umpalumpa::extrema_finder {
 
-template<typename T> struct OutputDataWrapper : public data::MultiPayloadWrapper<T, T>
+template<typename T> struct OutputDataWrapper : public data::PayloadWrapper<T, T>
 {
-  OutputDataWrapper(std::tuple<T, T> &&t) : data::MultiPayloadWrapper<T, T>(std::move(t)) {}
+  OutputDataWrapper(std::tuple<T, T> &&t) : data::PayloadWrapper<T, T>(std::move(t)) {}
   OutputDataWrapper(T vals, T locs)
-    : data::MultiPayloadWrapper<T, T>(std::move(vals), std::move(locs))
+    : data::PayloadWrapper<T, T>(std::move(vals), std::move(locs))
   {}
   const T &GetValues() const { return std::get<0>(this->payloads); };
   const T &GetLocations() const { return std::get<1>(this->payloads); };
@@ -28,10 +28,10 @@ template<typename T> struct OutputDataWrapper : public data::MultiPayloadWrapper
   typedef T PayloadType;
 };
 
-template<typename T> struct InputDataWrapper : public data::MultiPayloadWrapper<T>
+template<typename T> struct InputDataWrapper : public data::PayloadWrapper<T>
 {
-  InputDataWrapper(std::tuple<T> &&t) : data::MultiPayloadWrapper<T>(std::move(t)) {}
-  InputDataWrapper(T data) : data::MultiPayloadWrapper<T>(std::move(data)) {}
+  InputDataWrapper(std::tuple<T> &&t) : data::PayloadWrapper<T>(std::move(t)) {}
+  InputDataWrapper(T data) : data::PayloadWrapper<T>(std::move(data)) {}
   const T &GetData() const { return std::get<0>(this->payloads); };
   typedef T PayloadType;
 };

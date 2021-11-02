@@ -10,7 +10,7 @@ namespace umpalumpa::data {
  * Derived class will provide Constructor and Getters
  * for the payloads, so that they can be algorithm-specific
  **/
-template<typename... Args> struct MultiPayloadWrapper
+template<typename... Args> struct PayloadWrapper
 {
   /**
    * Returns true if all Payloads stored here are valid
@@ -24,7 +24,7 @@ template<typename... Args> struct MultiPayloadWrapper
    * Returns true if all Payloads stored here are equivalent
    * to reference Payloads
    **/
-  bool IsEquivalentTo(const MultiPayloadWrapper<Args...> &ref) const
+  bool IsEquivalentTo(const PayloadWrapper<Args...> &ref) const
   {
     return InternalEquivalent(payloads, ref.payloads, std::make_index_sequence<sizeof...(Args)>{});
   }
@@ -42,10 +42,10 @@ template<typename... Args> struct MultiPayloadWrapper
 protected:
   // NOTE not sure if the following constructor is needed
   // All 'args' would have to be copy-constructible
-  // MultiPayloadWrapper(const Args &... args) : payload(args...) {}
+  // PayloadWrapper(const Args &... args) : payload(args...) {}
 
-  MultiPayloadWrapper(Args &&...args) : payloads(std::move(args)...) {}
-  MultiPayloadWrapper(std::tuple<Args...> &&t) : payloads(std::move(t)) {}
+  PayloadWrapper(Args &&...args) : payloads(std::move(args)...) {}
+  PayloadWrapper(std::tuple<Args...> &&t) : payloads(std::move(t)) {}
 
   /**
    * Specific Payload can be accessed using std::get<N>(payloads) function, where N is a position

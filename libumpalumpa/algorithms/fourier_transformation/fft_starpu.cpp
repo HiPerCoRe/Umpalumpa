@@ -4,8 +4,7 @@
 #include <libumpalumpa/algorithms/fourier_transformation/fft_cuda.hpp>
 #include <libumpalumpa/system_includes/spdlog.hpp>
 
-namespace umpalumpa {
-namespace fourier_transformation {
+namespace umpalumpa::fourier_transformation {
 
   namespace {// to avoid poluting
     struct ExecuteArgs
@@ -57,7 +56,7 @@ namespace fourier_transformation {
 
   bool FFTStarPU::Init(const StarpuOutputData &out, const StarpuInputData &in, const Settings &s)
   {
-    return AFFT::Init(out.payload->GetPayload(), in.payload->GetPayload(), s);
+    return AFFT::Init(out.GetData()->GetPayload(), in.GetData()->GetPayload(), s);
   }
 
   bool FFTStarPU::InitImpl()
@@ -83,11 +82,11 @@ namespace fourier_transformation {
     if ((nullptr == outPtr) && (nullptr == inPtr)) {
       // input and output data are not Starpu Payloads
       using Type = data::StarpuPayload<InputData::PayloadType::LDType>;
-      auto o = StarpuOutputData(std::make_unique<Type>(out.payload));
-      auto i = StarpuInputData(std::make_unique<Type>(in.payload));
+      auto o = StarpuOutputData(std::make_unique<Type>(out.GetData()));
+      auto i = StarpuInputData(std::make_unique<Type>(in.GetData()));
       res = ExecuteImpl(o, i);
       // assume that results are requested
-      o.payload->Unregister();
+      o.GetData()->Unregister();
     } else {
       // input and output are Starpu Payload, stored locally
       res = ExecuteImpl(*outPtr, *inPtr);
@@ -101,7 +100,7 @@ namespace fourier_transformation {
     outPtr = &out;
     inPtr = &in;
     // call normal execute with the normal Payloads to get all checks etc.
-    auto res = AFFT::Execute(out.payload->GetPayload(), in.payload->GetPayload());
+    auto res = AFFT::Execute(out.GetData()->GetPayload(), in.GetData()->GetPayload());
     // cleanup
     outPtr = nullptr;
     inPtr = nullptr;
@@ -111,8 +110,8 @@ namespace fourier_transformation {
   bool FFTStarPU::ExecuteImpl(const StarpuOutputData &out, const StarpuInputData &in)
   {
     struct starpu_task *task = starpu_task_create();
-    task->handles[0] = out.payload->GetHandle();
-    task->handles[1] = in.payload->GetHandle();
+    task->handles[0] = out.GetData()->GetHandle();
+    task->handles[1] = in.GetData()->GetHandle();
     task->workerids = CreateWorkerMask(task->workerids_len,
       algs);// FIXME bug in the StarPU? If the mask is completely 0, codelet is being invoked anyway
     task->cl_arg = new ExecuteArgs{ this->GetSettings(), &algs };
@@ -133,4 +132,3 @@ namespace fourier_transformation {
     return true;
   }
 }// namespace fourier_transformation
-}// namespace umpalumpa
