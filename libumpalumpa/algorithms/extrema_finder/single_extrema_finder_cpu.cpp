@@ -1,63 +1,62 @@
-#include <functional>
 #include <libumpalumpa/algorithms/extrema_finder/single_extrema_finder_cpu.hpp>
 #include <libumpalumpa/algorithms/extrema_finder/single_extrema_finder_cpu_kernels.hpp>
-#include <libumpalumpa/system_includes/spdlog.hpp>
 
 namespace umpalumpa::extrema_finder {
 
 namespace {// to avoid poluting
-  struct Strategy1 : public SingleExtremaFinderCPU::Strategy
+  struct Strategy1 final : public SingleExtremaFinderCPU::Strategy
   {
-    static constexpr auto kStrategyName = "Strategy1";
+    // Inherit constructor
+    using SingleExtremaFinderCPU::Strategy::Strategy;
 
-    bool Init(const AExtremaFinder::OutputData &,
-      const AExtremaFinder::InputData &in,
-      const Settings &s) override final
+    bool Init() override final
     {
-      return (s.version == 1) && (!in.data.info.IsPadded())
+      const auto &in = alg.Get().GetInputRef();
+      const auto &s = alg.Get().GetSettings();
+      return (s.version == 1) && (!in.GetData().info.IsPadded())
              && (s.location == SearchLocation::kEntire) && (s.type == SearchType::kMax)
              && (s.result == SearchResult::kValue)
-             && (in.data.dataInfo.type == umpalumpa::data::DataType::kFloat);
+             && (in.GetData().dataInfo.type == umpalumpa::data::DataType::kFloat);
     }
 
-    std::string GetName() const override final { return kStrategyName; }
+    std::string GetName() const override { return "Strategy1"; }
 
     bool Execute(const AExtremaFinder::OutputData &out,
-      const AExtremaFinder::InputData &in,
-      const Settings &) override final
+      const AExtremaFinder::InputData &in) override
     {
-      if (!in.data.IsValid() || in.data.IsEmpty() || !out.values.IsValid() || out.values.IsEmpty())
+      if (!in.GetData().IsValid() || in.GetData().IsEmpty() || !out.GetValues().IsValid()
+          || out.GetValues().IsEmpty())
         return false;
-      FindSingleExtremaValXDCPU(reinterpret_cast<float *>(out.values.ptr),
-        reinterpret_cast<float *>(in.data.ptr),
-        in.data.info.GetSize(),
+      FindSingleExtremaValXDCPU(reinterpret_cast<float *>(out.GetValues().ptr),
+        reinterpret_cast<float *>(in.GetData().ptr),
+        in.GetData().info.GetSize(),
         std::greater<float>());
       return true;
     }
   };
 
-  struct Strategy2 : public SingleExtremaFinderCPU::Strategy
+  struct Strategy2 final : public SingleExtremaFinderCPU::Strategy
   {
-    static constexpr auto kStrategyName = "Strategy2";
+    // Inherit constructor
+    using SingleExtremaFinderCPU::Strategy::Strategy;
 
-    bool Init(const AExtremaFinder::OutputData &,
-      const AExtremaFinder::InputData &in,
-      const Settings &s) override final
+    bool Init() override
     {
-      return (s.version == 1) && (!in.data.info.IsPadded())
+      const auto &in = alg.Get().GetInputRef();
+      const auto &s = alg.Get().GetSettings();
+      return (s.version == 1) && (!in.GetData().info.IsPadded())
              && (s.location == SearchLocation::kRectCenter) && (s.type == SearchType::kMax)
              && (s.result == SearchResult::kLocation)
-             && (in.data.dataInfo.type == umpalumpa::data::DataType::kFloat);
+             && (in.GetData().dataInfo.type == umpalumpa::data::DataType::kFloat);
     }
 
-    std::string GetName() const override final { return kStrategyName; }
+    std::string GetName() const override { return "Strategy2"; }
 
     bool Execute(const AExtremaFinder::OutputData &out,
-      const AExtremaFinder::InputData &in,
-      const Settings &) override final
+      const AExtremaFinder::InputData &in) override
     {
-      if (!in.data.IsValid() || in.data.IsEmpty() || !out.locations.IsValid()
-          || out.locations.IsEmpty())
+      if (!in.GetData().IsValid() || in.GetData().IsEmpty() || !out.GetLocations().IsValid()
+          || out.GetLocations().IsEmpty())
         return false;
 
       // FIXME these values should be read from settings
@@ -65,43 +64,28 @@ namespace {// to avoid poluting
       // Compute the area to search in
       size_t searchRectWidth = 28;
       size_t searchRectHeight = 17;
-      size_t searchRectOffsetX = (in.data.info.GetPaddedSize().x - searchRectWidth) / 2;
-      size_t searchRectOffsetY = (in.data.info.GetPaddedSize().y - searchRectHeight) / 2;
+      size_t searchRectOffsetX = (in.GetData().info.GetPaddedSize().x - searchRectWidth) / 2;
+      size_t searchRectOffsetY = (in.GetData().info.GetPaddedSize().y - searchRectHeight) / 2;
 
-      FindSingleExtremaInRectangle2DCPU<false, true>(reinterpret_cast<float *>(out.values.ptr),
-        reinterpret_cast<float *>(out.locations.ptr),
-        reinterpret_cast<float *>(in.data.ptr),
+      FindSingleExtremaInRectangle2DCPU<false, true>(reinterpret_cast<float *>(out.GetValues().ptr),
+        reinterpret_cast<float *>(out.GetLocations().ptr),
+        reinterpret_cast<float *>(in.GetData().ptr),
         searchRectOffsetX,
         searchRectOffsetY,
         data::Size(searchRectWidth, searchRectHeight, 1, 1),
-        in.data.info.GetSize(),
+        in.GetData().info.GetSize(),
         std::greater<float>());
       return true;
     }
   };
 }// namespace
 
-bool SingleExtremaFinderCPU::Init(const OutputData &out,
-  const InputData &in,
-  const Settings &settings)
+std::vector<std::unique_ptr<SingleExtremaFinderCPU::Strategy>>
+  SingleExtremaFinderCPU::GetStrategies() const
 {
-  auto tryToAdd = [this, &out, &in, &settings](auto i) {
-    bool canAdd = i->Init(out, in, settings);
-    if (canAdd) {
-      spdlog::debug("Found valid strategy {}", i->GetName());
-      strategy = std::move(i);
-    }
-    return canAdd;
-  };
-
-  return tryToAdd(std::make_unique<Strategy1>()) || tryToAdd(std::make_unique<Strategy2>());
-}
-
-bool SingleExtremaFinderCPU::Execute(const OutputData &out,
-  const InputData &in,
-  const Settings &settings)
-{
-  if (!this->IsValid(out, in, settings)) return false;
-  return strategy->Execute(out, in, settings);
+  std::vector<std::unique_ptr<SingleExtremaFinderCPU::Strategy>> vec;
+  vec.emplace_back(std::make_unique<Strategy1>(*this));
+  vec.emplace_back(std::make_unique<Strategy2>(*this));
+  return vec;
 }
 }// namespace umpalumpa::extrema_finder

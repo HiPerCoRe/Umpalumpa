@@ -2,42 +2,35 @@
 
 #include <libumpalumpa/algorithms/extrema_finder/aextrema_finder.hpp>
 #include <libumpalumpa/data/starpu_payload.hpp>
-#include <vector>
-#include <memory>
 
 namespace umpalumpa::extrema_finder {
 class SingleExtremaFinderStarPU : public AExtremaFinder
 {
 public:
-  bool Init(const OutputData &out, const InputData &in, const Settings &settings) override;
-  bool Execute(const OutputData &out, const InputData &in, const Settings &settings) override;
   void Synchronize() override{
     // don't do anything. Each task is synchronized, now it's StarPU's problem
     // consider calling starpu_task_wait_for_all() instead
   };
 
+  using StarpuOutputData =
+    OutputDataWrapper<std::unique_ptr<data::StarpuPayload<data::LogicalDescriptor>>>;
+  using StarpuInputData =
+    InputDataWrapper<std::unique_ptr<data::StarpuPayload<data::LogicalDescriptor>>>;
 
-  struct StarpuResultData final
-    : ResultDataWrapper<std::unique_ptr<data::StarpuPayload<OutputData::type::LDType>>>
-  {
-    using ptrType = data::StarpuPayload<OutputData::type::LDType>;
-    StarpuResultData(type &&vals, type &&locs) : ResultDataWrapper(std::move(vals), std::move(locs))
-    {}
+  [[nodiscard]] bool
+    Init(const StarpuOutputData &out, const StarpuInputData &in, const Settings &s);
+  [[nodiscard]] bool Execute(const StarpuOutputData &out, const StarpuInputData &in);
 
-    StarpuResultData(const OutputData &d)
-      : StarpuResultData(std::make_unique<ptrType>(d.values),
-        std::make_unique<ptrType>(d.locations))
-    {}
-  };
-
-  using StarpuSearchData =
-    SearchDataWrapper<std::unique_ptr<data::StarpuPayload<InputData::type::LDType>>>;
-
-  bool Execute(const StarpuResultData &out, const StarpuSearchData &in, const Settings &settings);
+protected:
+  bool InitImpl() override;
+  bool ExecuteImpl(const OutputData &out, const InputData &in);
+  bool ExecuteImpl(const StarpuOutputData &out, const StarpuInputData &in);
 
 private:
-  inline static const std::string taskName = "Single Extrema Finder";
+  inline static const std::string taskName = "Single Extrema Finder StarPU";
 
   std::vector<std::unique_ptr<AExtremaFinder>> algs;
+  const StarpuOutputData *outPtr = nullptr;
+  const StarpuInputData *inPtr = nullptr;
 };
 }// namespace umpalumpa::extrema_finder

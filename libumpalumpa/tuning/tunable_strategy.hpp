@@ -61,7 +61,7 @@ protected:
   const size_t strategyId;
 
 private:
-  utils::KTTHelper *kttHelper;
+  utils::KTTHelper *kttHelper = nullptr;
   bool tune;
 
   static size_t GetNewStrategyId()
