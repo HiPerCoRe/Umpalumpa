@@ -10,7 +10,9 @@ class TunableStrategy;
 
 class AlgorithmManager
 {
-  std::vector<std::vector<TunableStrategy *>> strategies;
+  using StrategyGroup = std::vector<TunableStrategy *>;
+
+  std::vector<StrategyGroup> strategies;
   std::mutex mutex;
 
   AlgorithmManager() = default;

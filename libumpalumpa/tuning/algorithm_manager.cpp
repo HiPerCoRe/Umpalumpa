@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <libumpalumpa/tuning/algorithm_manager.hpp>
 #include <libumpalumpa/tuning/tunable_strategy.hpp>
 #include <libumpalumpa/system_includes/spdlog.hpp>
@@ -26,9 +27,9 @@ void AlgorithmManager::Register(TunableStrategy &strat)
 
   spdlog::info("Strategy at address {0} registered", reinterpret_cast<size_t>(this));// tmp
 
-  for (auto &v : strategies) {
-    if (strat.IsSimilarTo(*v[0])) {
-      v.push_back(&strat);
+  for (auto &stratGroup : strategies) {
+    if (strat.IsSimilarTo(*stratGroup[0])) {
+      stratGroup.push_back(&strat);
       return;
     }
   }
@@ -41,34 +42,34 @@ void AlgorithmManager::Unregister(TunableStrategy &strat)
   std::lock_guard<std::mutex> lck(mutex);
   // TODO save best configuration
 
-  // FIXME mega in need of refactor
-  auto outerIt = strategies.end();
-  for (auto &v : strategies) {
-    auto it = std::find(v.begin(), v.end(), &strat);
-    if (it != v.end()) {
-      outerIt = std::find(strategies.begin(), strategies.end(), v);
-      v.erase(it);
+  for (auto &stratGroup : strategies) {
+    auto stratIt = std::find(stratGroup.begin(), stratGroup.end(), &strat);
+
+    if (stratIt != stratGroup.end()) {
+      // Remove strategy from group
+      std::iter_swap(stratIt, stratGroup.end() - 1);
+      stratGroup.pop_back();
       spdlog::info("Strategy at address {0} unregistered", reinterpret_cast<size_t>(this));// tmp
-      break;
+
+      // Remove empty group
+      if (stratGroup.empty()) {
+        std::iter_swap(&stratGroup, strategies.end() - 1);
+        strategies.pop_back();
+      }
+      return;
     }
   }
-  if (outerIt != strategies.end()) {
-    if (outerIt->empty()) { strategies.erase(outerIt); }
-  } else {
-    spdlog::warn("You are trying to unregister strategy which wasn't previously registered.");// tmp
-  }
+
+  spdlog::warn("You are trying to unregister strategy which wasn't previously registered.");// tmp
 }
 
 ktt::KernelConfiguration AlgorithmManager::GetBestConfiguration(size_t stratHash)
 {
   std::lock_guard<std::mutex> lck(mutex);
 
-  // auto it = strategies.find(stratHash);
-  // if (it != strategies.end()) { return it->second->GetBestConfiguration(); }
-
   // FIXME refactor
-  for (auto &v : strategies) {
-    for (auto s : v) {
+  for (auto &stratGroup : strategies) {
+    for (auto s : stratGroup) {
       if (s->GetHash() == stratHash) { return s->GetBestConfiguration(); }
     }
   }
