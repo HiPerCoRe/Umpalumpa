@@ -10,7 +10,7 @@
 using namespace umpalumpa::fourier_transformation;
 using namespace umpalumpa::data;
 
-//FIXME make some utility file, for similar functions needed in tests
+// FIXME make some utility file, for similar functions needed in tests
 template<typename T> void FillRandomBytes(T *dst, size_t bytes)
 {
   int fd = open("/dev/urandom", O_RDONLY);
@@ -25,23 +25,24 @@ template<typename T> void GenerateData(T *data, size_t elems)
   for (size_t i = 0; i < elems; ++i) { data[i] = dist(mt); }
 }
 
-class FFT_Tests 
+class FFT_Tests
 {
 public:
   virtual AFFT &GetTransformer() = 0;
   virtual void *Allocate(size_t bytes) = 0;
   virtual void Free(void *ptr) = 0;
 
-  void testFFTInpulseOrigin(AFFT::OutputData &out, AFFT::InputData &in, const Settings &settings) {
-    auto *inData = reinterpret_cast<float*>(in.GetData().ptr);
-    auto *outData = reinterpret_cast<std::complex<float>*>(out.GetData().ptr);
+  void testFFTInpulseOrigin(AFFT::OutputData &out, AFFT::InputData &in, const Settings &settings)
+  {
+    auto *inData = reinterpret_cast<float *>(in.GetData().ptr);
+    auto *outData = reinterpret_cast<std::complex<float> *>(out.GetData().ptr);
 
     for (size_t n = 0; n < in.GetData().info.GetSize().n; ++n) {
       // impulse at the origin ...
       inData[n * in.GetData().info.GetPaddedSize().single] = 1.f;
     }
 
-    //PrintData(inData, in.GetData().info.GetSize());
+    // PrintData(inData, in.GetData().info.GetSize());
 
     auto &ft = GetTransformer();
 
@@ -49,7 +50,7 @@ public:
     ASSERT_TRUE(ft.Execute(out, in));
     ft.Synchronize();
 
-    //PrintData(outData, out.GetData().info.GetPaddedSize());
+    // PrintData(outData, out.GetData().info.GetPaddedSize());
 
     float delta = 0.00001f;
     for (size_t i = 0; i < out.GetData().info.GetPaddedSize().total; ++i) {
@@ -59,13 +60,14 @@ public:
     }
   }
 
-  void testIFFTInpulseOrigin(AFFT::OutputData &out, AFFT::InputData &in, const Settings &settings) {
-    auto *inData = reinterpret_cast<std::complex<float>*>(in.GetData().ptr);
-    auto *outData = reinterpret_cast<float*>(out.GetData().ptr);
+  void testIFFTInpulseOrigin(AFFT::OutputData &out, AFFT::InputData &in, const Settings &settings)
+  {
+    auto *inData = reinterpret_cast<std::complex<float> *>(in.GetData().ptr);
+    auto *outData = reinterpret_cast<float *>(out.GetData().ptr);
 
     for (size_t n = 0; n < in.GetData().info.GetPaddedSize().single; ++n) {
       // constant real value, and no imag value ...
-      inData[n] = {1.f, 0};
+      inData[n] = { 1.f, 0 };
     }
 
     // PrintData(inData, in.GetData().info.GetPaddedSize());
@@ -85,14 +87,18 @@ public:
       for (size_t z = 0; z < out.GetData().info.GetSize().z; ++z) {
         for (size_t y = 0; y < out.GetData().info.GetSize().y; ++y) {
           for (size_t x = 0; x < out.GetData().info.GetSize().x; ++x) {
-            size_t index = offset + z * out.GetData().info.GetSize().x * out.GetData().info.GetSize().y + y * out.GetData().info.GetSize().x + x;
+            size_t index = offset
+                           + z * out.GetData().info.GetSize().x * out.GetData().info.GetSize().y
+                           + y * out.GetData().info.GetSize().x + x;
             // output is not normalized, so normalize it to make the the test more stable
             if (index == offset) {
               // ... will result in impulse at the origin ...
-              ASSERT_NEAR(1.f, outData[index] / out.GetData().info.GetSize().single, delta) << "at " << index;
+              ASSERT_NEAR(1.f, outData[index] / out.GetData().info.GetSize().single, delta)
+                << "at " << index;
             } else {
               // ... and zeros elsewhere
-              ASSERT_NEAR(0.f, outData[index] / out.GetData().info.GetSize().single, delta) << "at " << index;
+              ASSERT_NEAR(0.f, outData[index] / out.GetData().info.GetSize().single, delta)
+                << "at " << index;
             }
           }
         }
@@ -100,16 +106,17 @@ public:
     }
   }
 
-  void testFFTInpulseShifted(AFFT::OutputData &out, AFFT::InputData &in, const Settings &settings) {
-    auto *inData = reinterpret_cast<float*>(in.GetData().ptr);
-    auto *outData = reinterpret_cast<std::complex<float>*>(out.GetData().ptr);
+  void testFFTInpulseShifted(AFFT::OutputData &out, AFFT::InputData &in, const Settings &settings)
+  {
+    auto *inData = reinterpret_cast<float *>(in.GetData().ptr);
+    auto *outData = reinterpret_cast<std::complex<float> *>(out.GetData().ptr);
 
     for (size_t n = 0; n < in.GetData().info.GetSize().n; ++n) {
       // impulse at the origin ...
       inData[n * in.GetData().info.GetPaddedSize().single + 1] = 1.f;
     }
 
-    //PrintData(inData, in.GetData().info.GetSize());
+    // PrintData(inData, in.GetData().info.GetSize());
 
     auto &ft = GetTransformer();
 
@@ -117,7 +124,7 @@ public:
     ASSERT_TRUE(ft.Execute(out, in));
     ft.Synchronize();
 
-    //PrintData(outData, out.GetData().info.GetPaddedSize());
+    // PrintData(outData, out.GetData().info.GetPaddedSize());
 
     float delta = 0.00001f;
     for (size_t i = 0; i < out.GetData().info.GetPaddedSize().total; ++i) {
@@ -129,9 +136,13 @@ public:
     }
   }
 
-  void testFFTIFFT(AFFT::OutputData &out, AFFT::InputData &in, const Settings &settings) {
-    auto *inData = reinterpret_cast<float*>(in.GetData().ptr);
-    auto *outData = reinterpret_cast<std::complex<float>*>(out.GetData().ptr);
+  void testFFTIFFT(AFFT::OutputData &out,
+    AFFT::InputData &in,
+    const Settings &settings,
+    size_t batchSize = 0)
+  {
+    auto *inData = reinterpret_cast<float *>(in.GetData().ptr);
+    auto *outData = reinterpret_cast<std::complex<float> *>(out.GetData().ptr);
     auto inverseIn = AFFT::InputData(out.GetData());
     auto inverseOut = AFFT::OutputData(in.GetData());
 
@@ -139,22 +150,41 @@ public:
     GenerateData(ref, in.GetData().info.GetPaddedSize().total);
     memcpy(in.GetData().ptr, ref, in.GetData().info.GetPaddedSize().total * sizeof(float));
 
-    //PrintData(inData, in.GetData().info.GetPaddedSize());
+    // PrintData(inData, in.GetData().info.GetPaddedSize());
 
     auto &ft = GetTransformer();
+    auto forwardSettings = (settings.GetDirection() == Direction::kForward) ? settings : settings.CreateInverse();
 
-    //FIXME we assume that settings is set as forward fft
-    ASSERT_TRUE(ft.Init(out, in, settings));
-    ASSERT_TRUE(ft.Execute(out, in));
+    if (0 == batchSize) {
+      ASSERT_TRUE(ft.Init(out, in, forwardSettings));
+      ASSERT_TRUE(ft.Execute(out, in));
+    } else {
+      for (size_t offset = 0; offset < in.GetData().info.GetSize().n; offset += batchSize) {
+        auto tmpOut = AFFT::OutputData(out.GetData().Subset(offset, batchSize));
+        auto tmpIn = AFFT::InputData(in.GetData().Subset(offset, batchSize));
+        if (0 == offset) { ASSERT_TRUE(ft.Init(tmpOut, tmpIn, forwardSettings)); }
+        ASSERT_TRUE(ft.Execute(tmpOut, tmpIn));
+      }
+    }
     ft.Synchronize();
 
-    //PrintData(outData, out.GetData().info.GetPaddedSize());
+    // PrintData(outData, out.GetData().info.GetPaddedSize());
 
-    ASSERT_TRUE(ft.Init(inverseOut, inverseIn, settings.CreateInverse()));
-    ASSERT_TRUE(ft.Execute(inverseOut, inverseIn));
+    auto inverseSettings = forwardSettings.CreateInverse();
+    if (0 == batchSize) {
+      ASSERT_TRUE(ft.Init(inverseOut, inverseIn, inverseSettings));
+      ASSERT_TRUE(ft.Execute(inverseOut, inverseIn));
+    } else {
+      for (size_t offset = 0; offset < in.GetData().info.GetSize().n; offset += batchSize) {
+        auto tmpOut = AFFT::OutputData(inverseOut.GetData().Subset(offset, batchSize));
+        auto tmpIn = AFFT::InputData(inverseIn.GetData().Subset(offset, batchSize));
+        if (0 == offset) { ASSERT_TRUE(ft.Init(tmpOut, tmpIn, inverseSettings)); }
+        ASSERT_TRUE(ft.Execute(tmpOut, tmpIn));
+      }
+    }
     ft.Synchronize();
 
-    //PrintData(inData, in.GetData().info.GetPaddedSize());
+    // PrintData(inData, in.GetData().info.GetPaddedSize());
 
     float delta = 0.00001f;
     for (size_t n = 0; n < inverseOut.GetData().info.GetSize().n; ++n) {
@@ -163,8 +193,13 @@ public:
       for (size_t z = 0; z < inverseOut.GetData().info.GetSize().z; ++z) {
         for (size_t y = 0; y < inverseOut.GetData().info.GetSize().y; ++y) {
           for (size_t x = 0; x < inverseOut.GetData().info.GetSize().x; ++x) {
-            size_t index = offset + z * inverseOut.GetData().info.GetSize().x * inverseOut.GetData().info.GetSize().y + y * inverseOut.GetData().info.GetSize().x + x;
-            ASSERT_NEAR(ref[index], inData[index] / inverseOut.GetData().info.GetSize().single, delta) << "at " << index;
+            size_t index =
+              offset
+              + z * inverseOut.GetData().info.GetSize().x * inverseOut.GetData().info.GetSize().y
+              + y * inverseOut.GetData().info.GetSize().x + x;
+            ASSERT_NEAR(
+              ref[index], inData[index] / inverseOut.GetData().info.GetSize().single, delta)
+              << "at " << index;
           }
         }
       }
@@ -195,7 +230,7 @@ protected:
       for (size_t y = 0; y < size.y; ++y) {
         for (size_t x = 0; x < size.x; ++x) {
           auto v = data[offset + y * size.x + x];
-          printf("(%+.3f,%+.3f)\t", v.real(), v.imag() );
+          printf("(%+.3f,%+.3f)\t", v.real(), v.imag());
         }
         std::cout << "\n";
       }
@@ -203,19 +238,18 @@ protected:
     }
   }
 
-  using FreeFunction = std::function<void(void*)>;
+  using FreeFunction = std::function<void(void *)>;
 
   // Could be left as pure virtual, but in case of an error, it might be
   // difficult to realize, where the pure virtual method was called. Instead
   // throw reasonable exception.
-  virtual FreeFunction GetFree() {
-    throw std::logic_error("GetFree() method not overridden!");
-  }
+  virtual FreeFunction GetFree() { throw std::logic_error("GetFree() method not overridden!"); }
 
-    // Deliberately not using gtest's SetUp method, because we need to know Settings and
+  // Deliberately not using gtest's SetUp method, because we need to know Settings and
   // Size of the current test to properly initialize memory
   // ONLY float currently supported!!
-  void SetUpFFT(const Settings &settings, const Size &size, const PaddingDescriptor &padding) {
+  void SetUpFFT(const Settings &settings, const Size &size, const PaddingDescriptor &padding)
+  {
     ldSpatial = std::make_unique<FourierDescriptor>(size, padding);
     auto spatialSizeInBytes = ldSpatial->GetPaddedSize().total * Sizeof(DataType::kFloat);
     pdSpatial = std::make_unique<PhysicalDescriptor>(spatialSizeInBytes, DataType::kFloat);
@@ -223,9 +257,12 @@ protected:
     dataSpatial = std::shared_ptr<void>(Allocate(pdSpatial->bytes), GetFree());
     memset(dataSpatial.get(), 0, pdSpatial->bytes);
 
-    ldFrequency = std::make_unique<FourierDescriptor>(size, padding, FourierDescriptor::FourierSpaceDescriptor());
-    auto frequencySizeInBytes = ldFrequency->GetPaddedSize().total * Sizeof(DataType::kComplexFloat);
-    pdFrequency = std::make_unique<PhysicalDescriptor>(frequencySizeInBytes, DataType::kComplexFloat);
+    ldFrequency = std::make_unique<FourierDescriptor>(
+      size, padding, FourierDescriptor::FourierSpaceDescriptor());
+    auto frequencySizeInBytes =
+      ldFrequency->GetPaddedSize().total * Sizeof(DataType::kComplexFloat);
+    pdFrequency =
+      std::make_unique<PhysicalDescriptor>(frequencySizeInBytes, DataType::kComplexFloat);
 
     if (settings.IsOutOfPlace()) {
       dataFrequency = std::shared_ptr<void>(Allocate(pdFrequency->bytes), GetFree());
