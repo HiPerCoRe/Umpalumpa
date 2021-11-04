@@ -7,12 +7,10 @@ namespace {// to avoid poluting
   inline static const auto kKernelFile =
     utils::GetSourceFilePath("libumpalumpa/algorithms/correlation/correlation_cuda_kernels.cu");
 
-  struct Strategy1 final
-    : public Correlation_CUDA::Strategy
-    , public algorithm::TunableStrategy
+  struct Strategy1 final : public Correlation_CUDA::KTTStrategy
   {
     // Inherit constructor
-    using Correlation_CUDA::Strategy::Strategy;
+    using Correlation_CUDA::KTTStrategy::KTTStrategy;
 
     // FIXME improve name of the kernel and this variable
     static constexpr auto kTMP = "correlate2D";
@@ -23,15 +21,26 @@ namespace {// to avoid poluting
     size_t GetHash() const override { return 0; }
     bool IsSimilarTo(const TunableStrategy &ref) const override
     {
-      if (GetFullName() != ref.GetFullName()) { return false; }
-      // Now we know that type of 'other' is the same as 'this' and we can safely cast it to the
-      // needed type
-      // auto &o = dynamic_cast<const Strategy1 &>(other);
-      // TODO real similarity check
-      return false;
+      bool similar = false;
+      // TODO move try-catch somewhere else
+      try {
+        // FIXME refactor
+        auto &refAlg = dynamic_cast<const Strategy1 &>(ref).alg.Get();
+        auto &thisAlg = this->alg.Get();
+        auto refSize1 = refAlg.GetInputRef().GetData1().info.GetSize();
+        auto thisSize1 = thisAlg.GetInputRef().GetData1().info.GetSize();
+        auto refSize2 = refAlg.GetInputRef().GetData2().info.GetSize();
+        auto thisSize2 = thisAlg.GetInputRef().GetData2().info.GetSize();
+        // NOTE for testing size equivalence means similarity
+        similar = thisSize1.IsEquivalentTo(refSize1) && thisSize2.IsEquivalentTo(refSize2);
+        // TODO real similarity check
+      } catch (std::bad_cast &) {
+        similar = false;
+      }
+      return similar;
     }
 
-    bool Init() override
+    bool InitImpl() override
     {
       // FIXME check settings
       const auto &out = alg.Get().GetOutputRef();
@@ -39,16 +48,14 @@ namespace {// to avoid poluting
       bool canProcess = ACorrelation::IsFloat(out, in);
       if (!canProcess) return false;
 
-      auto &helper = dynamic_cast<const Correlation_CUDA &>(alg.Get()).GetHelper();
-      TunableStrategy::Init(helper);
       const auto &size = out.GetCorrelations().info.GetPaddedSize();
-      auto &tuner = helper.GetTuner();
+      auto &tuner = kttHelper.GetTuner();
 
       // ensure that we have the kernel loaded to KTT
       // this has to be done in critical section, as multiple instances of this algorithm
       // might run on the same worker
       const auto &s = alg.Get().GetSettings();
-      std::lock_guard<std::mutex> lck(helper.GetMutex());
+      std::lock_guard<std::mutex> lck(kttHelper.GetMutex());
       definitionId = GetKernelDefinitionId(kTMP,
         kKernelFile,
         ktt::DimensionVector{ size.x, size.y, size.z },
@@ -110,7 +117,7 @@ namespace {// to avoid poluting
           || out.GetCorrelations().IsEmpty())
         return false;
 
-      auto &tuner = dynamic_cast<const Correlation_CUDA &>(alg.Get()).GetHelper().GetTuner();
+      auto &tuner = kttHelper.GetTuner();
       // prepare input GetData1()
       auto argIn1 = tuner.AddArgumentVector<float2>(in.GetData1().ptr,
         in.GetData1().info.GetSize().total,

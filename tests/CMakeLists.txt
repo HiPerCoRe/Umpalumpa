@@ -11,6 +11,7 @@ add_subdirectory(algorithms/extrema_finder)
 add_subdirectory(algorithms/fourier_processing)
 add_subdirectory(algorithms/fourier_transformation)
 add_subdirectory(data/payload_wrapper)
+add_subdirectory(tuning/algorithm_manager)
 
 file(
   COPY runAll.sh
