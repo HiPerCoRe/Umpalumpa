@@ -3,7 +3,7 @@ add_executable(fft_tests)
 # list of test files
 set(tests
     fft_cuda.cpp
-    fft_cpu.cpp
+    # fft_cpu.cpp
     ../../empty.cu # needs to be here so that CMAKE links CUDA libraries
 )
 
@@ -20,7 +20,8 @@ target_link_libraries(
           gtest_main
           gmock_main
           cudart
-          cufft)
+          cufft
+          tbb)
 
 include(GoogleTest)
 gtest_discover_tests(fft_tests)

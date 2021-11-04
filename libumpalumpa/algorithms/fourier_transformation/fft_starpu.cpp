@@ -1,4 +1,3 @@
-#include <libumpalumpa/data/starpu_utils.hpp>
 #include <libumpalumpa/algorithms/fourier_transformation/fft_starpu.hpp>
 #include <libumpalumpa/algorithms/fourier_transformation/fft_cpu.hpp>
 #include <libumpalumpa/algorithms/fourier_transformation/fft_cuda.hpp>
@@ -61,16 +60,18 @@ bool FFTStarPU::Init(const StarpuOutputData &out, const StarpuInputData &in, con
 
 bool FFTStarPU::InitImpl()
 {
-  if (0 == starpu_worker_get_count()) {
-    spdlog::warn("No workers available. Is StarPU properly initialized?");
-  }
+  const auto workerCount = starpu_worker_get_count();
+  if (0 == workerCount) { spdlog::warn("No workers available. Is StarPU properly initialized?"); }
   const auto &out = this->GetOutputRef();
   const auto &in = this->GetInputRef();
   const auto &s = this->GetSettings();
   algs.clear();
-  algs.resize(starpu_worker_get_count());
+  algs.resize(workerCount);
   InitArgs args = { out, in, s, algs };
-  starpu_execute_on_each_worker(CpuInit, &args, STARPU_CPU);
+  // Allow for multithreading. Each Nth worker will use N threads
+  auto cpuIDs = GetCPUWorkerIDs(s.GetThreads());
+  starpu_execute_on_specific_workers(
+    CpuInit, &args, static_cast<unsigned>(cpuIDs.size()), cpuIDs.data(), "CPU worker Init");
   starpu_execute_on_each_worker(
     CudaInit, &args, STARPU_CUDA);// FIXME if one of the workers is not initialized, then we
                                   // should prevent starpu from running execute() on it

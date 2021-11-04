@@ -2,8 +2,6 @@
 #include <gtest/gtest.h>
 #include <libumpalumpa/algorithms/fourier_transformation/locality.hpp>
 #include <libumpalumpa/algorithms/fourier_transformation/direction.hpp>
-#include <libumpalumpa/algorithms/fourier_transformation/afft.hpp>
-#include <libumpalumpa/algorithms/fourier_transformation/fft_cuda.hpp>
 #include <libumpalumpa/algorithms/correlation/acorrelation.hpp>
 #include <complex>
 #include <random>

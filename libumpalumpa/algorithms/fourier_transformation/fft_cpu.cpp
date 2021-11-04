@@ -19,10 +19,22 @@ namespace {// to avoid poluting
     constexpr static auto kInversePlanConstructor = fftwf_plan_many_dft_c2r;
     constexpr static auto kForwardPlanExecutor = fftwf_execute_dft_r2c;
     constexpr static auto kInversePlanExecutor = fftwf_execute_dft_c2r;
+    constexpr static auto kSetThreads = fftwf_plan_with_nthreads;
     constexpr static auto kStrategyName = "StrategyFloat";
     typedef float kSimpleType;
     typedef fftwf_complex kComplexType;
     typedef fftwf_plan kPlanType;
+
+  private:
+    struct Init
+    {
+      Init() { fftwf_init_threads(); }
+      // FIXME should we cleanup using these?
+      // fftwf_cleanup_threads(void);
+      // fftwf_cleanup
+      // Problem is that calling them will damage existing plans
+    };
+    static Init init;
   };
 
   struct DoubleFFTWHelper
@@ -33,17 +45,30 @@ namespace {// to avoid poluting
     constexpr static auto kInversePlanConstructor = fftw_plan_many_dft_c2r;
     constexpr static auto kForwardPlanExecutor = fftw_execute_dft_r2c;
     constexpr static auto kInversePlanExecutor = fftw_execute_dft_c2r;
+    constexpr static auto kSetThreads = fftw_plan_with_nthreads;
     constexpr static auto kStrategyName = "StrategyDouble";
     typedef double kSimpleType;
     typedef fftw_complex kComplexType;
     typedef fftw_plan kPlanType;
+
+  private:
+    struct Init
+    {
+      Init() { fftw_init_threads(); }
+      // FIXME should we cleanup using these?
+      // fftw_cleanup_threads(void);
+      // fftw_cleanup
+      // Problem is that calling them will damage existing plans
+    };
+    static Init init;
   };
 
-  template<typename F>
+  template<typename THREAD_SET_FUNCTION, typename PLAN_FUNCTION>
   auto PlanHelper(const AFFT::OutputData &out,
     const AFFT::InputData &in,
     const Settings &settings,
-    F function)
+    THREAD_SET_FUNCTION thrSetFunc,
+    PLAN_FUNCTION planFunc)
   {
     auto &fd = in.GetData().info;
     auto n = std::array<int, 3>{ static_cast<int>(fd.GetPaddedSpatialSize().z),
@@ -77,7 +102,8 @@ namespace {// to avoid poluting
 
     // only one thread can create a plan
     std::lock_guard<std::mutex> lck(mutex);
-    auto tmp = function(rank,
+    thrSetFunc(static_cast<int>(settings.GetThreads()));
+    auto tmp = planFunc(rank,
       &n[offset],
       static_cast<int>(in.GetData().info.GetPaddedSize().n),
       in.GetData().ptr,
@@ -148,7 +174,7 @@ namespace {// to avoid poluting
             flags);
         }
       };
-      plan = PlanHelper(out, in, settings, f);
+      plan = PlanHelper(out, in, settings, T::kSetThreads, f);
       return true;
     }
 
