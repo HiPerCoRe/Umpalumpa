@@ -55,13 +55,15 @@ namespace {// to avoid poluting
 
 bool FPStarPU::Init(const StarpuOutputData &out, const StarpuInputData &in, const Settings &s)
 {
-  return AFP::Init(out.GetData()->GetPayload(),
-    { in.GetData()->GetPayload(), in.GetFilter()->GetPayload() },
-    s);
+  return AFP::Init(
+    out.GetData()->GetPayload(), { in.GetData()->GetPayload(), in.GetFilter()->GetPayload() }, s);
 }
 
 bool FPStarPU::InitImpl()
 {
+  if (0 == starpu_worker_get_count()) {
+    spdlog::warn("No workers available. Is StarPU properly initialized?");
+  }
   const auto &out = this->GetOutputRef();
   const auto &in = this->GetInputRef();
   const auto &s = this->GetSettings();

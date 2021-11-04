@@ -14,6 +14,10 @@ public:
     // consider calling starpu_task_wait_for_all() instead
   };
 
+  // make 'normal' Init() and Execute() available
+  using AFFT::Init;
+  using AFFT::Execute;
+
   using StarpuOutputData =
     OutputDataWrapper<std::unique_ptr<data::StarpuPayload<OutputData::PayloadType::LDType>>>;
   using StarpuInputData =
