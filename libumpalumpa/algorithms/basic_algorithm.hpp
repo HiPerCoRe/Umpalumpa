@@ -96,7 +96,6 @@ public:
   const Settings &GetSettings() const { return *settings.get(); }
 
 
-protected:
   struct Strategy
   {
     Strategy(const BasicAlgorithm &a) : alg(a) {}
@@ -108,7 +107,8 @@ protected:
   protected:
     const BasicAlgorithm &alg;
   };
-  
+
+protected:
   /**
    * Returns true if output, input and settings are not logically conflicting or malformed.
    **/
