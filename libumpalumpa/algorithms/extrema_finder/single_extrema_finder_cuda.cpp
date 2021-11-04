@@ -7,27 +7,22 @@ namespace {// to avoid poluting
   inline static const auto kKernelFile = utils::GetSourceFilePath(
     "libumpalumpa/algorithms/extrema_finder/single_extrema_finder_cuda_kernels.cu");
 
-  struct Strategy1 final
-    : public SingleExtremaFinderCUDA::Strategy
-    , public algorithm::TunableStrategy
+  struct Strategy1 final : public SingleExtremaFinderCUDA::KTTStrategy
   {
     // Inherit constructor
-    using SingleExtremaFinderCUDA::Strategy::Strategy;
+    using SingleExtremaFinderCUDA::KTTStrategy::KTTStrategy;
 
     static constexpr auto kFindMax1D = "findMax1D";
 
     size_t GetHash() const override { return 0; }
-    bool IsSimilarTo(const TunableStrategy &ref) const override
+    bool IsSimilarTo(const TunableStrategy &) const override
     {
-      if (GetFullName() != ref.GetFullName()) { return false; }
-      // Now we know that type of 'other' is the same as 'this' and we can safely cast it to the
-      // needed type
       // auto &o = dynamic_cast<const Strategy1 &>(other);
       // TODO real similarity check
       return false;
     }
 
-    bool Init() override
+    bool InitImpl() override
     {
       const auto &in = alg.Get().GetInputRef();
       const auto &s = alg.Get().GetSettings();
@@ -37,15 +32,13 @@ namespace {// to avoid poluting
                         && (in.GetData().dataInfo.type == umpalumpa::data::DataType::kFloat);
       if (!canProcess) return false;
 
-      auto &helper = dynamic_cast<const SingleExtremaFinderCUDA &>(alg.Get()).GetHelper();
-      TunableStrategy::Init(helper);
       auto &size = in.GetData().info.GetSize();
-      auto &tuner = helper.GetTuner();
+      auto &tuner = kttHelper.GetTuner();
 
       // ensure that we have the kernel loaded to KTT
       // this has to be done in critical section, as multiple instances of this algorithm
       // might run on the same worker
-      std::lock_guard<std::mutex> lck(helper.GetMutex());
+      std::lock_guard<std::mutex> lck(kttHelper.GetMutex());
       definitionId = GetKernelDefinitionId(kFindMax1D, kKernelFile, ktt::DimensionVector{ size.n });
       kernelId = tuner.CreateSimpleKernel(kFindMax1D + std::to_string(strategyId), definitionId);
 
@@ -70,8 +63,7 @@ namespace {// to avoid poluting
         return false;
 
       // prepare input data
-      auto &helper = dynamic_cast<const SingleExtremaFinderCUDA &>(alg.Get()).GetHelper();
-      auto &tuner = helper.GetTuner();
+      auto &tuner = kttHelper.GetTuner();
       auto argIn = tuner.AddArgumentVector<float>(in.GetData().ptr,
         in.GetData().info.GetSize().total,
         ktt::ArgumentAccessType::ReadOnly,
@@ -111,27 +103,22 @@ namespace {// to avoid poluting
     };
   };
 
-  struct Strategy2 final
-    : public SingleExtremaFinderCUDA::Strategy
-    , public algorithm::TunableStrategy
+  struct Strategy2 final : public SingleExtremaFinderCUDA::KTTStrategy
   {
     // Inherit constructor
-    using SingleExtremaFinderCUDA::Strategy::Strategy;
+    using SingleExtremaFinderCUDA::KTTStrategy::KTTStrategy;
 
     static constexpr auto kFindMaxRect = "findMaxRect";
 
     size_t GetHash() const override { return 0; }
-    bool IsSimilarTo(const TunableStrategy &ref) const override
+    bool IsSimilarTo(const TunableStrategy &) const override
     {
-      if (GetFullName() != ref.GetFullName()) { return false; }
-      // Now we know that type of 'other' is the same as 'this' and we can safely cast it to the
-      // needed type
       // auto &o = dynamic_cast<const Strategy2 &>(other);
       // TODO real similarity check
       return false;
     }
 
-    bool Init() override
+    bool InitImpl() override
     {
       const auto &in = alg.Get().GetInputRef();
       const auto &s = alg.Get().GetSettings();
@@ -141,15 +128,13 @@ namespace {// to avoid poluting
                         && (in.GetData().dataInfo.type == umpalumpa::data::DataType::kFloat);
       if (!canProcess) return false;
 
-      auto &helper = dynamic_cast<const SingleExtremaFinderCUDA &>(alg.Get()).GetHelper();
-      TunableStrategy::Init(helper);
       auto &size = in.GetData().info.GetSize();
-      auto &tuner = helper.GetTuner();
+      auto &tuner = kttHelper.GetTuner();
 
       // ensure that we have the kernel loaded to KTT
       // this has to be done in critical section, as multiple instances of this algorithm
       // might run on the same worker
-      std::lock_guard<std::mutex> lck(helper.GetMutex());
+      std::lock_guard<std::mutex> lck(kttHelper.GetMutex());
       definitionId = GetKernelDefinitionId(
         kFindMaxRect, kKernelFile, ktt::DimensionVector{ size.n }, { "float" });
       kernelId = tuner.CreateSimpleKernel(kFindMaxRect + std::to_string(strategyId), definitionId);
@@ -189,8 +174,7 @@ namespace {// to avoid poluting
         return false;
 
       // prepare input data
-      auto &helper = dynamic_cast<const SingleExtremaFinderCUDA &>(alg.Get()).GetHelper();
-      auto &tuner = helper.GetTuner();
+      auto &tuner = kttHelper.GetTuner();
       auto argIn = tuner.AddArgumentVector<float>(in.GetData().ptr,
         in.GetData().info.GetSize().total,
         ktt::ArgumentAccessType::ReadOnly,
