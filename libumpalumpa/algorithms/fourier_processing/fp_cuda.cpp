@@ -92,7 +92,7 @@ namespace {// to avoid poluting
 
     std::string GetName() const override { return "Strategy1"; }
 
-    bool Execute(const FP_CUDA::OutputData &out, const FP_CUDA::InputData &in) override
+    bool Execute(const FPCUDA::OutputData &out, const FPCUDA::InputData &in) override
     {
       if (!in.GetData().IsValid() || in.GetData().IsEmpty() || !out.GetData().IsValid()
           || out.GetData().IsEmpty())
@@ -162,11 +162,11 @@ namespace {// to avoid poluting
   };
 }// namespace
 
-void FP_CUDA::Synchronize() { GetHelper().GetTuner().Synchronize(); }
+void FPCUDA::Synchronize() { GetHelper().GetTuner().Synchronize(); }
 
-std::vector<std::unique_ptr<FP_CUDA::Strategy>> FP_CUDA::GetStrategies() const
+std::vector<std::unique_ptr<FPCUDA::Strategy>> FPCUDA::GetStrategies() const
 {
-  std::vector<std::unique_ptr<FP_CUDA::Strategy>> vec;
+  std::vector<std::unique_ptr<FPCUDA::Strategy>> vec;
   vec.emplace_back(std::make_unique<Strategy1>(*this));
   return vec;
 }

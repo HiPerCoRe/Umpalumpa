@@ -23,7 +23,7 @@ namespace data {
     ~StarpuPayload()
     {
       if (handle) {
-        starpu_data_unregister_submit(handle);// unregister data at leasure
+        starpu_data_unregister_submit(handle);// unregister data at some moment
       }
     }
 

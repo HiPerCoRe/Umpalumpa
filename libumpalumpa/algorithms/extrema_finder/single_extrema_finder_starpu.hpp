@@ -12,6 +12,10 @@ public:
     // consider calling starpu_task_wait_for_all() instead
   };
 
+  // make 'normal' Init() and Execute() available
+  using AExtremaFinder::Init;
+  using AExtremaFinder::Execute;
+
   using StarpuOutputData =
     OutputDataWrapper<std::unique_ptr<data::StarpuPayload<data::LogicalDescriptor>>>;
   using StarpuInputData =

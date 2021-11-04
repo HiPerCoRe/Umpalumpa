@@ -66,6 +66,9 @@ bool SingleExtremaFinderStarPU::Init(const StarpuOutputData &out,
 
 bool SingleExtremaFinderStarPU::InitImpl()
 {
+  if (0 == starpu_worker_get_count()) {
+    spdlog::warn("No workers available. Is StarPU properly initialized?");
+  }
   const auto &out = this->GetOutputRef();
   const auto &in = this->GetInputRef();
   const auto &s = this->GetSettings();
