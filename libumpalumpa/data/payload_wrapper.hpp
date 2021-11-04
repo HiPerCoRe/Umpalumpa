@@ -17,7 +17,7 @@ template<typename... Args> struct PayloadWrapper
    **/
   bool IsValid() const
   {
-    return std::apply([this](const auto &...p) { return ReduceBools(IsValid(p)...); }, payloads);
+    return std::apply([this](const auto &... p) { return ReduceBools(IsValid(p)...); }, payloads);
   }
 
   /**
@@ -36,7 +36,17 @@ template<typename... Args> struct PayloadWrapper
   auto CopyWithoutData() const
   {
     return std::apply(
-      [this](const auto &...p) { return std::make_tuple(RemoveData(p)...); }, payloads);
+      [this](const auto &... p) { return std::make_tuple(RemoveData(p)...); }, payloads);
+  }
+
+  /**
+   * TODO documentation
+   */
+  auto Subset(size_t startN, size_t count) const
+  {
+    return std::apply([this, startN, count](
+                        const auto &... p) { return std::make_tuple(Subset(p, startN, count)...); },
+      payloads);
   }
 
 protected:
@@ -44,7 +54,7 @@ protected:
   // All 'args' would have to be copy-constructible
   // PayloadWrapper(const Args &... args) : payload(args...) {}
 
-  PayloadWrapper(Args &&...args) : payloads(std::move(args)...) {}
+  PayloadWrapper(Args &&... args) : payloads(std::move(args)...) {}
   PayloadWrapper(std::tuple<Args...> &&t) : payloads(std::move(t)) {}
 
   /**
@@ -55,6 +65,10 @@ protected:
 
 private:
   template<typename T> T RemoveData(const T &t) const { return t.CopyWithoutData(); }
+  template<typename T> T Subset(const T &t, size_t startN, size_t count) const
+  {
+    return t.Subset(startN, count);
+  }
   template<typename T> bool IsValid(const T &t) const { return t.IsValid(); }
 
   template<typename T> bool AreEquivalent(const T &t, const T &ref) const
