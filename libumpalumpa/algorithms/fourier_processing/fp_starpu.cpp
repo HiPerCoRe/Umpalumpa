@@ -36,7 +36,7 @@ namespace {// to avoid poluting
   void CpuInit(void *args)
   {
     auto *a = reinterpret_cast<InitArgs *>(args);
-    auto alg = std::make_unique<FP_CPU>();
+    auto alg = std::make_unique<FPCPU>();
     if (alg->Init(a->out, a->in, a->settings)) {
       a->algs[static_cast<size_t>(starpu_worker_get_id())] = std::move(alg);
     }
@@ -46,7 +46,7 @@ namespace {// to avoid poluting
   {
     auto *a = reinterpret_cast<InitArgs *>(args);
     std::vector<CUstream> stream = { starpu_cuda_get_local_stream() };
-    auto alg = std::make_unique<FP_CUDA>(starpu_worker_get_id(), stream);
+    auto alg = std::make_unique<FPCUDA>(starpu_worker_get_id(), stream);
     if (alg->Init(a->out, a->in, a->settings)) {
       a->algs[static_cast<size_t>(starpu_worker_get_id())] = std::move(alg);
     }

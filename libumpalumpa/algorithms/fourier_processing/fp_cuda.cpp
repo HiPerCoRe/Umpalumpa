@@ -8,11 +8,11 @@ namespace {// to avoid poluting
     utils::GetSourceFilePath("libumpalumpa/algorithms/fourier_processing/fp_cuda_kernels.cu");
 
   struct Strategy1 final
-    : public FP_CUDA::Strategy
+    : public FPCUDA::Strategy
     , public algorithm::TunableStrategy
   {
     // Inherit constructor
-    using FP_CUDA::Strategy::Strategy;
+    using FPCUDA::Strategy::Strategy;
 
     // FIXME improve name of the kernel and variable
     static constexpr auto kTMP = "scaleFFT2DKernel";
@@ -39,7 +39,7 @@ namespace {// to avoid poluting
       const auto &in = alg.Get().GetInputRef();
       if (!AFP::IsFloat(out, in)) return false;
 
-      auto &helper = dynamic_cast<const FP_CUDA &>(alg.Get()).GetHelper();
+      auto &helper = dynamic_cast<const FPCUDA &>(alg.Get()).GetHelper();
       TunableStrategy::Init(helper);
       const auto &size = out.GetData().info.GetPaddedSize();
       auto &tuner = helper.GetTuner();
@@ -99,13 +99,13 @@ namespace {// to avoid poluting
 
     std::string GetName() const override { return "Strategy1"; }
 
-    bool Execute(const FP_CUDA::OutputData &out, const FP_CUDA::InputData &in) override
+    bool Execute(const FPCUDA::OutputData &out, const FPCUDA::InputData &in) override
     {
       if (!in.GetData().IsValid() || in.GetData().IsEmpty() || !out.GetData().IsValid()
           || out.GetData().IsEmpty())
         return false;
 
-      auto &tuner = dynamic_cast<const FP_CUDA &>(alg.Get()).GetHelper().GetTuner();
+      auto &tuner = dynamic_cast<const FPCUDA &>(alg.Get()).GetHelper().GetTuner();
       // prepare input data
       auto argIn = tuner.AddArgumentVector<float2>(in.GetData().ptr,
         in.GetData().info.GetSize().total,
@@ -169,11 +169,11 @@ namespace {// to avoid poluting
   };
 }// namespace
 
-void FP_CUDA::Synchronize() { GetHelper().GetTuner().Synchronize(); }
+void FPCUDA::Synchronize() { GetHelper().GetTuner().Synchronize(); }
 
-std::vector<std::unique_ptr<FP_CUDA::Strategy>> FP_CUDA::GetStrategies() const
+std::vector<std::unique_ptr<FPCUDA::Strategy>> FPCUDA::GetStrategies() const
 {
-  std::vector<std::unique_ptr<FP_CUDA::Strategy>> vec;
+  std::vector<std::unique_ptr<FPCUDA::Strategy>> vec;
   vec.emplace_back(std::make_unique<Strategy1>(*this));
   return vec;
 }

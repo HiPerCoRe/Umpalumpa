@@ -7,10 +7,10 @@
 namespace umpalumpa::fourier_processing {
 
 namespace {// to avoid poluting
-  struct Strategy1 final : public FP_CPU::Strategy
+  struct Strategy1 final : public FPCPU::Strategy
   {
     // Inherit constructor
-    using FP_CPU::Strategy::Strategy;
+    using FPCPU::Strategy::Strategy;
 
     bool Init() override
     {
@@ -43,9 +43,9 @@ namespace {// to avoid poluting
   };
 }// namespace
 
-std::vector<std::unique_ptr<FP_CPU::Strategy>> FP_CPU::GetStrategies() const
+std::vector<std::unique_ptr<FPCPU::Strategy>> FPCPU::GetStrategies() const
 {
-  std::vector<std::unique_ptr<FP_CPU::Strategy>> vec;
+  std::vector<std::unique_ptr<FPCPU::Strategy>> vec;
   vec.emplace_back(std::make_unique<Strategy1>(*this));
   return vec;
 }

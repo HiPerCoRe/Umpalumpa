@@ -4,7 +4,7 @@
 #include <libumpalumpa/tuning/ktt_base.hpp>
 
 namespace umpalumpa::fourier_processing {
-class FP_CUDA
+class FPCUDA
   : public AFP
   , public algorithm::KTT_Base
 {

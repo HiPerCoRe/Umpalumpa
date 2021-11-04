@@ -8,10 +8,13 @@
 using namespace umpalumpa::fourier_processing;
 using namespace umpalumpa::data;
 
-class FPCUDATest : public ::testing::Test, public FP_Tests
+class FPCUDATest
+  : public ::testing::Test
+  , public FP_Tests
 {
 public:
-  void *Allocate(size_t bytes) override {
+  void *Allocate(size_t bytes) override
+  {
     void *ptr;
     CudaErrchk(cudaMallocManaged(&ptr, bytes));
     return ptr;
@@ -20,13 +23,15 @@ public:
   void Free(void *ptr) override { cudaFree(ptr); }
 
   // CANNOT return "Free" method, because of the destruction order
-  FreeFunction GetFree() override { return [](void *ptr){ CudaErrchk(cudaFree(ptr));}; }
+  FreeFunction GetFree() override
+  {
+    return [](void *ptr) { CudaErrchk(cudaFree(ptr)); };
+  }
 
-  FP_CUDA &GetFourierProcessor() override { return transformer; }
+  FPCUDA &GetFourierProcessor() override { return transformer; }
 
 protected:
-  FP_CUDA transformer = FP_CUDA(0);
+  FPCUDA transformer = FPCUDA(0);
 };
 #define NAME FPCUDATest
 #include <tests/algorithms/fourier_processing/afp_common.hpp>
-

@@ -23,11 +23,10 @@ public:
     return [](void *ptr) { free(ptr); };
   }
 
-  FP_CPU &GetFourierProcessor() override { return fourierProcessor; }
+  FPCPU &GetFourierProcessor() override { return fourierProcessor; }
 
 protected:
-  FP_CPU fourierProcessor;
+  FPCPU fourierProcessor;
 };
 #define NAME FPCPUTest
 #include <tests/algorithms/fourier_processing/afp_common.hpp>
-

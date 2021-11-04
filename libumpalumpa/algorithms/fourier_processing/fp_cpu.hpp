@@ -3,7 +3,7 @@
 #include <libumpalumpa/algorithms/fourier_processing/afp.hpp>
 
 namespace umpalumpa::fourier_processing {
-class FP_CPU : public AFP
+class FPCPU : public AFP
 {
 public:
   void Synchronize() override {}
