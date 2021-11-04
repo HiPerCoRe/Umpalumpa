@@ -26,6 +26,8 @@ public:
   void Register(TunableStrategy &strat);
   void Unregister(TunableStrategy &strat);
   ktt::KernelConfiguration GetBestConfiguration(size_t stratHash);
+  const auto &GetRegisteredStrategies() const { return strategies; }
+  void Reset() { strategies.clear(); }
 };
 
 }// namespace umpalumpa::algorithm
