@@ -7,10 +7,10 @@ namespace {// to avoid poluting
   inline static const auto kKernelFile =
     utils::GetSourceFilePath("libumpalumpa/algorithms/fourier_processing/fp_cuda_kernels.cu");
 
-  struct Strategy1 final : public FP_CUDA::KTTStrategy
+  struct Strategy1 final : public FPCUDA::KTTStrategy
   {
     // Inherit constructor
-    using FP_CUDA::KTTStrategy::KTTStrategy;
+    using FPCUDA::KTTStrategy::KTTStrategy;
 
     // FIXME improve name of the kernel and variable
     static constexpr auto kTMP = "scaleFFT2DKernel";
