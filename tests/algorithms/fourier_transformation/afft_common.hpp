@@ -67,12 +67,45 @@ TEST_F(NAME, FFTIFFT)
   Direction direction = Direction::kForward;
   Settings settings(locality, direction);
 
-  Size size(5, 5, 1, 1);
+  Size size(5, 5, 1, 15);
 
   SetUpFFT(settings, size, PaddingDescriptor());
 
   auto inP = AFFT::InputData(Payload(dataSpatial.get(), *ldSpatial, *pdSpatial, "Input data"));
   auto outP = AFFT::OutputData(Payload(dataFrequency.get(), *ldFrequency, *pdFrequency, "Result data"));
 
-  testFFTIFFT(outP, inP, settings);
+  testFFTIFFT(outP, inP, settings, 0);
+}
+
+
+TEST_F(NAME, FFTIFFT_Batch)
+{
+  Locality locality = Locality::kOutOfPlace;
+  Direction direction = Direction::kForward;
+  Settings settings(locality, direction);
+
+  Size size(5, 5, 1, 50);
+
+  SetUpFFT(settings, size, PaddingDescriptor());
+
+  auto inP = AFFT::InputData(Payload(dataSpatial.get(), *ldSpatial, *pdSpatial, "Input data"));
+  auto outP = AFFT::OutputData(Payload(dataFrequency.get(), *ldFrequency, *pdFrequency, "Result data"));
+
+  testFFTIFFT(outP, inP, settings, 10);
+}
+
+TEST_F(NAME, FFTIFFT_BatchNotDivisible)
+{
+  Locality locality = Locality::kOutOfPlace;
+  Direction direction = Direction::kForward;
+  Settings settings(locality, direction);
+
+  Size size(5, 5, 1, 53);
+
+  SetUpFFT(settings, size, PaddingDescriptor());
+
+  auto inP = AFFT::InputData(Payload(dataSpatial.get(), *ldSpatial, *pdSpatial, "Input data"));
+  auto outP = AFFT::OutputData(Payload(dataFrequency.get(), *ldFrequency, *pdFrequency, "Result data"));
+
+  testFFTIFFT(outP, inP, settings, 10);
 }
