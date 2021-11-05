@@ -6,6 +6,7 @@
 #include <libumpalumpa/algorithms/fourier_transformation/afft.hpp>
 #include <complex>
 #include <random>
+#include <execution>
 
 using namespace umpalumpa::fourier_transformation;
 using namespace umpalumpa::data;
@@ -22,7 +23,8 @@ template<typename T> void GenerateData(T *data, size_t elems)
 {
   auto mt = std::mt19937(42);
   auto dist = std::normal_distribution<float>((float)0, (float)1);
-  for (size_t i = 0; i < elems; ++i) { data[i] = dist(mt); }
+  std::for_each(
+    std::execution::par_unseq, data, data + elems, [&dist, &mt](auto &&e) { e = dist(mt); });
 }
 
 class FFT_Tests
@@ -147,13 +149,15 @@ public:
     auto inverseOut = AFFT::OutputData(in.GetData());
 
     auto *ref = new float[in.GetData().info.GetPaddedSize().total];
+    // FillRandomBytes(ref, in.GetData().dataInfo.bytes);
     GenerateData(ref, in.GetData().info.GetPaddedSize().total);
     memcpy(in.GetData().ptr, ref, in.GetData().info.GetPaddedSize().total * sizeof(float));
 
     // PrintData(inData, in.GetData().info.GetPaddedSize());
 
     auto &ft = GetTransformer();
-    auto forwardSettings = (settings.GetDirection() == Direction::kForward) ? settings : settings.CreateInverse();
+    auto forwardSettings =
+      (settings.GetDirection() == Direction::kForward) ? settings : settings.CreateInverse();
 
     if (0 == batchSize) {
       ASSERT_TRUE(ft.Init(out, in, forwardSettings));
@@ -187,20 +191,24 @@ public:
     // PrintData(inData, in.GetData().info.GetPaddedSize());
 
     float delta = 0.00001f;
+    const float normFact = inverseOut.GetData().info.GetNormFactor();
     for (size_t n = 0; n < inverseOut.GetData().info.GetSize().n; ++n) {
-      size_t offset = n * inverseOut.GetData().info.GetPaddedSize().single;
+      size_t offsetN = n * inverseOut.GetData().info.GetPaddedSize().single;
       // skip the padded area, it can contain garbage data
       for (size_t z = 0; z < inverseOut.GetData().info.GetSize().z; ++z) {
         for (size_t y = 0; y < inverseOut.GetData().info.GetSize().y; ++y) {
-          for (size_t x = 0; x < inverseOut.GetData().info.GetSize().x; ++x) {
-            size_t index =
-              offset
-              + z * inverseOut.GetData().info.GetSize().x * inverseOut.GetData().info.GetSize().y
-              + y * inverseOut.GetData().info.GetSize().x + x;
-            ASSERT_NEAR(
-              ref[index], inData[index] / inverseOut.GetData().info.GetSize().single, delta)
-              << "at " << index;
-          }
+          auto offset =
+            offsetN
+            + z * inverseOut.GetData().info.GetSize().x * inverseOut.GetData().info.GetSize().y
+            + y * inverseOut.GetData().info.GetSize().x;
+
+          std::for_each_n(std::execution::par,
+            ref + offset,
+            inverseOut.GetData().info.GetSize().x,
+            [&ref, offset, &inData, normFact, delta](auto &pos) {
+              auto dist = std::distance(ref + offset, &pos);
+              ASSERT_NEAR(pos, inData[offset + dist] * normFact, delta) << "at " << dist;
+            });
         }
       }
     }

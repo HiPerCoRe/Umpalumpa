@@ -30,18 +30,19 @@ if(USE_STARPU)
     algorithms/extrema_finder/single_extrema_finder_starpu.cpp
     algorithms/correlation/correlation_starpu.cpp
     algorithms/fourier_processing/fp_starpu.cpp
-    algorithms/fourier_transformation/fft_starpu.cpp)
+    algorithms/fourier_transformation/fft_starpu.cpp
+    data/starpu_utils.cpp)
 endif()
 
 target_include_directories(umpalumpa PUBLIC ${CMAKE_SOURCE_DIR})
 
 target_sources(umpalumpa PRIVATE ${umpalumpa_sources})
-target_link_libraries(umpalumpa PRIVATE project_options project_warnings spdlog)
 target_link_libraries(
   umpalumpa
-  PUBLIC library_starpu
-         library_ktt
-         cuda
-         library_fftw)
+  PRIVATE project_options
+          project_warnings
+          spdlog
+          library_fftw)
+target_link_libraries(umpalumpa PUBLIC library_starpu library_ktt cuda)
 
 target_compile_definitions(umpalumpa PUBLIC PROJECT_ROOT="${CMAKE_SOURCE_DIR}")

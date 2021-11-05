@@ -1,4 +1,3 @@
-#include <libumpalumpa/data/starpu_utils.hpp>
 #include <libumpalumpa/algorithms/extrema_finder/single_extrema_finder_starpu.hpp>
 #include <libumpalumpa/algorithms/extrema_finder/single_extrema_finder_cpu.hpp>
 #include <libumpalumpa/algorithms/extrema_finder/single_extrema_finder_cuda.hpp>

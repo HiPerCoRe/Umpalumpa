@@ -7,8 +7,13 @@
 // turn off warnings
 #pragma GCC system_header
 #include <starpu.h>
+#include <vector>
 
-
+/**
+ * Create StarPU mask.
+ * Each item of col, if item == true, the respective worker is enabled.
+ * Stores number of enabled workers in count
+ **/
 template<typename T> uint32_t *CreateWorkerMask(unsigned &count, const T &col)
 {
   // how many 32b numbers do we need to mask all workers
@@ -25,6 +30,12 @@ template<typename T> uint32_t *CreateWorkerMask(unsigned &count, const T &col)
   }
   return mask;
 }
+
+/**
+ * Return a vector with IDs of each Nth CPU worker.
+ * For example, if 5 CPU workers exists and N=2, it returns 0, 2, 4
+ **/
+std::vector<unsigned> GetCPUWorkerIDs(unsigned n);
 
 template<typename T>
 static void payload_register_data_handle(starpu_data_handle_t handle,
@@ -76,7 +87,7 @@ static int copy_any_to_any(void *src_interface,
   auto *src = reinterpret_cast<umpalumpa::data::Payload<T> *>(src_interface);
   auto *dst = reinterpret_cast<umpalumpa::data::Payload<T> *>(dst_interface);
 
-  if (src->IsEmpty()) return 0; // nothing to do
+  if (src->IsEmpty()) return 0;// nothing to do
   return starpu_interface_copy(reinterpret_cast<uintptr_t>(src->ptr),
     0,
     src_node,
@@ -103,7 +114,7 @@ template<typename T> static uint32_t payload_footprint(starpu_data_handle_t hand
   auto *interface = reinterpret_cast<umpalumpa::data::Payload<T> *>(
     starpu_data_get_interface_on_node(handle, STARPU_MAIN_RAM));
 
-  return starpu_hash_crc32c_be(interface->info.Elems(), 0); // FIXME use total? check documentation
+  return starpu_hash_crc32c_be(interface->info.Elems(), 0);// FIXME use total? check documentation
 }
 
 template<typename T> static int payload_compare(void *data_interface_a, void *data_interface_b)
@@ -111,7 +122,8 @@ template<typename T> static int payload_compare(void *data_interface_a, void *da
   auto *payload_a = reinterpret_cast<umpalumpa::data::Payload<T> *>(data_interface_a);
   auto *payload_b = reinterpret_cast<umpalumpa::data::Payload<T> *>(data_interface_b);
 
-  return (payload_a->info.Elems() == payload_b->info.Elems()); // FXIME compare total()? check documentation
+  return (payload_a->info.Elems()
+          == payload_b->info.Elems());// FXIME compare total()? check documentation
 }
 
 template<typename T>
