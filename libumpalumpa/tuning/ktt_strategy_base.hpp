@@ -24,6 +24,8 @@ public:
 
   bool Init() override final
   {
+    TunableStrategy::Cleanup();
+
     bool initSuccessful = InitImpl();
 
     if (initSuccessful) { Register(); }

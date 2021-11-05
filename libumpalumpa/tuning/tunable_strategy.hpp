@@ -15,8 +15,7 @@ public:
   {
     if (isRegistered) {
       AlgorithmManager::Get().Unregister(*this);
-      // FIXME tmp solution for errors in tests, 'if' shouldn't be needed here
-      if (kernelId != ktt::InvalidKernelId) { kttHelper.GetTuner().RemoveKernel(kernelId); }
+      Cleanup();
     }
   }
 
@@ -47,18 +46,24 @@ protected:
     isRegistered = true;
   }
 
+  void Cleanup()
+  {
+    // FIXME TMP remove when Ids in TunableStrategy change to vectors
+    std::vector<ktt::KernelId> kernelIds;
+    std::vector<ktt::KernelDefinitionId> definitionIds;
+    if (kernelId != ktt::InvalidKernelId) { kernelIds.push_back(kernelId); }
+    if (definitionId != ktt::InvalidKernelDefinitionId) { definitionIds.push_back(definitionId); }
+    // ^ won't be here
+    AlgorithmManager::Get().CleanupIds(kttHelper, kernelIds, definitionIds);
+  }
+
   ktt::KernelDefinitionId GetKernelDefinitionId(const std::string &kernelName,
     const std::string &sourceFile,
     const ktt::DimensionVector &gridDimensions,
     const std::vector<std::string> &templateArgs = {})
   {
-    auto &tuner = kttHelper.GetTuner();
-    auto id = tuner.GetKernelDefinitionId(kernelName, templateArgs);
-    if (id == ktt::InvalidKernelDefinitionId) {
-      id =
-        tuner.AddKernelDefinitionFromFile(kernelName, sourceFile, gridDimensions, {}, templateArgs);
-    }
-    return id;
+    return AlgorithmManager::Get().GetKernelDefinitionId(
+      kttHelper, kernelName, sourceFile, gridDimensions, templateArgs);
   }
 
   // NOTE these might need change to vectors
