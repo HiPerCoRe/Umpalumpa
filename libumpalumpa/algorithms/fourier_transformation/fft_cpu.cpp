@@ -106,11 +106,11 @@ namespace {// to avoid poluting
     auto tmp = planFunc(rank,
       &n[offset],
       static_cast<int>(in.GetData().info.GetPaddedSize().n),
-      in.GetData().ptr,
+      in.GetData().GetPtr(),
       nullptr,
       1,
       idist,
-      out.GetData().ptr,
+      out.GetData().GetPtr(),
       nullptr,
       1,
       odist,
@@ -200,12 +200,12 @@ namespace {// to avoid poluting
       this->Init(out, in, s);
       if (s.IsForward()) {
         T::kForwardPlanExecutor(plan,
-          reinterpret_cast<typename T::kSimpleType *>(in.GetData().ptr),
-          reinterpret_cast<typename T::kComplexType *>(out.GetData().ptr));
+          reinterpret_cast<typename T::kSimpleType *>(in.GetData().GetPtr()),
+          reinterpret_cast<typename T::kComplexType *>(out.GetData().GetPtr()));
       } else {
         T::kInversePlanExecutor(plan,
-          reinterpret_cast<typename T::kComplexType *>(in.GetData().ptr),
-          reinterpret_cast<typename T::kSimpleType *>(out.GetData().ptr));
+          reinterpret_cast<typename T::kComplexType *>(in.GetData().GetPtr()),
+          reinterpret_cast<typename T::kSimpleType *>(out.GetData().GetPtr()));
       }
       return true;
     }

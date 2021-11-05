@@ -17,7 +17,7 @@ namespace data {
       starpu_payload_register(&handle,
         STARPU_MAIN_RAM,// FIXME this should be taken from the payload
         payload);
-      starpu_data_set_name(handle, p.description.c_str());
+      // starpu_data_set_name(handle, p.description.c_str()); // FIXME enable once we have description in Payload
     }
 
     ~StarpuPayload()

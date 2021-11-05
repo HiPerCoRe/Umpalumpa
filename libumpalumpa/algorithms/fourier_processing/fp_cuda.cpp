@@ -100,14 +100,14 @@ namespace {// to avoid poluting
 
       auto &tuner = kttHelper.GetTuner();
       // prepare input data
-      auto argIn = tuner.AddArgumentVector<float2>(in.GetData().ptr,
+      auto argIn = tuner.AddArgumentVector<float2>(in.GetData().GetPtr(),
         in.GetData().info.GetSize().total,
         ktt::ArgumentAccessType::ReadOnly,// FIXME these information should be stored in the
                                           // physical descriptor
         ktt::ArgumentMemoryLocation::Unified);// ^
 
       // prepare output data
-      auto argOut = tuner.AddArgumentVector<float2>(out.GetData().ptr,
+      auto argOut = tuner.AddArgumentVector<float2>(out.GetData().GetPtr(),
         out.GetData().info.GetSize().total,
         ktt::ArgumentAccessType::WriteOnly,// FIXME these information should be stored in the
                                            // physical descriptor
@@ -119,7 +119,7 @@ namespace {// to avoid poluting
       const auto &s = alg.Get().GetSettings();
       auto filter = [&s, &tuner, &in]() {
         if (s.GetApplyFilter()) {
-          return tuner.AddArgumentVector<float>(in.GetFilter().ptr,
+          return tuner.AddArgumentVector<float>(in.GetFilter().GetPtr(),
             in.GetFilter().info.GetSize().total,
             ktt::ArgumentAccessType::ReadOnly,// FIXME these information should be stored in the
                                               // physical descriptor

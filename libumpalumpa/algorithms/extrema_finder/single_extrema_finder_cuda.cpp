@@ -29,7 +29,7 @@ namespace {// to avoid poluting
       bool canProcess = (s.version == 1) && (s.location == SearchLocation::kEntire)
                         && (s.type == SearchType::kMax) && (s.result == SearchResult::kValue)
                         && (!in.GetData().info.IsPadded())
-                        && (in.GetData().dataInfo.type == umpalumpa::data::DataType::kFloat);
+                        && (in.GetData().dataInfo.GetType() == umpalumpa::data::DataType::kFloat);
       if (!canProcess) return false;
 
       auto &size = in.GetData().info.GetSize();
@@ -64,13 +64,13 @@ namespace {// to avoid poluting
 
       // prepare input data
       auto &tuner = kttHelper.GetTuner();
-      auto argIn = tuner.AddArgumentVector<float>(in.GetData().ptr,
+      auto argIn = tuner.AddArgumentVector<float>(in.GetData().GetPtr(),
         in.GetData().info.GetSize().total,
         ktt::ArgumentAccessType::ReadOnly,
         ktt::ArgumentMemoryLocation::Unified);
 
       // prepare output data
-      auto argVals = tuner.AddArgumentVector<float>(out.GetValues().ptr,
+      auto argVals = tuner.AddArgumentVector<float>(out.GetValues().GetPtr(),
         out.GetValues().info.GetSize().total,
         ktt::ArgumentAccessType::WriteOnly,
         ktt::ArgumentMemoryLocation::Unified);
@@ -125,7 +125,7 @@ namespace {// to avoid poluting
       bool canProcess = (s.version == 1) && (s.location == SearchLocation::kRectCenter)
                         && (s.type == SearchType::kMax) && (s.result == SearchResult::kLocation)
                         && (!in.GetData().info.IsPadded())
-                        && (in.GetData().dataInfo.type == umpalumpa::data::DataType::kFloat);
+                        && (in.GetData().dataInfo.GetType() == umpalumpa::data::DataType::kFloat);
       if (!canProcess) return false;
 
       auto &size = in.GetData().info.GetSize();
@@ -175,7 +175,7 @@ namespace {// to avoid poluting
 
       // prepare input data
       auto &tuner = kttHelper.GetTuner();
-      auto argIn = tuner.AddArgumentVector<float>(in.GetData().ptr,
+      auto argIn = tuner.AddArgumentVector<float>(in.GetData().GetPtr(),
         in.GetData().info.GetSize().total,
         ktt::ArgumentAccessType::ReadOnly,
         ktt::ArgumentMemoryLocation::Unified);
@@ -184,7 +184,7 @@ namespace {// to avoid poluting
 
       // prepare output data
       auto argVals = tuner.AddArgumentScalar(NULL);
-      auto argLocs = tuner.AddArgumentVector<float>(out.GetLocations().ptr,
+      auto argLocs = tuner.AddArgumentVector<float>(out.GetLocations().GetPtr(),
         out.GetValues().info.GetSize().total,
         ktt::ArgumentAccessType::WriteOnly,
         ktt::ArgumentMemoryLocation::Unified);

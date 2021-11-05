@@ -21,9 +21,9 @@ public:
 
   void testFP(AFP::OutputData &out, AFP::InputData &in, const Settings &settings)
   {
-    auto *input = reinterpret_cast<std::complex<float> *>(in.GetData().ptr);
-    auto *output = reinterpret_cast<std::complex<float> *>(out.GetData().ptr);
-    auto *filter = reinterpret_cast<float *>(in.GetFilter().ptr);
+    auto *input = reinterpret_cast<std::complex<float> *>(in.GetData().GetPtr());
+    auto *output = reinterpret_cast<std::complex<float> *>(out.GetData().GetPtr());
+    auto *filter = reinterpret_cast<float *>(in.GetFilter().GetPtr());
     auto inSize = in.GetData().info.GetSize();
     auto outSize = out.GetData().info.GetSize();
 
@@ -158,29 +158,31 @@ protected:
   {
     ldIn = std::make_unique<FourierDescriptor>(
       inSize, PaddingDescriptor(), FourierDescriptor::FourierSpaceDescriptor{});
-    auto inputSizeInBytes = ldIn->GetPaddedSize().total * Sizeof(DataType::kComplexFloat);
-    pdIn = std::make_unique<PhysicalDescriptor>(inputSizeInBytes, DataType::kComplexFloat);
 
-    inData = std::shared_ptr<void>(Allocate(pdIn->bytes), GetFree());
-    memset(inData.get(), 0, pdIn->bytes);
+    auto inputSizeInBytes = ldIn->Elems() * Sizeof(DataType::kComplexFloat);
+    inData = std::shared_ptr<void>(Allocate(inputSizeInBytes), GetFree());
+    memset(inData.get(), 0, inputSizeInBytes);
+    pdIn = std::make_unique<PhysicalDescriptor>(inData.get(), inputSizeInBytes, DataType::kComplexFloat);
 
     ldOut = std::make_unique<FourierDescriptor>(
       outSize, PaddingDescriptor(), FourierDescriptor::FourierSpaceDescriptor{});
-    auto outputSizeInBytes = ldOut->GetPaddedSize().total * Sizeof(DataType::kComplexFloat);
-    pdOut = std::make_unique<PhysicalDescriptor>(outputSizeInBytes, DataType::kComplexFloat);
 
+    auto outputSizeInBytes = ldOut->Elems() * Sizeof(DataType::kComplexFloat);
     if (settings.IsOutOfPlace()) {
-      outData = std::shared_ptr<void>(Allocate(pdOut->bytes), GetFree());
+      outData = std::shared_ptr<void>(Allocate(outputSizeInBytes), GetFree());
     } else {
       outData = inData;
     }
+    pdOut =
+      std::make_unique<PhysicalDescriptor>(outData.get(), outputSizeInBytes, DataType::kComplexFloat);
 
     ldFilter = std::make_unique<LogicalDescriptor>(outSize);
-    auto filterSizeInBytes = ldFilter->GetPaddedSize().total * Sizeof(DataType::kFloat);
-    pdFilter = std::make_unique<PhysicalDescriptor>(filterSizeInBytes, DataType::kFloat);
 
-    filterData = std::shared_ptr<void>(Allocate(pdOut->bytes), GetFree());
-    memset(filterData.get(), 0, pdOut->bytes);
+    auto filterSizeInBytes = ldFilter->Elems() * Sizeof(DataType::kFloat);
+    filterData = std::shared_ptr<void>(Allocate(filterSizeInBytes), GetFree());
+    memset(filterData.get(), 0, filterSizeInBytes);
+    pdFilter =
+      std::make_unique<PhysicalDescriptor>(filterData.get(), filterSizeInBytes, DataType::kFloat);
   }
 
   std::shared_ptr<void> inData;

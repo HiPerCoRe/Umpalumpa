@@ -8,7 +8,7 @@
 using namespace umpalumpa::correlation;
 using namespace umpalumpa::data;
 
-//TODO tests:
+// TODO tests:
 //  - correct correlations
 //  - centering
 //  - center + odd sized image -> not working
@@ -22,8 +22,9 @@ TEST_F(NAME, CorrelationOnetoOneIntraBufferNoCenter)
 
   SetUpCorrelation(settings, inSize);
 
-  auto inP = ACorrelation::InputData(Payload(inData1.get(), *ldIn1, *pdIn1, "Input data 1"), Payload(inData2.get(), *ldIn2, *pdIn2, "Input data 2"));
-  auto outP = ACorrelation::OutputData(Payload(outData.get(), *ldOut, *pdOut, "Output data"));
+  auto inP = ACorrelation::InputData(
+    Payload(*ldIn1, *pdIn1, "Input data 1"), Payload(*ldIn2, *pdIn2, "Input data 2"));
+  auto outP = ACorrelation::OutputData(Payload(*ldOut, *pdOut, "Output data"));
 
   testCorrelationSimple(outP, inP, settings);
 }
@@ -37,8 +38,9 @@ TEST_F(NAME, CorrelationOnetoOneInterBufferNoCenter)
 
   SetUpCorrelation(settings, inSize, 1);
 
-  auto inP = ACorrelation::InputData(Payload(inData1.get(), *ldIn1, *pdIn1, "Input data 1"), Payload(inData2.get(), *ldIn2, *pdIn2, "Input data 2"));
-  auto outP = ACorrelation::OutputData(Payload(outData.get(), *ldOut, *pdOut, "Output data"));
+  auto inP = ACorrelation::InputData(
+    Payload(*ldIn1, *pdIn1, "Input data 1"), Payload(*ldIn2, *pdIn2, "Input data 2"));
+  auto outP = ACorrelation::OutputData(Payload(*ldOut, *pdOut, "Output data"));
 
   testCorrelationSimple(outP, inP, settings);
 }
@@ -51,8 +53,9 @@ TEST_F(NAME, CorrelationOnetoOneIntraBuffer)
 
   SetUpCorrelation(settings, inSize);
 
-  auto inP = ACorrelation::InputData(Payload(inData1.get(), *ldIn1, *pdIn1, "Input data 1"), Payload(inData2.get(), *ldIn2, *pdIn2, "Input data 2"));
-  auto outP = ACorrelation::OutputData(Payload(outData.get(), *ldOut, *pdOut, "Output data"));
+  auto inP = ACorrelation::InputData(
+    Payload(*ldIn1, *pdIn1, "Input data 1"), Payload(*ldIn2, *pdIn2, "Input data 2"));
+  auto outP = ACorrelation::OutputData(Payload(*ldOut, *pdOut, "Output data"));
 
   testCorrelationSimple(outP, inP, settings);
 }
@@ -65,8 +68,9 @@ TEST_F(NAME, CorrelationOnetoOneInterBuffer)
 
   SetUpCorrelation(settings, inSize, 1);
 
-  auto inP = ACorrelation::InputData(Payload(inData1.get(), *ldIn1, *pdIn1, "Input data 1"), Payload(inData2.get(), *ldIn2, *pdIn2, "Input data 2"));
-  auto outP = ACorrelation::OutputData(Payload(outData.get(), *ldOut, *pdOut, "Output data"));
+  auto inP = ACorrelation::InputData(
+    Payload(*ldIn1, *pdIn1, "Input data 1"), Payload(*ldIn2, *pdIn2, "Input data 2"));
+  auto outP = ACorrelation::OutputData(Payload(*ldOut, *pdOut, "Output data"));
 
   testCorrelationSimple(outP, inP, settings);
 }
@@ -79,8 +83,9 @@ TEST_F(NAME, CorrelationMtoNIntraBuffer)
 
   SetUpCorrelation(settings, inSize);
 
-  auto inP = ACorrelation::InputData(Payload(inData1.get(), *ldIn1, *pdIn1, "Input data 1"), Payload(inData2.get(), *ldIn2, *pdIn2, "Input data 2"));
-  auto outP = ACorrelation::OutputData(Payload(outData.get(), *ldOut, *pdOut, "Output data"));
+  auto inP = ACorrelation::InputData(
+    Payload(*ldIn1, *pdIn1, "Input data 1"), Payload(*ldIn2, *pdIn2, "Input data 2"));
+  auto outP = ACorrelation::OutputData(Payload(*ldOut, *pdOut, "Output data"));
 
   testCorrelationSimple(outP, inP, settings);
 }
@@ -93,8 +98,9 @@ TEST_F(NAME, CorrelationMtoNInterBuffer)
 
   SetUpCorrelation(settings, inSize, 2);
 
-  auto inP = ACorrelation::InputData(Payload(inData1.get(), *ldIn1, *pdIn1, "Input data 1"), Payload(inData2.get(), *ldIn2, *pdIn2, "Input data 2"));
-  auto outP = ACorrelation::OutputData(Payload(outData.get(), *ldOut, *pdOut, "Output data"));
+  auto inP = ACorrelation::InputData(
+    Payload(*ldIn1, *pdIn1, "Input data 1"), Payload(*ldIn2, *pdIn2, "Input data 2"));
+  auto outP = ACorrelation::OutputData(Payload(*ldOut, *pdOut, "Output data"));
 
   testCorrelationSimple(outP, inP, settings);
 }
@@ -107,8 +113,9 @@ TEST_F(NAME, CorrelationMtoNIntraBufferRandomData)
 
   SetUpCorrelation(settings, inSize);
 
-  auto inP = ACorrelation::InputData(Payload(inData1.get(), *ldIn1, *pdIn1, "Input data 1"), Payload(inData2.get(), *ldIn2, *pdIn2, "Input data 2"));
-  auto outP = ACorrelation::OutputData(Payload(outData.get(), *ldOut, *pdOut, "Output data"));
+  auto inP = ACorrelation::InputData(
+    Payload(*ldIn1, *pdIn1, "Input data 1"), Payload(*ldIn2, *pdIn2, "Input data 2"));
+  auto outP = ACorrelation::OutputData(Payload(*ldOut, *pdOut, "Output data"));
 
   testCorrelationRandomData(outP, inP, settings);
 }
@@ -121,9 +128,9 @@ TEST_F(NAME, CorrelationMtoNInterBufferRandomData)
 
   SetUpCorrelation(settings, inSize, 2);
 
-  auto inP = ACorrelation::InputData(Payload(inData1.get(), *ldIn1, *pdIn1, "Input data 1"), Payload(inData2.get(), *ldIn2, *pdIn2, "Input data 2"));
-  auto outP = ACorrelation::OutputData(Payload(outData.get(), *ldOut, *pdOut, "Output data"));
+  auto inP = ACorrelation::InputData(
+    Payload(*ldIn1, *pdIn1, "Input data 1"), Payload(*ldIn2, *pdIn2, "Input data 2"));
+  auto outP = ACorrelation::OutputData(Payload(*ldOut, *pdOut, "Output data"));
 
   testCorrelationRandomData(outP, inP, settings);
 }
-

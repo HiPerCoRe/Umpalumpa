@@ -11,7 +11,7 @@ namespace umpalumpa::correlation {
 template<typename T = data::Payload<data::FourierDescriptor>>
 struct InputDataWrapper : public data::PayloadWrapper<T, T>
 {
-  InputDataWrapper(std::tuple<T, T> &&t) : data::PayloadWrapper<T,T>(std::move(t)) {}
+  InputDataWrapper(std::tuple<T, T> &&t) : data::PayloadWrapper<T, T>(std::move(t)) {}
   InputDataWrapper(T d1, T d2) : data::PayloadWrapper<T, T>(std::move(d1), std::move(d2)) {}
   const T &GetData1() const { return std::get<0>(this->payloads); };
   const T &GetData2() const { return std::get<1>(this->payloads); };
@@ -32,9 +32,9 @@ class ACorrelation : public BasicAlgorithm<OutputDataWrapper<>, InputDataWrapper
 public:
   static bool IsFloat(const OutputData &out, const InputData &in)
   {
-    return (in.GetData1().dataInfo.type == data::DataType::kComplexFloat)
-           && (in.GetData2().dataInfo.type == data::DataType::kComplexFloat)
-           && (out.GetCorrelations().dataInfo.type == data::DataType::kComplexFloat);
+    return (in.GetData1().dataInfo.GetType() == data::DataType::kComplexFloat)
+           && (in.GetData2().dataInfo.GetType() == data::DataType::kComplexFloat)
+           && (out.GetCorrelations().dataInfo.GetType() == data::DataType::kComplexFloat);
   }
 
 protected:

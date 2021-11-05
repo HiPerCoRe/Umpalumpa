@@ -34,21 +34,21 @@ public:
   static bool IsDouble(const OutputData &out, const InputData &in, Direction d)
   {
     if (Direction::kForward == d) {
-      return ((out.GetData().dataInfo.type == data::DataType::kComplexDouble)
-              && (in.GetData().dataInfo.type == data::DataType::kDouble));
+      return ((out.GetData().dataInfo.GetType() == data::DataType::kComplexDouble)
+              && (in.GetData().dataInfo.GetType() == data::DataType::kDouble));
     }
-    return ((out.GetData().dataInfo.type == data::DataType::kDouble)
-            && (in.GetData().dataInfo.type == data::DataType::kComplexDouble));
+    return ((out.GetData().dataInfo.GetType() == data::DataType::kDouble)
+            && (in.GetData().dataInfo.GetType() == data::DataType::kComplexDouble));
   }
 
   static bool IsFloat(const OutputData &out, const InputData &in, Direction d)
   {
     if (Direction::kForward == d) {
-      return ((out.GetData().dataInfo.type == data::DataType::kComplexFloat)
-              && (in.GetData().dataInfo.type == data::DataType::kFloat));
+      return ((out.GetData().dataInfo.GetType() == data::DataType::kComplexFloat)
+              && (in.GetData().dataInfo.GetType() == data::DataType::kFloat));
     }
-    return ((out.GetData().dataInfo.type == data::DataType::kFloat)
-            && (in.GetData().dataInfo.type == data::DataType::kComplexFloat));
+    return ((out.GetData().dataInfo.GetType() == data::DataType::kFloat)
+            && (in.GetData().dataInfo.GetType() == data::DataType::kComplexFloat));
   }
 
 protected:

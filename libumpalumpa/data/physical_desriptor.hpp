@@ -3,30 +3,53 @@
 #include <libumpalumpa/data/size.hpp>
 #include <libumpalumpa/data/data_type.hpp>
 
-namespace umpalumpa {
-namespace data {
-  class PhysicalDescriptor
+namespace umpalumpa::data {
+class PhysicalDescriptor
+{
+public:
+  explicit PhysicalDescriptor(void *data, size_t b, DataType dataType)
+    : ptr(data), bytes(b), type(dataType){};
+
+  explicit PhysicalDescriptor() : PhysicalDescriptor(0, 0, DataType::kVoid){};
+
+  inline size_t GetBytes() const { return bytes; }
+
+  inline float GetKBytes() const { return static_cast<float>(bytes) / 1024.f; }
+
+  inline float GetMBytes() const { return static_cast<float>(bytes) / (1024.f * 1024.f); }
+
+  inline float GetGBytes() const { return static_cast<float>(bytes) / (1024.f * 1024.f * 1024.f); }
+
+  inline DataType GetType() const { return type; }
+
+  inline void *GetPtr() const { return ptr; }
+
+  /**
+   * Use this with utmost causion and only when you have a very good reason,
+   * e.g. you get existing Payload and you cannot change it.
+   * Otherwise prefer to create a new Payload.
+   **/
+  void Set(void *data, size_t b, DataType dataType)
   {
-  public:
-  // FIXME this should hold the data pointer, Payload should call some getter from here to get them
-    explicit PhysicalDescriptor(size_t b, DataType dataType)
-      : bytes(b), kbytes(static_cast<float>(b) / 1024),
-        Mbytes(static_cast<float>(b) / (1024 * 1024)),
-        Gbytes(static_cast<float>(b) / (1024 * 1024 * 1024)), type(dataType){};
+    ptr = data;
+    bytes = b;
+    type = dataType;
+  }
 
-    explicit PhysicalDescriptor() : PhysicalDescriptor(0, DataType::kVoid){};
+  /**
+   * Descriptor is valid if it describes empty storage or non-empty storage,
+   * i.e. both pointer and bytes must be specified
+   **/
+  inline bool IsValid() const { return this->IsEmpty() || (nullptr != ptr && bytes != 0); }
 
-    // these shouold be private + getters
-    size_t bytes;
-    // fixme it would be cheaper to compute these on demand
-    float kbytes;
-    float Mbytes;
-    float Gbytes;
-    DataType type;
+  /**
+   * Returns true only if data is nullptr and no bytes are to be stored
+   **/
+  inline bool IsEmpty() const { return (0 == bytes) && (nullptr == ptr); }
 
-    bool IsValid() const { return true; }
-
-    bool IsEmpty() const { return 0 == bytes; }
-  };
-}// namespace data
-}// namespace umpalumpa
+private:
+  void *ptr;// type defined by DataType
+  size_t bytes;// how big block is available
+  DataType type;// what type is stored
+};
+}// namespace umpalumpa::data
