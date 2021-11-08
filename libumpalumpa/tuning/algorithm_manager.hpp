@@ -10,6 +10,17 @@ namespace umpalumpa::algorithm {
 // Forward declarations
 class TunableStrategy;
 
+/**
+ * This class groups similar strategies into coherent groups in which the strategies can cooperate
+ * on the tuning, or reuse already tuned parameters.
+ *
+ * Every successfully initialized strategy that utilizes KTT is being automatically registered to
+ * the AlgorithmManager. At the end of the strategy's lifetime, it is being automatically
+ * unregistered from the AlgorithmManager.
+ *
+ * AlgorithmManager is a singleton and can be accessed by calling static method
+ * AlgorithmManager::Get().
+ */
 class AlgorithmManager
 {
   using StrategyGroup = std::vector<TunableStrategy *>;

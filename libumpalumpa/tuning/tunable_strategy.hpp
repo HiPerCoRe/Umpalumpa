@@ -4,6 +4,10 @@
 
 namespace umpalumpa::algorithm {
 
+/**
+ * Base class for every strategy that uses KTT for tuning.
+ * Having this class as a predecessor automates many tasks tied to the tuning process.
+ */
 class TunableStrategy
 {
 public:
