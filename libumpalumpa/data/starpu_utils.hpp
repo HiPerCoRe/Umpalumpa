@@ -47,7 +47,11 @@ static void payload_register_data_handle(starpu_data_handle_t handle,
     auto *local_interface = reinterpret_cast<umpalumpa::data::Payload<T> *>(
       starpu_data_get_interface_on_node(handle, node));
     *local_interface = *interface;
-    if (node != home_node) { local_interface->ptr = nullptr; }
+    if (node != home_node) {
+      auto pd = umpalumpa::data::PhysicalDescriptor(
+        nullptr, interface->GetRequiredBytes(), interface->dataInfo.GetType());
+      local_interface->Set(pd);
+    }
   }
 }
 
@@ -56,14 +60,16 @@ static starpu_ssize_t payload_allocate_data_on_node(void *data_interface, unsign
 {
   auto *interface = reinterpret_cast<umpalumpa::data::Payload<T> *>(data_interface);
 
-  starpu_ssize_t requested_memory = interface->IsEmpty() ? 0 : interface->dataInfo.bytes;
+  starpu_ssize_t requested_memory = interface->IsEmpty() ? 0 : interface->GetRequiredBytes();
   void *data = nullptr;
   if (0 != requested_memory) {
     data = reinterpret_cast<void *>(starpu_malloc_on_node(node, requested_memory));
     if (nullptr == data) return -ENOMEM;
   }
-  /* update the data properly in consequence */
-  interface->ptr = data;
+  // update the payload
+  auto pd =
+    umpalumpa::data::PhysicalDescriptor(data, requested_memory, interface->dataInfo.GetType());
+  interface->Set(pd);
   return requested_memory;
 }
 
@@ -72,9 +78,10 @@ template<typename T> static void payload_free_data_on_node(void *data_interface,
   auto *interface = reinterpret_cast<umpalumpa::data::Payload<T> *>(data_interface);
   if (!interface->IsEmpty()) {
     starpu_free_on_node(
-      node, reinterpret_cast<uintptr_t>(interface->ptr), interface->dataInfo.bytes);
+      node, reinterpret_cast<uintptr_t>(interface->GetPtr()), interface->dataInfo.GetBytes());
   }
-  interface->ptr = nullptr;
+  auto pd = umpalumpa::data::PhysicalDescriptor(nullptr, 0, interface->dataInfo.GetType());
+  interface->Set(pd);
 }
 
 template<typename T>
@@ -88,13 +95,13 @@ static int copy_any_to_any(void *src_interface,
   auto *dst = reinterpret_cast<umpalumpa::data::Payload<T> *>(dst_interface);
 
   if (src->IsEmpty()) return 0;// nothing to do
-  return starpu_interface_copy(reinterpret_cast<uintptr_t>(src->ptr),
+  return starpu_interface_copy(reinterpret_cast<uintptr_t>(src->GetPtr()),
     0,
     src_node,
-    reinterpret_cast<uintptr_t>(dst->ptr),
+    reinterpret_cast<uintptr_t>(dst->GetPtr()),
     0,
     dst_node,
-    src->dataInfo.bytes,
+    src->GetRequiredBytes(),// copy only what's necessary
     async_data);
 }
 
@@ -106,7 +113,7 @@ template<typename T> static size_t payload_get_size(starpu_data_handle_t handle)
 {
   auto *interface = reinterpret_cast<umpalumpa::data::Payload<T> *>(
     starpu_data_get_interface_on_node(handle, STARPU_MAIN_RAM));
-  return interface->dataInfo.bytes;
+  return interface->GetRequiredBytes();
 }
 
 template<typename T> static uint32_t payload_footprint(starpu_data_handle_t handle)
@@ -114,7 +121,7 @@ template<typename T> static uint32_t payload_footprint(starpu_data_handle_t hand
   auto *interface = reinterpret_cast<umpalumpa::data::Payload<T> *>(
     starpu_data_get_interface_on_node(handle, STARPU_MAIN_RAM));
 
-  return starpu_hash_crc32c_be(interface->info.Elems(), 0);// FIXME use total? check documentation
+  return starpu_hash_crc32c_be(interface->info.Elems(), 0);
 }
 
 template<typename T> static int payload_compare(void *data_interface_a, void *data_interface_b)
@@ -122,8 +129,7 @@ template<typename T> static int payload_compare(void *data_interface_a, void *da
   auto *payload_a = reinterpret_cast<umpalumpa::data::Payload<T> *>(data_interface_a);
   auto *payload_b = reinterpret_cast<umpalumpa::data::Payload<T> *>(data_interface_b);
 
-  return (payload_a->info.Elems()
-          == payload_b->info.Elems());// FXIME compare total()? check documentation
+  return (payload_a->info.Elems() == payload_b->info.Elems());
 }
 
 template<typename T>

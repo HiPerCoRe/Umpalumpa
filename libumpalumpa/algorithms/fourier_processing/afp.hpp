@@ -39,10 +39,10 @@ class AFP
 public:
   static bool IsFloat(const OutputData &out, const InputData &in)
   {
-    return (in.GetData().dataInfo.type == data::DataType::kComplexFloat)
-           && (in.GetFilter().dataInfo.type == data::DataType::kFloat
-               || in.GetFilter().dataInfo.type == data::DataType::kVoid) // no filter
-           && (out.GetData().dataInfo.type == data::DataType::kComplexFloat);
+    return (in.GetData().dataInfo.GetType() == data::DataType::kComplexFloat)
+           && (in.GetFilter().dataInfo.GetType() == data::DataType::kFloat
+               || in.GetFilter().dataInfo.GetType() == data::DataType::kVoid)// no filter
+           && (out.GetData().dataInfo.GetType() == data::DataType::kComplexFloat);
   }
 
 protected:

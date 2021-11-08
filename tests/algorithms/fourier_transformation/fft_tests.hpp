@@ -36,8 +36,8 @@ public:
 
   void testFFTInpulseOrigin(AFFT::OutputData &out, AFFT::InputData &in, const Settings &settings)
   {
-    auto *inData = reinterpret_cast<float *>(in.GetData().ptr);
-    auto *outData = reinterpret_cast<std::complex<float> *>(out.GetData().ptr);
+    auto *inData = reinterpret_cast<float *>(in.GetData().GetPtr());
+    auto *outData = reinterpret_cast<std::complex<float> *>(out.GetData().GetPtr());
 
     for (size_t n = 0; n < in.GetData().info.GetSize().n; ++n) {
       // impulse at the origin ...
@@ -64,8 +64,8 @@ public:
 
   void testIFFTInpulseOrigin(AFFT::OutputData &out, AFFT::InputData &in, const Settings &settings)
   {
-    auto *inData = reinterpret_cast<std::complex<float> *>(in.GetData().ptr);
-    auto *outData = reinterpret_cast<float *>(out.GetData().ptr);
+    auto *inData = reinterpret_cast<std::complex<float> *>(in.GetData().GetPtr());
+    auto *outData = reinterpret_cast<float *>(out.GetData().GetPtr());
 
     for (size_t n = 0; n < in.GetData().info.GetPaddedSize().single; ++n) {
       // constant real value, and no imag value ...
@@ -110,8 +110,8 @@ public:
 
   void testFFTInpulseShifted(AFFT::OutputData &out, AFFT::InputData &in, const Settings &settings)
   {
-    auto *inData = reinterpret_cast<float *>(in.GetData().ptr);
-    auto *outData = reinterpret_cast<std::complex<float> *>(out.GetData().ptr);
+    auto *inData = reinterpret_cast<float *>(in.GetData().GetPtr());
+    auto *outData = reinterpret_cast<std::complex<float> *>(out.GetData().GetPtr());
 
     for (size_t n = 0; n < in.GetData().info.GetSize().n; ++n) {
       // impulse at the origin ...
@@ -143,15 +143,15 @@ public:
     const Settings &settings,
     size_t batchSize = 0)
   {
-    auto *inData = reinterpret_cast<float *>(in.GetData().ptr);
-    auto *outData = reinterpret_cast<std::complex<float> *>(out.GetData().ptr);
+    auto *inData = reinterpret_cast<float *>(in.GetData().GetPtr());
+    auto *outData = reinterpret_cast<std::complex<float> *>(out.GetData().GetPtr());
     auto inverseIn = AFFT::InputData(out.GetData());
     auto inverseOut = AFFT::OutputData(in.GetData());
 
     auto *ref = new float[in.GetData().info.GetPaddedSize().total];
-    // FillRandomBytes(ref, in.GetData().dataInfo.bytes);
+    // FillRandomBytes(ref, in.GetData().dataInfo.GetBytes());
     GenerateData(ref, in.GetData().info.GetPaddedSize().total);
-    memcpy(in.GetData().ptr, ref, in.GetData().info.GetPaddedSize().total * sizeof(float));
+    memcpy(in.GetData().GetPtr(), ref, in.GetData().info.GetPaddedSize().total * sizeof(float));
 
     // PrintData(inData, in.GetData().info.GetPaddedSize());
 
@@ -259,24 +259,24 @@ protected:
   void SetUpFFT(const Settings &settings, const Size &size, const PaddingDescriptor &padding)
   {
     ldSpatial = std::make_unique<FourierDescriptor>(size, padding);
-    auto spatialSizeInBytes = ldSpatial->GetPaddedSize().total * Sizeof(DataType::kFloat);
-    pdSpatial = std::make_unique<PhysicalDescriptor>(spatialSizeInBytes, DataType::kFloat);
 
-    dataSpatial = std::shared_ptr<void>(Allocate(pdSpatial->bytes), GetFree());
-    memset(dataSpatial.get(), 0, pdSpatial->bytes);
+    auto spatialSizeInBytes = ldSpatial->GetPaddedSize().total * Sizeof(DataType::kFloat);
+    dataSpatial = std::shared_ptr<void>(Allocate(spatialSizeInBytes), GetFree());
+    memset(dataSpatial.get(), 0, spatialSizeInBytes);
+    pdSpatial =
+      std::make_unique<PhysicalDescriptor>(dataSpatial.get(), spatialSizeInBytes, DataType::kFloat);
 
     ldFrequency = std::make_unique<FourierDescriptor>(
       size, padding, FourierDescriptor::FourierSpaceDescriptor());
-    auto frequencySizeInBytes =
-      ldFrequency->GetPaddedSize().total * Sizeof(DataType::kComplexFloat);
-    pdFrequency =
-      std::make_unique<PhysicalDescriptor>(frequencySizeInBytes, DataType::kComplexFloat);
 
+    auto frequencySizeInBytes = ldFrequency->Elems() * Sizeof(DataType::kComplexFloat);
     if (settings.IsOutOfPlace()) {
-      dataFrequency = std::shared_ptr<void>(Allocate(pdFrequency->bytes), GetFree());
+      dataFrequency = std::shared_ptr<void>(Allocate(frequencySizeInBytes), GetFree());
     } else {
       dataFrequency = dataSpatial;
     }
+    pdFrequency = std::make_unique<PhysicalDescriptor>(
+      dataFrequency.get(), frequencySizeInBytes, DataType::kComplexFloat);
   }
 
   std::shared_ptr<void> dataSpatial;

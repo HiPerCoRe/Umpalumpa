@@ -11,8 +11,7 @@ namespace umpalumpa::extrema_finder {
 template<typename T> struct OutputDataWrapper : public data::PayloadWrapper<T, T>
 {
   OutputDataWrapper(std::tuple<T, T> &&t) : data::PayloadWrapper<T, T>(std::move(t)) {}
-  OutputDataWrapper(T vals, T locs)
-    : data::PayloadWrapper<T, T>(std::move(vals), std::move(locs))
+  OutputDataWrapper(T vals, T locs) : data::PayloadWrapper<T, T>(std::move(vals), std::move(locs))
   {}
   const T &GetValues() const { return std::get<0>(this->payloads); };
   const T &GetLocations() const { return std::get<1>(this->payloads); };
@@ -51,7 +50,7 @@ protected:
       // is output valid?
       result = result && (out.GetValues().IsValid());
       // is the type correct?
-      result = result && (in.GetData().dataInfo.type == out.GetValues().dataInfo.type);
+      result = result && (in.GetData().dataInfo.GetType() == out.GetValues().dataInfo.GetType());
       // we need to have enough space for results
       result = result && (in.GetData().info.GetSize().n == out.GetValues().info.GetSize().n);
       // output should be N 1D GetValues()

@@ -9,16 +9,32 @@
 
 namespace umpalumpa {
 namespace data {
+  /**
+   * Basic storage unit of this framework.
+   * It describes what and where are the data.
+   * We do not manage your memory - no (de)allocation is directly done by this framework
+   **/
   template<typename T> class Payload
   {
   public:
-    // add documentation, especially that we don't manage data
-    explicit Payload(void *d, const T &ld, const PhysicalDescriptor &pd, const std::string &desc)
-      : ptr(d), info(ld), dataInfo(pd), description(desc)
+    /**
+     * Create a new Payload
+     * ld describes content of the stored data
+     * pd describes form of the stored data and their location
+     * desc describes the data for debugging and tracking purposes
+     **/
+    explicit Payload(const T &ld, const PhysicalDescriptor &pd, const std::string &)
+      : info(ld), dataInfo(pd)//, description(desc)
     {}
 
-    explicit Payload(const T &ld, const std::string &desc)
-      : ptr(nullptr), info(ld), dataInfo(), description(desc + suffixEmpty)
+    /**
+     * Create a new empty Payload
+     * ld describes content of the data that would be here
+     * desc describes the data for debugging and tracking purposes
+     **/
+    explicit Payload(const T &ld, const std::string &)
+      // : info(ld), dataInfo(), description(desc + suffixEmpty)
+      : info(ld), dataInfo()
     {}
 
     bool IsValid() const
@@ -27,25 +43,25 @@ namespace data {
       bool result = info.IsValid() && dataInfo.IsValid();
       if (IsEmpty()) return result;
       // it has some data, check the size
-      return (result && HasValidBytes());
+      return result && (dataInfo.GetBytes() >= this->GetRequiredBytes());
     }
 
-    bool IsEmpty() const { return (nullptr == ptr) && (dataInfo.IsEmpty()); }
+    bool IsEmpty() const { return dataInfo.IsEmpty(); }
 
-    // FIXME  it might be useful to have subset which takes e.g. a vector of possitions that we want
+    // TODO it might be useful to have subset which takes e.g. a vector of possitions that we want
     // to get
-    Payload Subset(size_t startN, size_t count) const// FIXME refactor
+    Payload Subset(size_t startN, size_t count) const
     {
       assert(!IsEmpty());
       size_t safeCount = 0;// change name to something more reasonable
       const auto newInfo = info.Subset(safeCount, startN, count);
       const auto offset = info.Offset(0, 0, 0, startN);
 
-      const auto newDataInfo =
-        PhysicalDescriptor(newInfo.Elems() * Sizeof(dataInfo.type), dataInfo.type);
-      void *newData = reinterpret_cast<char *>(ptr) + (offset * Sizeof(dataInfo.type));
+      void *newData = reinterpret_cast<char *>(GetPtr()) + (offset * Sizeof(dataInfo.GetType()));
+      const auto newDataInfo = PhysicalDescriptor(
+        newData, newInfo.Elems() * Sizeof(dataInfo.GetType()), dataInfo.GetType());
       const auto suffix = " [" + std::to_string(startN) + ".." + std::to_string(startN + safeCount);
-      return Payload(newData, newInfo, newDataInfo, description + suffix);
+      return Payload(newInfo, newDataInfo, "");// description + suffix);
     };
 
     /**
@@ -55,8 +71,9 @@ namespace data {
      * */
     Payload CopyWithoutData() const
     {
-      return Payload(
-        nullptr, info, PhysicalDescriptor(0, dataInfo.type), description + suffixEmpty);
+      return Payload(info,
+        PhysicalDescriptor(nullptr, 0, dataInfo.GetType()),
+        "");//, description + suffixEmpty);
     }
 
     // Data need to be accessible from CPU
@@ -94,7 +111,7 @@ namespace data {
      **/
     bool IsEquivalentTo(const Payload<T> ref) const
     {
-      return info.IsEquivalentTo(ref.info) && (dataInfo.type == ref.dataInfo.type);
+      return info.IsEquivalentTo(ref.info) && (dataInfo.GetType() == ref.dataInfo.GetType());
     }
 
     /**
@@ -102,22 +119,30 @@ namespace data {
      * Returned amount might be smaller than bytes provided by Physical descriptor,
      * as data represented by this Payload might not span the entire memory block.
      **/
-    size_t GetBytes() { return info.GetPaddedSize().total * Sizeof(dataInfo.type); }
+    size_t GetRequiredBytes() const { return info.Elems() * Sizeof(dataInfo.GetType()); }
+
+    inline void *GetPtr() const { return dataInfo.GetPtr(); }
 
     // these shouold be private + getters / setters
-    void *ptr;// constant pointer to non-constant data, type defined by other descriptors
+
     T info;
     PhysicalDescriptor dataInfo;
-    std::string description;
+    // FIXME we want to have Payload description, but it has
+    // to be correclty handled by StarPU. StarPU thinks it's a pointer
+    // so it has to be allocated / copied / freed separately to avoid invalid memory
+    // operations
+    // std::string description;
     typedef T LDType;
+
+    /**
+     * Use this with utmost causion and only when you have a very good reason,
+     * e.g. you get existing Payload and you cannot change it.
+     * Otherwise prefer to create a new Payload.
+     **/
+    void Set(const PhysicalDescriptor pd) { this->dataInfo = pd; }
 
   private:
     static auto constexpr suffixEmpty = " [empty]";
-    bool HasValidBytes() const// FIXME refactor
-    {
-      return ((nullptr == ptr) && (0 == dataInfo.bytes))
-             || (dataInfo.bytes >= (info.GetPaddedSize().total * Sizeof(dataInfo.type)));
-    }
 
     template<typename DT>
     void
@@ -128,7 +153,7 @@ namespace data {
       // prepare output formatting
       out << std::setfill(' ') << std::left << std::setprecision(3) << std::showpos;
 
-      auto *data = reinterpret_cast<DT *>(ptr);
+      auto *data = reinterpret_cast<DT *>(GetPtr());
       for (size_t n = offset.n; n < offset.n + dims.n; n++) {
         for (size_t z = offset.z; z < offset.z + dims.z; z++) {
           for (size_t y = offset.y; y < offset.y + dims.y; y++) {
