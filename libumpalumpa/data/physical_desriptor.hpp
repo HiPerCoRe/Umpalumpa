@@ -10,7 +10,7 @@ public:
   explicit PhysicalDescriptor(void *data, size_t b, DataType dataType)
     : ptr(data), bytes(b), type(dataType){};
 
-  explicit PhysicalDescriptor() : PhysicalDescriptor(0, 0, DataType::kVoid){};
+  explicit PhysicalDescriptor() : PhysicalDescriptor(nullptr, 0, DataType::kVoid){};
 
   inline size_t GetBytes() const { return bytes; }
 
@@ -23,18 +23,6 @@ public:
   inline DataType GetType() const { return type; }
 
   inline void *GetPtr() const { return ptr; }
-
-  /**
-   * Use this with utmost causion and only when you have a very good reason,
-   * e.g. you get existing Payload and you cannot change it.
-   * Otherwise prefer to create a new Payload.
-   **/
-  void Set(void *data, size_t b, DataType dataType)
-  {
-    ptr = data;
-    bytes = b;
-    type = dataType;
-  }
 
   /**
    * Descriptor is valid if it describes empty storage or non-empty storage,

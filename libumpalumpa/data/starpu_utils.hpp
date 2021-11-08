@@ -48,7 +48,9 @@ static void payload_register_data_handle(starpu_data_handle_t handle,
       starpu_data_get_interface_on_node(handle, node));
     *local_interface = *interface;
     if (node != home_node) {
-      local_interface->dataInfo.Set(nullptr, interface->GetRequiredBytes(), interface->dataInfo.GetType());
+      auto pd = umpalumpa::data::PhysicalDescriptor(
+        nullptr, interface->GetRequiredBytes(), interface->dataInfo.GetType());
+      local_interface->Set(pd);
     }
   }
 }
@@ -65,7 +67,9 @@ static starpu_ssize_t payload_allocate_data_on_node(void *data_interface, unsign
     if (nullptr == data) return -ENOMEM;
   }
   // update the payload
-  interface->dataInfo.Set(data, requested_memory, interface->dataInfo.GetType());
+  auto pd =
+    umpalumpa::data::PhysicalDescriptor(data, requested_memory, interface->dataInfo.GetType());
+  interface->Set(pd);
   return requested_memory;
 }
 
@@ -76,7 +80,8 @@ template<typename T> static void payload_free_data_on_node(void *data_interface,
     starpu_free_on_node(
       node, reinterpret_cast<uintptr_t>(interface->GetPtr()), interface->dataInfo.GetBytes());
   }
-  interface->dataInfo.Set(nullptr, 0, interface->dataInfo.GetType());
+  auto pd = umpalumpa::data::PhysicalDescriptor(nullptr, 0, interface->dataInfo.GetType());
+  interface->Set(pd);
 }
 
 template<typename T>
