@@ -46,7 +46,7 @@ protected:
     // is input valid?
     bool result = in.GetData().IsValid();
 
-    if (s.result == SearchResult::kValue) {
+    if (s.GetResult() == SearchResult::kValue) {
       // is output valid?
       result = result && (out.GetValues().IsValid());
       // is the type correct?

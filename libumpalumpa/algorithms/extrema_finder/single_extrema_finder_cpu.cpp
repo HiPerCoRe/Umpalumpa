@@ -13,9 +13,9 @@ namespace {// to avoid poluting
     {
       const auto &in = alg.Get().GetInputRef();
       const auto &s = alg.Get().GetSettings();
-      return (s.version == 1) && (!in.GetData().info.IsPadded())
-             && (s.location == SearchLocation::kEntire) && (s.type == SearchType::kMax)
-             && (s.result == SearchResult::kValue)
+      return (s.GetVersion() == 1) && (!in.GetData().info.IsPadded())
+             && (s.GetLocation() == SearchLocation::kEntire) && (s.GetType() == SearchType::kMax)
+             && (s.GetResult() == SearchResult::kValue)
              && (in.GetData().dataInfo.GetType() == umpalumpa::data::DataType::kFloat);
     }
 
@@ -44,9 +44,9 @@ namespace {// to avoid poluting
     {
       const auto &in = alg.Get().GetInputRef();
       const auto &s = alg.Get().GetSettings();
-      return (s.version == 1) && (!in.GetData().info.IsPadded())
-             && (s.location == SearchLocation::kRectCenter) && (s.type == SearchType::kMax)
-             && (s.result == SearchResult::kLocation)
+      return (s.GetVersion() == 1) && (!in.GetData().info.IsPadded())
+             && (s.GetLocation() == SearchLocation::kRectCenter)
+             && (s.GetType() == SearchType::kMax) && (s.GetResult() == SearchResult::kLocation)
              && (in.GetData().dataInfo.GetType() == umpalumpa::data::DataType::kFloat);
     }
 
