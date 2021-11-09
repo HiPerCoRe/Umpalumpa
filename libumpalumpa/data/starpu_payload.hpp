@@ -12,12 +12,11 @@ namespace data {
     StarpuPayload(const StarpuPayload &) =
       delete;// copy prevented to avoid multiple handles to same data; consider using smart pointer
 
-    StarpuPayload(const Payload<T> &p) : handle{ 0 }, payload(p) // FIXME do  we want to take control of the payload completely (e.g. pass it via unique_ptr)
+    StarpuPayload(const Payload<T> &p) : handle{ 0 }, payload(p)
     {
-      starpu_payload_register(&handle,
-        STARPU_MAIN_RAM,// FIXME this should be taken from the payload
-        payload);
-      // starpu_data_set_name(handle, p.description.c_str()); // FIXME enable once we have description in Payload
+      starpu_payload_register(&handle, GetMemoryNode(payload.dataInfo), payload);
+      // starpu_data_set_name(handle, p.description.c_str()); // FIXME enable once we have
+      // description in Payload
     }
 
     ~StarpuPayload()

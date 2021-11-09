@@ -32,6 +32,11 @@ template<typename T> uint32_t *CreateWorkerMask(unsigned &count, const T &col)
 }
 
 /**
+ * Returns StarPU memory node describing current location of the data referenced by PD
+ **/
+unsigned GetMemoryNode(const umpalumpa::data::PhysicalDescriptor &pd);
+
+/**
  * Return a vector with IDs of each Nth CPU worker.
  * For example, if 5 CPU workers exists and N=2, it returns 0, 2, 4
  **/

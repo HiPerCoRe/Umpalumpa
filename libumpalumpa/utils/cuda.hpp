@@ -14,3 +14,9 @@ void(gpuErrchk)(cufftResult code, const char *file, int line, bool abort = true)
   {                                        \
     gpuErrchk((code), __FILE__, __LINE__); \
   }
+
+/**
+ * Returns true if CUDA is aware of pointer p.
+ * See also cudaPointerGetAttributes
+ **/
+bool IsGpuPointer(const void *p);
