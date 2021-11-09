@@ -121,7 +121,7 @@ bool CorrelationStarPU::ExecuteImpl(const StarpuOutputData &out, const StarpuInp
   task->handles[0] = out.GetCorrelations()->GetHandle();
   task->handles[1] = in.GetData1()->GetHandle();
   task->handles[2] = in.GetData2()->GetHandle();
-  task->workerids = CreateWorkerMask(task->workerids_len,
+  task->workerids = utils::StarPUUtils::CreateWorkerMask(task->workerids_len,
     algs);// FIXME bug in the StarPU? If the mask is completely 0, codelet is being invoked anyway
   task->cl_arg = new ExecuteArgs{ this->GetSettings(), &algs };
   task->cl_arg_size = sizeof(ExecuteArgs);

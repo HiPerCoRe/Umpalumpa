@@ -1,7 +1,9 @@
-#include <libumpalumpa/data/starpu_utils.hpp>
+#include <libumpalumpa/utils/starpu.hpp>
 #include <libumpalumpa/utils/cuda.hpp>
 
-std::vector<unsigned> GetCPUWorkerIDs(unsigned n)
+namespace umpalumpa::utils {
+
+std::vector<unsigned> StarPUUtils::GetCPUWorkerIDs(unsigned n)
 {
   const auto cpuWorkerCount = starpu_worker_get_count_by_type(STARPU_CPU_WORKER);
   auto ids = std::make_unique<int[]>(static_cast<size_t>(cpuWorkerCount));
@@ -14,8 +16,7 @@ std::vector<unsigned> GetCPUWorkerIDs(unsigned n)
   return mask;
 }
 
-
-unsigned GetMemoryNode(const umpalumpa::data::PhysicalDescriptor &pd)
+unsigned StarPUUtils::GetMemoryNode(const umpalumpa::data::PhysicalDescriptor &pd)
 {
   using umpalumpa::data::ManagedBy;
   switch (pd.GetManager()) {
@@ -30,3 +31,4 @@ unsigned GetMemoryNode(const umpalumpa::data::PhysicalDescriptor &pd)
   }
   return STARPU_MAIN_RAM;// because we don't know any better
 }
+}// namespace umpalumpa::utils

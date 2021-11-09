@@ -31,7 +31,7 @@ if(USE_STARPU)
     algorithms/correlation/correlation_starpu.cpp
     algorithms/fourier_processing/fp_starpu.cpp
     algorithms/fourier_transformation/fft_starpu.cpp
-    data/starpu_utils.cpp)
+    utils/starpu.cpp)
 endif()
 
 target_include_directories(umpalumpa PUBLIC ${CMAKE_SOURCE_DIR})
