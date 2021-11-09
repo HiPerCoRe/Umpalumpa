@@ -15,6 +15,8 @@ public:
   virtual ACorrelation &GetTransformer() = 0;
   virtual void *Allocate(size_t bytes) = 0;
   virtual void Free(void *ptr) = 0;
+  virtual ManagedBy GetManager() = 0;
+  virtual int GetMemoryNode() = 0;
 
   // Works correctly only with float
   void testCorrelationSimple(ACorrelation::OutputData &out,
@@ -170,7 +172,7 @@ protected:
     inData1 = std::shared_ptr<void>(Allocate(inputSizeInBytes), GetFree());
     memset(inData1.get(), 0, inputSizeInBytes);
     pdIn1 = std::make_unique<PhysicalDescriptor>(
-      inData1.get(), inputSizeInBytes, DataType::kComplexFloat);
+      inData1.get(), inputSizeInBytes, DataType::kComplexFloat, GetManager(), GetMemoryNode());
 
     ldIn2 = std::make_unique<FourierDescriptor>(
       in2Size, PaddingDescriptor(), FourierDescriptor::FourierSpaceDescriptor{});
@@ -183,7 +185,7 @@ protected:
       memset(inData2.get(), 0, input2SizeInBytes);
     }
     pdIn2 = std::make_unique<PhysicalDescriptor>(
-      inData2.get(), input2SizeInBytes, DataType::kComplexFloat);
+      inData2.get(), input2SizeInBytes, DataType::kComplexFloat, GetManager(), GetMemoryNode());
 
     ldOut = std::make_unique<FourierDescriptor>(
       outSize, PaddingDescriptor(), FourierDescriptor::FourierSpaceDescriptor{});
@@ -191,7 +193,7 @@ protected:
     auto outputSizeInBytes = ldOut->GetPaddedSize().total * Sizeof(DataType::kComplexFloat);
     outData = std::shared_ptr<void>(Allocate(outputSizeInBytes), GetFree());
     pdOut = std::make_unique<PhysicalDescriptor>(
-      outData.get(), outputSizeInBytes, DataType::kComplexFloat);
+      outData.get(), outputSizeInBytes, DataType::kComplexFloat, GetManager(), GetMemoryNode());
   }
 
   std::shared_ptr<void> inData1;

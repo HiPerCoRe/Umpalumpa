@@ -30,6 +30,10 @@ public:
 
   FPCUDA &GetFourierProcessor() override { return transformer; }
 
+  ManagedBy GetManager() override { return ManagedBy::CUDA; };
+
+  int GetMemoryNode() override { return 0; }
+
 protected:
   FPCUDA transformer = FPCUDA(0);
 };

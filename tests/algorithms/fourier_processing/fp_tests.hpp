@@ -18,6 +18,9 @@ public:
   virtual AFP &GetFourierProcessor() = 0;
   virtual void *Allocate(size_t bytes) = 0;
   virtual void Free(void *ptr) = 0;
+  virtual ManagedBy GetManager() = 0;
+  virtual int GetMemoryNode() = 0;
+
 
   void testFP(AFP::OutputData &out, AFP::InputData &in, const Settings &settings)
   {
@@ -162,7 +165,8 @@ protected:
     auto inputSizeInBytes = ldIn->Elems() * Sizeof(DataType::kComplexFloat);
     inData = std::shared_ptr<void>(Allocate(inputSizeInBytes), GetFree());
     memset(inData.get(), 0, inputSizeInBytes);
-    pdIn = std::make_unique<PhysicalDescriptor>(inData.get(), inputSizeInBytes, DataType::kComplexFloat);
+    pdIn = std::make_unique<PhysicalDescriptor>(
+      inData.get(), inputSizeInBytes, DataType::kComplexFloat, GetManager(), GetMemoryNode());
 
     ldOut = std::make_unique<FourierDescriptor>(
       outSize, PaddingDescriptor(), FourierDescriptor::FourierSpaceDescriptor{});
@@ -173,16 +177,16 @@ protected:
     } else {
       outData = inData;
     }
-    pdOut =
-      std::make_unique<PhysicalDescriptor>(outData.get(), outputSizeInBytes, DataType::kComplexFloat);
+    pdOut = std::make_unique<PhysicalDescriptor>(
+      outData.get(), outputSizeInBytes, DataType::kComplexFloat, GetManager(), GetMemoryNode());
 
     ldFilter = std::make_unique<LogicalDescriptor>(outSize);
 
     auto filterSizeInBytes = ldFilter->Elems() * Sizeof(DataType::kFloat);
     filterData = std::shared_ptr<void>(Allocate(filterSizeInBytes), GetFree());
     memset(filterData.get(), 0, filterSizeInBytes);
-    pdFilter =
-      std::make_unique<PhysicalDescriptor>(filterData.get(), filterSizeInBytes, DataType::kFloat);
+    pdFilter = std::make_unique<PhysicalDescriptor>(
+      filterData.get(), filterSizeInBytes, DataType::kFloat, GetManager(), GetMemoryNode());
   }
 
   std::shared_ptr<void> inData;

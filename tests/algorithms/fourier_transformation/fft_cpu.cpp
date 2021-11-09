@@ -22,6 +22,10 @@ public:
 
   FFTCPU &GetTransformer() override { return transformer; }
 
+  ManagedBy GetManager() override { return ManagedBy::Manually; };
+
+  int GetMemoryNode() override { return 0; }
+
 protected:
   FFTCPU transformer = FFTCPU();
 };

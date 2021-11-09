@@ -2,27 +2,35 @@
 
 #include <libumpalumpa/data/size.hpp>
 #include <libumpalumpa/data/data_type.hpp>
+#include <libumpalumpa/data/managed_by.hpp>
 
 namespace umpalumpa::data {
 class PhysicalDescriptor
 {
 public:
-  explicit PhysicalDescriptor(void *data, size_t b, DataType dataType)
-    : ptr(data), bytes(b), type(dataType){};
+  explicit PhysicalDescriptor(void *data, size_t b, DataType dataType, ManagedBy m, int node)
+    : ptr(data), bytes(b), type(dataType), manager(m), memoryNode(node){};
 
-  explicit PhysicalDescriptor() : PhysicalDescriptor(nullptr, 0, DataType::kVoid){};
+  explicit PhysicalDescriptor()
+    : PhysicalDescriptor(nullptr, 0, DataType::kVoid, ManagedBy::Unknown, 0){};
 
-  inline size_t GetBytes() const { return bytes; }
+  inline auto GetBytes() const { return bytes; }
 
-  inline float GetKBytes() const { return static_cast<float>(bytes) / 1024.f; }
+  inline auto GetKBytes() const { return static_cast<float>(bytes) / 1024.f; }
 
-  inline float GetMBytes() const { return static_cast<float>(bytes) / (1024.f * 1024.f); }
+  inline auto GetMBytes() const { return static_cast<float>(bytes) / (1024.f * 1024.f); }
 
-  inline float GetGBytes() const { return static_cast<float>(bytes) / (1024.f * 1024.f * 1024.f); }
+  inline auto GetGBytes() const { return static_cast<float>(bytes) / (1024.f * 1024.f * 1024.f); }
 
-  inline DataType GetType() const { return type; }
+  inline auto GetType() const { return type; }
+
+  inline auto GetManager() const { return manager; }
+
+  inline auto GetMemoryNode() const { return memoryNode; }
 
   inline void *GetPtr() const { return ptr; }
+
+  auto CopyWithoutData() const { return PhysicalDescriptor(nullptr, 0, type, manager, memoryNode); }
 
   /**
    * Descriptor is valid if it describes empty storage or non-empty storage,
@@ -39,5 +47,7 @@ private:
   void *ptr;// type defined by DataType
   size_t bytes;// how big block is available
   DataType type;// what type is stored
+  ManagedBy manager;// who is responsible for data
+  int memoryNode;// says where exactly is data stored (if supported by Manager)
 };
 }// namespace umpalumpa::data

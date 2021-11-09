@@ -21,6 +21,10 @@ public:
 
   void WaitTillDone() { searcher.Synchronize(); };
 
+  ManagedBy GetManager() { return ManagedBy::CUDA; };
+
+  int GetMemoryNode() { return 0; }
+
 private:
   SingleExtremaFinderCUDA searcher = SingleExtremaFinderCUDA(0);
 };
