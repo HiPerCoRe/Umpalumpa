@@ -65,18 +65,11 @@ namespace {// to avoid poluting
 
       // prepare input data
       auto &tuner = kttHelper.GetTuner();
-      auto argIn = tuner.AddArgumentVector<float>(in.GetData().GetPtr(),
-        in.GetData().info.GetSize().total,
-        ktt::ArgumentAccessType::ReadOnly,
-        ktt::ArgumentMemoryLocation::Unified);
+      auto argIn = AddArgumentVector<float>(in.GetData(), ktt::ArgumentAccessType::ReadOnly);
+      auto argSize = tuner.AddArgumentScalar(in.GetData().info.GetSize().single);
 
       // prepare output data
-      auto argVals = tuner.AddArgumentVector<float>(out.GetValues().GetPtr(),
-        out.GetValues().info.GetSize().total,
-        ktt::ArgumentAccessType::WriteOnly,
-        ktt::ArgumentMemoryLocation::Unified);
-
-      auto argSize = tuner.AddArgumentScalar(in.GetData().info.GetSize().single);
+      auto argVals = AddArgumentVector<float>(out.GetValues(), ktt::ArgumentAccessType::WriteOnly);
 
       tuner.SetArguments(definitionId, { argIn, argVals, argSize });
 
@@ -177,19 +170,14 @@ namespace {// to avoid poluting
 
       // prepare input data
       auto &tuner = kttHelper.GetTuner();
-      auto argIn = tuner.AddArgumentVector<float>(in.GetData().GetPtr(),
-        in.GetData().info.GetSize().total,
-        ktt::ArgumentAccessType::ReadOnly,
-        ktt::ArgumentMemoryLocation::Unified);
+      auto argIn = AddArgumentVector<float>(in.GetData(), ktt::ArgumentAccessType::ReadOnly);
 
       auto argInSize = tuner.AddArgumentScalar(in.GetData().info.GetSize());
 
       // prepare output data
       auto argVals = tuner.AddArgumentScalar(NULL);
-      auto argLocs = tuner.AddArgumentVector<float>(out.GetLocations().GetPtr(),
-        out.GetValues().info.GetSize().total,
-        ktt::ArgumentAccessType::WriteOnly,
-        ktt::ArgumentMemoryLocation::Unified);
+      auto argLocs =
+        AddArgumentVector<float>(out.GetLocations(), ktt::ArgumentAccessType::WriteOnly);
 
       // FIXME these values should be read from settings
       // FIXME offset + rectDim cant be > inSize, add check

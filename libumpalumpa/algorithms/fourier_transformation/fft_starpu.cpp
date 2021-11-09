@@ -69,7 +69,7 @@ bool FFTStarPU::InitImpl()
   algs.resize(workerCount);
   InitArgs args = { out, in, s, algs };
   // Allow for multithreading. Each Nth worker will use N threads
-  auto cpuIDs = GetCPUWorkerIDs(s.GetThreads());
+  auto cpuIDs = utils::StarPUUtils::GetCPUWorkerIDs(s.GetThreads());
   starpu_execute_on_specific_workers(
     CpuInit, &args, static_cast<unsigned>(cpuIDs.size()), cpuIDs.data(), "CPU worker Init");
   starpu_execute_on_each_worker(
@@ -123,7 +123,7 @@ bool FFTStarPU::ExecuteImpl(const StarpuOutputData &out, const StarpuInputData &
   struct starpu_task *task = starpu_task_create();
   task->handles[0] = out.GetData()->GetHandle();
   task->handles[1] = in.GetData()->GetHandle();
-  task->workerids = CreateWorkerMask(task->workerids_len,
+  task->workerids = utils::StarPUUtils::CreateWorkerMask(task->workerids_len,
     algs);// FIXME bug in the StarPU? If the mask is completely 0, codelet is being invoked anyway
   task->cl_arg = createArgs();
   task->cl_arg_size = sizeof(ExecuteArgs);

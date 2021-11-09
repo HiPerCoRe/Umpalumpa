@@ -8,9 +8,16 @@ class SingleExtremaFinderCPUTest : public ::testing::Test
 {
 public:
   auto &GetSearcher() { return searcher; }
+
   auto Allocate(size_t bytes) { return malloc(bytes); }
+
   auto Free(void *ptr) { free(ptr); }
+
   void WaitTillDone(){};
+
+  ManagedBy GetManager() { return ManagedBy::Manually; };
+
+  int GetMemoryNode() { return 0; }
 
 private:
   SingleExtremaFinderCPU searcher;

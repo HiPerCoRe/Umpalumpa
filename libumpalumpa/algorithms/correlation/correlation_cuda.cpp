@@ -119,24 +119,12 @@ namespace {// to avoid poluting
 
       auto &tuner = kttHelper.GetTuner();
       // prepare input GetData1()
-      auto argIn1 = tuner.AddArgumentVector<float2>(in.GetData1().GetPtr(),
-        in.GetData1().info.GetSize().total,
-        ktt::ArgumentAccessType::ReadOnly,// FIXME these information should be stored in the
-                                          // physical descriptor
-        ktt::ArgumentMemoryLocation::Unified);// ^
+      auto argIn1 = AddArgumentVector<float2>(in.GetData1(), ktt::ArgumentAccessType::ReadOnly);
 
-      auto argIn2 = tuner.AddArgumentVector<float2>(in.GetData2().GetPtr(),
-        in.GetData2().info.GetSize().total,
-        ktt::ArgumentAccessType::ReadOnly,// FIXME these information should be stored in the
-                                          // physical descriptor
-        ktt::ArgumentMemoryLocation::Unified);// ^
+      auto argIn2 = AddArgumentVector<float2>(in.GetData2(), ktt::ArgumentAccessType::ReadOnly);
 
-      // prepare output GetData1()
-      auto argOut = tuner.AddArgumentVector<float2>(out.GetCorrelations().GetPtr(),
-        out.GetCorrelations().info.GetSize().total,
-        ktt::ArgumentAccessType::WriteOnly,// FIXME these information should be stored in the
-                                           // physical descriptor
-        ktt::ArgumentMemoryLocation::Unified);// ^
+      auto argOut =
+        AddArgumentVector<float2>(out.GetCorrelations(), ktt::ArgumentAccessType::WriteOnly);
 
       auto inSize = tuner.AddArgumentScalar(in.GetData1().info.GetSize());
       auto in2N = tuner.AddArgumentScalar(static_cast<int>(in.GetData2().info.GetSize().n));

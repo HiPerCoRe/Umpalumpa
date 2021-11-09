@@ -33,6 +33,8 @@ public:
   virtual AFFT &GetTransformer() = 0;
   virtual void *Allocate(size_t bytes) = 0;
   virtual void Free(void *ptr) = 0;
+  virtual ManagedBy GetManager() = 0;
+  virtual int GetMemoryNode() = 0;
 
   void testFFTInpulseOrigin(AFFT::OutputData &out, AFFT::InputData &in, const Settings &settings)
   {
@@ -263,8 +265,8 @@ protected:
     auto spatialSizeInBytes = ldSpatial->GetPaddedSize().total * Sizeof(DataType::kFloat);
     dataSpatial = std::shared_ptr<void>(Allocate(spatialSizeInBytes), GetFree());
     memset(dataSpatial.get(), 0, spatialSizeInBytes);
-    pdSpatial =
-      std::make_unique<PhysicalDescriptor>(dataSpatial.get(), spatialSizeInBytes, DataType::kFloat);
+    pdSpatial = std::make_unique<PhysicalDescriptor>(
+      dataSpatial.get(), spatialSizeInBytes, DataType::kFloat, GetManager(), GetMemoryNode());
 
     ldFrequency = std::make_unique<FourierDescriptor>(
       size, padding, FourierDescriptor::FourierSpaceDescriptor());
@@ -275,8 +277,11 @@ protected:
     } else {
       dataFrequency = dataSpatial;
     }
-    pdFrequency = std::make_unique<PhysicalDescriptor>(
-      dataFrequency.get(), frequencySizeInBytes, DataType::kComplexFloat);
+    pdFrequency = std::make_unique<PhysicalDescriptor>(dataFrequency.get(),
+      frequencySizeInBytes,
+      DataType::kComplexFloat,
+      GetManager(),
+      GetMemoryNode());
   }
 
   std::shared_ptr<void> dataSpatial;

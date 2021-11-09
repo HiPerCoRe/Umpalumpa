@@ -58,8 +58,11 @@ namespace data {
       const auto offset = info.Offset(0, 0, 0, startN);
 
       void *newData = reinterpret_cast<char *>(GetPtr()) + (offset * Sizeof(dataInfo.GetType()));
-      const auto newDataInfo = PhysicalDescriptor(
-        newData, newInfo.Elems() * Sizeof(dataInfo.GetType()), dataInfo.GetType());
+      const auto newDataInfo = PhysicalDescriptor(newData,
+        newInfo.Elems() * Sizeof(dataInfo.GetType()),
+        dataInfo.GetType(),
+        dataInfo.GetManager(),
+        dataInfo.GetMemoryNode());
       const auto suffix = " [" + std::to_string(startN) + ".." + std::to_string(startN + safeCount);
       return Payload(newInfo, newDataInfo, "");// description + suffix);
     };
@@ -71,8 +74,7 @@ namespace data {
      * */
     Payload CopyWithoutData() const
     {
-      return Payload(info,
-        PhysicalDescriptor(nullptr, 0, dataInfo.GetType()),
+      return Payload(info, dataInfo.CopyWithoutData(),
         "");//, description + suffixEmpty);
     }
 

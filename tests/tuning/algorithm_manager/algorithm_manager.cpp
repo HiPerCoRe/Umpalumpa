@@ -80,8 +80,9 @@ class AlgorithmManagerTests : public Test
 protected:
   // Constructor is called before every test
   AlgorithmManagerTests()
-    : settings(), size(42, 1, 1, 1), ld(size), pd(nullptr, 0, DataType::kFloat),
-      inP(Payload(ld, pd, "Input data")), outP(Payload(ld, pd, "Output data"))
+    : settings(), size(42, 1, 1, 1), ld(size),
+      pd(nullptr, 0, DataType::kFloat, ManagedBy::Manually, 0), inP(Payload(ld, pd, "Input data")),
+      outP(Payload(ld, pd, "Output data"))
   {
     // NOTE AlgorithmManager is a singleton and therefore has a global state. It needs to be reset
     // before each test.

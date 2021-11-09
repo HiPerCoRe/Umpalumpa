@@ -126,7 +126,7 @@ bool FPStarPU::ExecuteImpl(const StarpuOutputData &out, const StarpuInputData &i
   task->handles[0] = out.GetData()->GetHandle();
   task->handles[1] = in.GetData()->GetHandle();
   task->handles[2] = in.GetFilter()->GetHandle();
-  task->workerids = CreateWorkerMask(task->workerids_len,
+  task->workerids = utils::StarPUUtils::CreateWorkerMask(task->workerids_len,
     algs);// FIXME bug in the StarPU? If the mask is completely 0, codelet is being invoked anyway
   task->cl_arg = createArgs();
   task->cl_arg_size = sizeof(ExecuteArgs);

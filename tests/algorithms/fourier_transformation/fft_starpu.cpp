@@ -34,6 +34,10 @@ public:
     return [](void *ptr) { starpu_free(ptr); };
   }
 
+  ManagedBy GetManager() override { return ManagedBy::StarPU; };
+
+  int GetMemoryNode() override { return STARPU_MAIN_RAM; }
+
 private:
   FFTStarPU transformer;
 };

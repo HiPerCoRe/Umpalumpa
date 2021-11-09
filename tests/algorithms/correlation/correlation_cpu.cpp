@@ -22,6 +22,10 @@ public:
 
   Correlation_CPU &GetTransformer() override { return transformer; }
 
+  ManagedBy GetManager() override { return ManagedBy::Manually; };
+
+  int GetMemoryNode() override { return 0; }
+
 protected:
   Correlation_CPU transformer = Correlation_CPU();
 };
