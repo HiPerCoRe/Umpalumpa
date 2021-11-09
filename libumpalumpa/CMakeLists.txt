@@ -11,6 +11,7 @@ set_target_properties(umpalumpa PROPERTIES SOVERSION 0 VERSION 0.0.1)
 set(umpalumpa_sources
     utils/system.cpp
     utils/cuda.cpp
+    utils/ktt.cpp
     algorithms/extrema_finder/single_extrema_finder_cpu.cpp
     algorithms/extrema_finder/single_extrema_finder_cuda.cpp
     algorithms/fourier_transformation/fft_cuda.cpp
