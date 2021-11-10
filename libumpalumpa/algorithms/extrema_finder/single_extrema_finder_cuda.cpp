@@ -78,6 +78,9 @@ namespace {// to avoid poluting
       auto argSize = tuner.AddArgumentScalar(in.GetData().info.GetSize().single);
 
       tuner.SetArguments(definitionId, { argIn, argVals, argSize });
+      // FIXME tmp, should be done as part of some utility method
+      algorithm::AlgorithmManager::Get().SetKTTArguments(
+        kttHelper, definitionId, { argIn, argVals, argSize });
 
       auto &size = in.GetData().info.GetSize();
       tuner.SetLauncher(kernelId, [this, &size](ktt::ComputeInterface &interface) {
@@ -203,6 +206,10 @@ namespace {// to avoid poluting
       auto argRectHeight = tuner.AddArgumentScalar(searchRectHeight);
 
       tuner.SetArguments(definitionId,
+        { argIn, argInSize, argVals, argLocs, argOffX, argOffY, argRectWidth, argRectHeight });
+      // FIXME tmp, should be done as part of some utility method
+      algorithm::AlgorithmManager::Get().SetKTTArguments(kttHelper,
+        definitionId,
         { argIn, argInSize, argVals, argLocs, argOffX, argOffY, argRectWidth, argRectHeight });
 
       auto &size = in.GetData().info.GetSize();

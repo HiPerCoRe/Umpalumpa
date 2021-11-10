@@ -133,6 +133,9 @@ namespace {// to avoid poluting
         tuner.AddArgumentScalar(static_cast<float>(in.GetData().info.GetNormFactor()));
 
       tuner.SetArguments(definitionId, { argIn, argOut, inSize, outSize, filter, normFactor });
+      // FIXME tmp, should be done as part of some utility method
+      algorithm::AlgorithmManager::Get().SetKTTArguments(
+        kttHelper, definitionId, { argIn, argOut, inSize, outSize, filter, normFactor });
 
       auto &size = out.GetData().info.GetPaddedSize();
       tuner.SetLauncher(kernelId, [this, &size](ktt::ComputeInterface &interface) {

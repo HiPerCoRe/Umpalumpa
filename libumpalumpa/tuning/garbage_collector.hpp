@@ -10,6 +10,13 @@ namespace umpalumpa {
 class GarbageCollector
 {
   using KTTIdentifier = std::reference_wrapper<utils::KTTHelper>;
+  struct KTTIdentifierCmp
+  {
+    bool operator()(const KTTIdentifier &l, const KTTIdentifier &r) const
+    {
+      return &l.get() < &r.get();
+    }
+  };
 
   /**
    * Internal class used for tracking and removing the KTT ids.
@@ -70,7 +77,7 @@ class GarbageCollector
   };
 
   // We need to distinguish ids of different KTTs
-  std::map<KTTIdentifier, IdTracker> kttIds;
+  std::map<KTTIdentifier, IdTracker, KTTIdentifierCmp> kttIds;
 
 public:
   /**
@@ -82,6 +89,7 @@ public:
     const std::vector<ktt::KernelId> &kernelIds,
     const std::vector<ktt::KernelDefinitionId> &definitionIds)
   {
+    kttIds.try_emplace(kttIdentifier, kttIdentifier.get());
     auto &tracker = kttIds.at(kttIdentifier);
     std::lock_guard<std::mutex> lck(tracker.kttHelper.GetMutex());
 
@@ -109,6 +117,7 @@ public:
     const std::vector<ktt::ArgumentId> &argumentIds,
     KTTIdentifier kttIdentifier)
   {
+    kttIds.try_emplace(kttIdentifier, kttIdentifier.get());
     auto &v = kttIds.at(kttIdentifier).data.at(definitionId).arguments;
     v.insert(v.end(), argumentIds.begin(), argumentIds.end());
   }

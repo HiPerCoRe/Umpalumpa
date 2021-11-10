@@ -145,6 +145,9 @@ namespace {// to avoid poluting
         tuner.AddArgumentScalar(static_cast<int>(in.GetData1().ptr == in.GetData2().ptr));
 
       tuner.SetArguments(definitionId, { argOut, argIn1, inSize, argIn2, in2N, isWithin });
+      // FIXME tmp, should be done as part of some utility method
+      algorithm::AlgorithmManager::Get().SetKTTArguments(
+        kttHelper, definitionId, { argOut, argIn1, inSize, argIn2, in2N, isWithin });
 
       const auto &size = out.GetCorrelations().info.GetPaddedSize();
       tuner.SetLauncher(kernelId, [this, &size](ktt::ComputeInterface &interface) {
