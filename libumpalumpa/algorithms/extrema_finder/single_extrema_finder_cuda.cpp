@@ -71,10 +71,7 @@ namespace {// to avoid poluting
       // prepare output data
       auto argVals = AddArgumentVector<float>(out.GetValues(), ktt::ArgumentAccessType::WriteOnly);
 
-      tuner.SetArguments(definitionId, { argIn, argVals, argSize });
-      // FIXME tmp, should be done as part of some utility method
-      algorithm::AlgorithmManager::Get().SetKTTArguments(
-        kttHelper, definitionId, { argIn, argVals, argSize });
+      SetArguments(definitionId, { argIn, argVals, argSize });
 
       auto &size = in.GetData().info.GetSize();
       tuner.SetLauncher(kernelId, [this, &size](ktt::ComputeInterface &interface) {
@@ -195,11 +192,7 @@ namespace {// to avoid poluting
       auto argRectWidth = tuner.AddArgumentScalar(searchRectWidth);
       auto argRectHeight = tuner.AddArgumentScalar(searchRectHeight);
 
-      tuner.SetArguments(definitionId,
-        { argIn, argInSize, argVals, argLocs, argOffX, argOffY, argRectWidth, argRectHeight });
-      // FIXME tmp, should be done as part of some utility method
-      algorithm::AlgorithmManager::Get().SetKTTArguments(kttHelper,
-        definitionId,
+      SetArguments(definitionId,
         { argIn, argInSize, argVals, argLocs, argOffX, argOffY, argRectWidth, argRectHeight });
 
       auto &size = in.GetData().info.GetSize();

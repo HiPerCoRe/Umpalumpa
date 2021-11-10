@@ -4,6 +4,7 @@
 #include <libumpalumpa/tuning/ktt_base.hpp>
 #include <libumpalumpa/tuning/tunable_strategy.hpp>
 #include <libumpalumpa/utils/ktt.hpp>
+#include <libumpalumpa/data/payload.hpp>
 
 namespace umpalumpa::algorithm {
 
@@ -55,6 +56,17 @@ public:
   {
     return kttHelper.GetTuner().AddArgumentVector<T>(
       p.GetPtr(), p.info.GetSize().total, at, utils::KTTUtils::GetMemoryNode(p.dataInfo));
+  }
+
+  /**
+   * Registers the ids into an automatic clean up routine. The ids are removed from KTT when they
+   * are no longer needed.
+   * Calls ktt::Tuner::SetArguments method.
+   */
+  void SetArguments(ktt::KernelDefinitionId defId, const std::vector<ktt::ArgumentId> &argumentIds)
+  {
+    AlgorithmManager::Get().SetKTTArguments(kttHelper, defId, argumentIds);
+    kttHelper.GetTuner().SetArguments(defId, argumentIds);
   }
 };
 
