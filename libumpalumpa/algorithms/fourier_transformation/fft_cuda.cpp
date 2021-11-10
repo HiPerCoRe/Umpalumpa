@@ -68,7 +68,8 @@ bool FFTCUDA::IsValid(const OutputData &out, const InputData &in, const Settings
 {
   // Too many elements for Fourier Transformation. It would cause int overflow in the cuda kernel
   return AFFT::IsValid(out, in, s)
-         && in.GetData().info.GetPaddedSpatialSize().total <= std::numeric_limits<int>::max();
+         && in.GetData().info.GetPaddedSpatialSize().total
+              <= static_cast<size_t>(std::numeric_limits<int>::max());
 }
 
 void FFTCUDA::setupPlan()
