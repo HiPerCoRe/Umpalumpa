@@ -17,13 +17,17 @@ public:
     STARPU_CHECK_RETURN_VALUE(starpu_task_wait_for_all(), "Waiting for all tasks");
   }
 
-  auto Allocate(size_t bytes)// FIXME auto *Allocate()
+  auto *Allocate(size_t bytes)
   {
     void *ptr = nullptr;
     starpu_malloc(&ptr, bytes);
     return ptr;
   }
   auto Free(void *ptr) { starpu_free(ptr); }
+
+  ManagedBy GetManager() { return ManagedBy::StarPU; };
+
+  int GetMemoryNode() { return STARPU_MAIN_RAM; }
 
 private:
   SingleExtremaFinderStarPU searcher;

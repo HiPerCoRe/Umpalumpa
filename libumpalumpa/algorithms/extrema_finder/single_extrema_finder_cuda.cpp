@@ -26,10 +26,11 @@ namespace {// to avoid poluting
     {
       const auto &in = alg.Get().GetInputRef();
       const auto &s = alg.Get().GetSettings();
-      bool canProcess = (s.version == 1) && (s.location == SearchLocation::kEntire)
-                        && (s.type == SearchType::kMax) && (s.result == SearchResult::kValue)
+      bool canProcess = (s.GetVersion() == 1) && (s.GetLocation() == SearchLocation::kEntire)
+                        && (s.GetType() == SearchType::kMax)
+                        && (s.GetResult() == SearchResult::kValue)
                         && (!in.GetData().info.IsPadded())
-                        && (in.GetData().dataInfo.type == umpalumpa::data::DataType::kFloat);
+                        && (in.GetData().dataInfo.GetType() == umpalumpa::data::DataType::kFloat);
       if (!canProcess) return false;
 
       auto &size = in.GetData().info.GetSize();
@@ -64,18 +65,11 @@ namespace {// to avoid poluting
 
       // prepare input data
       auto &tuner = kttHelper.GetTuner();
-      auto argIn = tuner.AddArgumentVector<float>(in.GetData().ptr,
-        in.GetData().info.GetSize().total,
-        ktt::ArgumentAccessType::ReadOnly,
-        ktt::ArgumentMemoryLocation::Unified);
+      auto argIn = AddArgumentVector<float>(in.GetData(), ktt::ArgumentAccessType::ReadOnly);
+      auto argSize = tuner.AddArgumentScalar(in.GetData().info.GetSize().single);
 
       // prepare output data
-      auto argVals = tuner.AddArgumentVector<float>(out.GetValues().ptr,
-        out.GetValues().info.GetSize().total,
-        ktt::ArgumentAccessType::WriteOnly,
-        ktt::ArgumentMemoryLocation::Unified);
-
-      auto argSize = tuner.AddArgumentScalar(in.GetData().info.GetSize().single);
+      auto argVals = AddArgumentVector<float>(out.GetValues(), ktt::ArgumentAccessType::WriteOnly);
 
       tuner.SetArguments(definitionId, { argIn, argVals, argSize });
       // FIXME tmp, should be done as part of some utility method
@@ -125,10 +119,11 @@ namespace {// to avoid poluting
     {
       const auto &in = alg.Get().GetInputRef();
       const auto &s = alg.Get().GetSettings();
-      bool canProcess = (s.version == 1) && (s.location == SearchLocation::kRectCenter)
-                        && (s.type == SearchType::kMax) && (s.result == SearchResult::kLocation)
+      bool canProcess = (s.GetVersion() == 1) && (s.GetLocation() == SearchLocation::kRectCenter)
+                        && (s.GetType() == SearchType::kMax)
+                        && (s.GetResult() == SearchResult::kLocation)
                         && (!in.GetData().info.IsPadded())
-                        && (in.GetData().dataInfo.type == umpalumpa::data::DataType::kFloat);
+                        && (in.GetData().dataInfo.GetType() == umpalumpa::data::DataType::kFloat);
       if (!canProcess) return false;
 
       auto &size = in.GetData().info.GetSize();
@@ -178,19 +173,14 @@ namespace {// to avoid poluting
 
       // prepare input data
       auto &tuner = kttHelper.GetTuner();
-      auto argIn = tuner.AddArgumentVector<float>(in.GetData().ptr,
-        in.GetData().info.GetSize().total,
-        ktt::ArgumentAccessType::ReadOnly,
-        ktt::ArgumentMemoryLocation::Unified);
+      auto argIn = AddArgumentVector<float>(in.GetData(), ktt::ArgumentAccessType::ReadOnly);
 
       auto argInSize = tuner.AddArgumentScalar(in.GetData().info.GetSize());
 
       // prepare output data
       auto argVals = tuner.AddArgumentScalar(NULL);
-      auto argLocs = tuner.AddArgumentVector<float>(out.GetLocations().ptr,
-        out.GetValues().info.GetSize().total,
-        ktt::ArgumentAccessType::WriteOnly,
-        ktt::ArgumentMemoryLocation::Unified);
+      auto argLocs =
+        AddArgumentVector<float>(out.GetLocations(), ktt::ArgumentAccessType::WriteOnly);
 
       // FIXME these values should be read from settings
       // FIXME offset + rectDim cant be > inSize, add check

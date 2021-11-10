@@ -24,8 +24,9 @@ TEST_F(NAME, ImageCropping)
 
   SetUpFP(settings, inSize, outSize);
 
-  auto inP = AFP::InputData(Payload(inData.get(), *ldIn, *pdIn, "Input data"), Payload(filterData.get(), *ldFilter, *pdFilter, "Filter"));
-  auto outP = AFP::OutputData(Payload(outData.get(), *ldOut, *pdOut, "Output data"));
+  auto inP =
+    AFP::InputData(Payload(*ldIn, *pdIn, "Input data"), Payload(*ldFilter, *pdFilter, "Filter"));
+  auto outP = AFP::OutputData(Payload(*ldOut, *pdOut, "Output data"));
 
   testFP(outP, inP, settings);
 }
@@ -39,8 +40,9 @@ TEST_F(NAME, ImageNoCropping)
 
   SetUpFP(settings, size, size);
 
-  auto inP = AFP::InputData(Payload(inData.get(), *ldIn, *pdIn, "Input data"), Payload(filterData.get(), *ldFilter, *pdFilter, "Filter"));
-  auto outP = AFP::OutputData(Payload(outData.get(), *ldOut, *pdOut, "Output data"));
+  auto inP =
+    AFP::InputData(Payload(*ldIn, *pdIn, "Input data"), Payload(*ldFilter, *pdFilter, "Filter"));
+  auto outP = AFP::OutputData(Payload(*ldOut, *pdOut, "Output data"));
 
   testFP(outP, inP, settings);
 }
@@ -55,8 +57,9 @@ TEST_F(NAME, ImageNormalize)
 
   SetUpFP(settings, size, size);
 
-  auto inP = AFP::InputData(Payload(inData.get(), *ldIn, *pdIn, "Input data"), Payload(filterData.get(), *ldFilter, *pdFilter, "Filter"));
-  auto outP = AFP::OutputData(Payload(outData.get(), *ldOut, *pdOut, "Output data"));
+  auto inP =
+    AFP::InputData(Payload(*ldIn, *pdIn, "Input data"), Payload(*ldFilter, *pdFilter, "Filter"));
+  auto outP = AFP::OutputData(Payload(*ldOut, *pdOut, "Output data"));
 
   testFP(outP, inP, settings);
 }
@@ -71,8 +74,9 @@ TEST_F(NAME, ImageCentering)
 
   SetUpFP(settings, size, size);
 
-  auto inP = AFP::InputData(Payload(inData.get(), *ldIn, *pdIn, "Input data"), Payload(filterData.get(), *ldFilter, *pdFilter, "Filter"));
-  auto outP = AFP::OutputData(Payload(outData.get(), *ldOut, *pdOut, "Output data"));
+  auto inP =
+    AFP::InputData(Payload(*ldIn, *pdIn, "Input data"), Payload(*ldFilter, *pdFilter, "Filter"));
+  auto outP = AFP::OutputData(Payload(*ldOut, *pdOut, "Output data"));
 
   testFP(outP, inP, settings);
 }
@@ -89,8 +93,9 @@ TEST_F(NAME, ImageCropNormalizeCenter)
 
   SetUpFP(settings, inSize, outSize);
 
-  auto inP = AFP::InputData(Payload(inData.get(), *ldIn, *pdIn, "Input data"), Payload(filterData.get(), *ldFilter, *pdFilter, "Filter"));
-  auto outP = AFP::OutputData(Payload(outData.get(), *ldOut, *pdOut, "Output data"));
+  auto inP =
+    AFP::InputData(Payload(*ldIn, *pdIn, "Input data"), Payload(*ldFilter, *pdFilter, "Filter"));
+  auto outP = AFP::OutputData(Payload(*ldOut, *pdOut, "Output data"));
 
   testFP(outP, inP, settings);
 }
@@ -105,9 +110,9 @@ TEST_F(NAME, Filtering)
 
   SetUpFP(settings, size, size);
 
-  auto inP = AFP::InputData(Payload(inData.get(), *ldIn, *pdIn, "Input data"), Payload(filterData.get(), *ldFilter, *pdFilter, "Filter"));
-  auto outP = AFP::OutputData(Payload(outData.get(), *ldOut, *pdOut, "Output data"));
+  auto inP =
+    AFP::InputData(Payload(*ldIn, *pdIn, "Input data"), Payload(*ldFilter, *pdFilter, "Filter"));
+  auto outP = AFP::OutputData(Payload(*ldOut, *pdOut, "Output data"));
 
   testFP(outP, inP, settings);
 }
-

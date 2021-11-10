@@ -30,35 +30,35 @@ namespace {// to avoid poluting
 
       const auto &s = alg.GetSettings();
       if (s.GetCenter()) {
-        if (in.GetData1().ptr == in.GetData2().ptr) {
+        if (in.GetData1().GetPtr() == in.GetData2().GetPtr()) {
           correlate2D<float, true, true>(
-            reinterpret_cast<std::complex<float> *>(out.GetCorrelations().ptr),
-            reinterpret_cast<std::complex<float> *>(in.GetData1().ptr),
+            reinterpret_cast<std::complex<float> *>(out.GetCorrelations().GetPtr()),
+            reinterpret_cast<std::complex<float> *>(in.GetData1().GetPtr()),
             in.GetData1().info.GetSize(),
-            reinterpret_cast<std::complex<float> *>(in.GetData2().ptr),
+            reinterpret_cast<std::complex<float> *>(in.GetData2().GetPtr()),
             in.GetData2().info.GetSize().n);
         } else {
           correlate2D<float, true, false>(
-            reinterpret_cast<std::complex<float> *>(out.GetCorrelations().ptr),
-            reinterpret_cast<std::complex<float> *>(in.GetData1().ptr),
+            reinterpret_cast<std::complex<float> *>(out.GetCorrelations().GetPtr()),
+            reinterpret_cast<std::complex<float> *>(in.GetData1().GetPtr()),
             in.GetData1().info.GetSize(),
-            reinterpret_cast<std::complex<float> *>(in.GetData2().ptr),
+            reinterpret_cast<std::complex<float> *>(in.GetData2().GetPtr()),
             in.GetData2().info.GetSize().n);
         }
       } else {
-        if (in.GetData1().ptr == in.GetData2().ptr) {
+        if (in.GetData1().GetPtr() == in.GetData2().GetPtr()) {
           correlate2D<float, false, true>(
-            reinterpret_cast<std::complex<float> *>(out.GetCorrelations().ptr),
-            reinterpret_cast<std::complex<float> *>(in.GetData1().ptr),
+            reinterpret_cast<std::complex<float> *>(out.GetCorrelations().GetPtr()),
+            reinterpret_cast<std::complex<float> *>(in.GetData1().GetPtr()),
             in.GetData1().info.GetSize(),
-            reinterpret_cast<std::complex<float> *>(in.GetData2().ptr),
+            reinterpret_cast<std::complex<float> *>(in.GetData2().GetPtr()),
             in.GetData2().info.GetSize().n);
         } else {
           correlate2D<float, false, false>(
-            reinterpret_cast<std::complex<float> *>(out.GetCorrelations().ptr),
-            reinterpret_cast<std::complex<float> *>(in.GetData1().ptr),
+            reinterpret_cast<std::complex<float> *>(out.GetCorrelations().GetPtr()),
+            reinterpret_cast<std::complex<float> *>(in.GetData1().GetPtr()),
             in.GetData1().info.GetSize(),
-            reinterpret_cast<std::complex<float> *>(in.GetData2().ptr),
+            reinterpret_cast<std::complex<float> *>(in.GetData2().GetPtr()),
             in.GetData2().info.GetSize().n);
         }
       }

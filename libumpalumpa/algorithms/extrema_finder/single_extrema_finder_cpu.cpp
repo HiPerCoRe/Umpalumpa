@@ -13,10 +13,10 @@ namespace {// to avoid poluting
     {
       const auto &in = alg.Get().GetInputRef();
       const auto &s = alg.Get().GetSettings();
-      return (s.version == 1) && (!in.GetData().info.IsPadded())
-             && (s.location == SearchLocation::kEntire) && (s.type == SearchType::kMax)
-             && (s.result == SearchResult::kValue)
-             && (in.GetData().dataInfo.type == umpalumpa::data::DataType::kFloat);
+      return (s.GetVersion() == 1) && (!in.GetData().info.IsPadded())
+             && (s.GetLocation() == SearchLocation::kEntire) && (s.GetType() == SearchType::kMax)
+             && (s.GetResult() == SearchResult::kValue)
+             && (in.GetData().dataInfo.GetType() == umpalumpa::data::DataType::kFloat);
     }
 
     std::string GetName() const override { return "Strategy1"; }
@@ -27,8 +27,8 @@ namespace {// to avoid poluting
       if (!in.GetData().IsValid() || in.GetData().IsEmpty() || !out.GetValues().IsValid()
           || out.GetValues().IsEmpty())
         return false;
-      FindSingleExtremaValXDCPU(reinterpret_cast<float *>(out.GetValues().ptr),
-        reinterpret_cast<float *>(in.GetData().ptr),
+      FindSingleExtremaValXDCPU(reinterpret_cast<float *>(out.GetValues().GetPtr()),
+        reinterpret_cast<float *>(in.GetData().GetPtr()),
         in.GetData().info.GetSize(),
         std::greater<float>());
       return true;
@@ -44,10 +44,10 @@ namespace {// to avoid poluting
     {
       const auto &in = alg.Get().GetInputRef();
       const auto &s = alg.Get().GetSettings();
-      return (s.version == 1) && (!in.GetData().info.IsPadded())
-             && (s.location == SearchLocation::kRectCenter) && (s.type == SearchType::kMax)
-             && (s.result == SearchResult::kLocation)
-             && (in.GetData().dataInfo.type == umpalumpa::data::DataType::kFloat);
+      return (s.GetVersion() == 1) && (!in.GetData().info.IsPadded())
+             && (s.GetLocation() == SearchLocation::kRectCenter)
+             && (s.GetType() == SearchType::kMax) && (s.GetResult() == SearchResult::kLocation)
+             && (in.GetData().dataInfo.GetType() == umpalumpa::data::DataType::kFloat);
     }
 
     std::string GetName() const override { return "Strategy2"; }
@@ -67,9 +67,10 @@ namespace {// to avoid poluting
       size_t searchRectOffsetX = (in.GetData().info.GetPaddedSize().x - searchRectWidth) / 2;
       size_t searchRectOffsetY = (in.GetData().info.GetPaddedSize().y - searchRectHeight) / 2;
 
-      FindSingleExtremaInRectangle2DCPU<false, true>(reinterpret_cast<float *>(out.GetValues().ptr),
-        reinterpret_cast<float *>(out.GetLocations().ptr),
-        reinterpret_cast<float *>(in.GetData().ptr),
+      FindSingleExtremaInRectangle2DCPU<false, true>(
+        reinterpret_cast<float *>(out.GetValues().GetPtr()),
+        reinterpret_cast<float *>(out.GetLocations().GetPtr()),
+        reinterpret_cast<float *>(in.GetData().GetPtr()),
         searchRectOffsetX,
         searchRectOffsetY,
         data::Size(searchRectWidth, searchRectHeight, 1, 1),

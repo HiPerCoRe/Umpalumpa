@@ -80,8 +80,9 @@ class AlgorithmManagerTests : public Test
 protected:
   // Constructor is called before every test
   AlgorithmManagerTests()
-    : settings(), size(42, 1, 1, 1), ld(size), pd(0, DataType::kFloat),
-      inP(Payload(nullptr, ld, pd, "Input data")), outP(Payload(nullptr, ld, pd, "Output data"))
+    : settings(), size(42, 1, 1, 1), ld(size),
+      pd(nullptr, 0, DataType::kFloat, ManagedBy::Manually, 0), inP(Payload(ld, pd, "Input data")),
+      outP(Payload(ld, pd, "Output data"))
   {
     // NOTE AlgorithmManager is a singleton and therefore has a global state. It needs to be reset
     // before each test.
@@ -351,4 +352,3 @@ TEST_F(AlgorithmManagerTests, multiple_different_strategies_unregistered_correct
   }// algo1 is destroyed, therefore its strategy is unregistered
   ASSERT_TRUE(AlgorithmManager::Get().GetRegisteredStrategies().empty());
 }
-

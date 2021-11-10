@@ -15,6 +15,8 @@ public:
   virtual ACorrelation &GetTransformer() = 0;
   virtual void *Allocate(size_t bytes) = 0;
   virtual void Free(void *ptr) = 0;
+  virtual ManagedBy GetManager() = 0;
+  virtual int GetMemoryNode() = 0;
 
   // Works correctly only with float
   void testCorrelationSimple(ACorrelation::OutputData &out,
@@ -48,9 +50,9 @@ protected:
     const Settings &settings,
     InputProvider ip)
   {
-    auto *input1 = reinterpret_cast<std::complex<float> *>(in.GetData1().ptr);
-    auto *input2 = reinterpret_cast<std::complex<float> *>(in.GetData2().ptr);
-    auto *output = reinterpret_cast<std::complex<float> *>(out.GetCorrelations().ptr);
+    auto *input1 = reinterpret_cast<std::complex<float> *>(in.GetData1().GetPtr());
+    auto *input2 = reinterpret_cast<std::complex<float> *>(in.GetData2().GetPtr());
+    auto *output = reinterpret_cast<std::complex<float> *>(out.GetCorrelations().GetPtr());
     auto inSize = in.GetData1().info.GetSize();
     auto inSize2 = in.GetData2().info.GetSize();
     // auto outSize = out.GetCorrelations().info.GetSize();
@@ -165,30 +167,33 @@ protected:
 
     ldIn1 = std::make_unique<FourierDescriptor>(
       inSize, PaddingDescriptor(), FourierDescriptor::FourierSpaceDescriptor{});
-    auto inputSizeInBytes = ldIn1->GetPaddedSize().total * Sizeof(DataType::kComplexFloat);
-    pdIn1 = std::make_unique<PhysicalDescriptor>(inputSizeInBytes, DataType::kComplexFloat);
 
-    inData1 = std::shared_ptr<void>(Allocate(pdIn1->bytes), GetFree());
-    memset(inData1.get(), 0, pdIn1->bytes);
+    auto inputSizeInBytes = ldIn1->GetPaddedSize().total * Sizeof(DataType::kComplexFloat);
+    inData1 = std::shared_ptr<void>(Allocate(inputSizeInBytes), GetFree());
+    memset(inData1.get(), 0, inputSizeInBytes);
+    pdIn1 = std::make_unique<PhysicalDescriptor>(
+      inData1.get(), inputSizeInBytes, DataType::kComplexFloat, GetManager(), GetMemoryNode());
 
     ldIn2 = std::make_unique<FourierDescriptor>(
       in2Size, PaddingDescriptor(), FourierDescriptor::FourierSpaceDescriptor{});
-    auto input2SizeInBytes = ldIn2->GetPaddedSize().total * Sizeof(DataType::kComplexFloat);
-    pdIn2 = std::make_unique<PhysicalDescriptor>(input2SizeInBytes, DataType::kComplexFloat);
 
+    auto input2SizeInBytes = ldIn2->GetPaddedSize().total * Sizeof(DataType::kComplexFloat);
     if (isWithin) {
       inData2 = inData1;
     } else {
-      inData2 = std::shared_ptr<void>(Allocate(pdIn2->bytes), GetFree());
-      memset(inData2.get(), 0, pdIn2->bytes);
+      inData2 = std::shared_ptr<void>(Allocate(input2SizeInBytes), GetFree());
+      memset(inData2.get(), 0, input2SizeInBytes);
     }
+    pdIn2 = std::make_unique<PhysicalDescriptor>(
+      inData2.get(), input2SizeInBytes, DataType::kComplexFloat, GetManager(), GetMemoryNode());
 
     ldOut = std::make_unique<FourierDescriptor>(
       outSize, PaddingDescriptor(), FourierDescriptor::FourierSpaceDescriptor{});
-    auto outputSizeInBytes = ldOut->GetPaddedSize().total * Sizeof(DataType::kComplexFloat);
-    pdOut = std::make_unique<PhysicalDescriptor>(outputSizeInBytes, DataType::kComplexFloat);
 
-    outData = std::shared_ptr<void>(Allocate(pdOut->bytes), GetFree());
+    auto outputSizeInBytes = ldOut->GetPaddedSize().total * Sizeof(DataType::kComplexFloat);
+    outData = std::shared_ptr<void>(Allocate(outputSizeInBytes), GetFree());
+    pdOut = std::make_unique<PhysicalDescriptor>(
+      outData.get(), outputSizeInBytes, DataType::kComplexFloat, GetManager(), GetMemoryNode());
   }
 
   std::shared_ptr<void> inData1;

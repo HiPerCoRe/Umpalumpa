@@ -29,6 +29,10 @@ public:
 
   FFTCUDA &GetTransformer() override { return transformer; }
 
+  ManagedBy GetManager() override { return ManagedBy::CUDA; };
+
+  int GetMemoryNode() override { return 0; }
+
 protected:
   FFTCUDA transformer = FFTCUDA(0);
 };

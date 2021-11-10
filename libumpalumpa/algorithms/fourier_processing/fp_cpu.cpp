@@ -29,11 +29,11 @@ namespace {// to avoid poluting
         return false;
 
       const auto &s = alg.GetSettings();
-      scaleFFT2DCPU(reinterpret_cast<std::complex<float> *>(in.GetData().ptr),
-        reinterpret_cast<std::complex<float> *>(out.GetData().ptr),
+      scaleFFT2DCPU(reinterpret_cast<std::complex<float> *>(in.GetData().GetPtr()),
+        reinterpret_cast<std::complex<float> *>(out.GetData().GetPtr()),
         in.GetData().info.GetSize(),
         out.GetData().info.GetSize(),
-        reinterpret_cast<float *>(in.GetFilter().ptr),
+        reinterpret_cast<float *>(in.GetFilter().GetPtr()),
         1.f / static_cast<float>(in.GetData().info.GetPaddedSpatialSize().single),
         s.GetApplyFilter(),
         s.GetNormalize(),

@@ -100,30 +100,18 @@ namespace {// to avoid poluting
 
       auto &tuner = kttHelper.GetTuner();
       // prepare input data
-      auto argIn = tuner.AddArgumentVector<float2>(in.GetData().ptr,
-        in.GetData().info.GetSize().total,
-        ktt::ArgumentAccessType::ReadOnly,// FIXME these information should be stored in the
-                                          // physical descriptor
-        ktt::ArgumentMemoryLocation::Unified);// ^
+      auto argIn = AddArgumentVector<float2>(in.GetData(), ktt::ArgumentAccessType::ReadOnly);
 
       // prepare output data
-      auto argOut = tuner.AddArgumentVector<float2>(out.GetData().ptr,
-        out.GetData().info.GetSize().total,
-        ktt::ArgumentAccessType::WriteOnly,// FIXME these information should be stored in the
-                                           // physical descriptor
-        ktt::ArgumentMemoryLocation::Unified);// ^
+      auto argOut = AddArgumentVector<float2>(out.GetData(), ktt::ArgumentAccessType::WriteOnly);
 
       auto inSize = tuner.AddArgumentScalar(in.GetData().info.GetSize());
       auto outSize = tuner.AddArgumentScalar(out.GetData().info.GetSize());
 
       const auto &s = alg.Get().GetSettings();
-      auto filter = [&s, &tuner, &in]() {
+      auto filter = [&s, &tuner, &in, this]() {
         if (s.GetApplyFilter()) {
-          return tuner.AddArgumentVector<float>(in.GetFilter().ptr,
-            in.GetFilter().info.GetSize().total,
-            ktt::ArgumentAccessType::ReadOnly,// FIXME these information should be stored in the
-                                              // physical descriptor
-            ktt::ArgumentMemoryLocation::Unified);// ^
+          return AddArgumentVector<float>(in.GetFilter(), ktt::ArgumentAccessType::ReadOnly);
         }
         return tuner.AddArgumentScalar(NULL);
       }();

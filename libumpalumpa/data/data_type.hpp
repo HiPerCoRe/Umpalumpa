@@ -5,7 +5,7 @@ namespace data {
 
   enum class DataType { kVoid, kFloat, kDouble, kComplexFloat, kComplexDouble };
 
-  static size_t Sizeof(DataType t)
+  [[maybe_unused]] static size_t Sizeof(DataType t)
   {
     switch (t) {
     case DataType::kVoid:

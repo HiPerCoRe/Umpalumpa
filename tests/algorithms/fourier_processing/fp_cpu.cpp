@@ -25,6 +25,10 @@ public:
 
   FPCPU &GetFourierProcessor() override { return fourierProcessor; }
 
+  ManagedBy GetManager() override { return ManagedBy::Manually; };
+
+  int GetMemoryNode() override { return 0; }
+
 protected:
   FPCPU fourierProcessor;
 };

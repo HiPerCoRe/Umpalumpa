@@ -3,6 +3,7 @@
 #include <libumpalumpa/algorithms/basic_algorithm.hpp>
 #include <libumpalumpa/tuning/ktt_base.hpp>
 #include <libumpalumpa/tuning/tunable_strategy.hpp>
+#include <libumpalumpa/utils/ktt.hpp>
 
 namespace umpalumpa::algorithm {
 
@@ -48,7 +49,13 @@ public:
 
     return initSuccessful;
   }
+
+  template<typename T, typename P>
+  auto AddArgumentVector(const data::Payload<P> &p, ktt::ArgumentAccessType at)
+  {
+    return kttHelper.GetTuner().AddArgumentVector<T>(
+      p.GetPtr(), p.info.GetSize().total, at, utils::KTTUtils::GetMemoryNode(p.dataInfo));
+  }
 };
 
 }// namespace umpalumpa::algorithm
-

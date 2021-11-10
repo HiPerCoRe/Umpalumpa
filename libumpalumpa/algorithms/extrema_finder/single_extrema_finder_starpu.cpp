@@ -120,14 +120,26 @@ bool SingleExtremaFinderStarPU::Execute(const StarpuOutputData &out, const Starp
 
 bool SingleExtremaFinderStarPU::ExecuteImpl(const StarpuOutputData &out, const StarpuInputData &in)
 {
+  auto createArgs = [this]() {
+    // need to use malloc, because task can only call free
+    auto *args = reinterpret_cast<ExecuteArgs *>(malloc(sizeof(ExecuteArgs)));
+    args->algs = &this->algs;
+    args->settings = this->GetSettings();
+    return args;
+  };
   struct starpu_task *task = starpu_task_create();
   task->handles[0] = out.GetValues()->GetHandle();
   task->handles[1] = out.GetLocations()->GetHandle();
   task->handles[2] = in.GetData()->GetHandle();
-  task->workerids = CreateWorkerMask(task->workerids_len,
+  task->workerids = utils::StarPUUtils::CreateWorkerMask(task->workerids_len,
     algs);// FIXME bug in the StarPU? If the mask is completely 0, codelet is being invoked anyway
-  task->cl_arg = new ExecuteArgs{ this->GetSettings(), &algs };
+  task->cl_arg = createArgs();
   task->cl_arg_size = sizeof(ExecuteArgs);
+  task->cl_arg_free = 1;
+  // make sure we free the mask
+  task->callback_func = [](void *) { /* empty on purpose */ };
+  task->callback_arg = task->workerids;
+  task->callback_arg_free = 1;
   task->cl = [] {
     static starpu_codelet c = {};
     c.where = STARPU_CUDA | STARPU_CPU;
