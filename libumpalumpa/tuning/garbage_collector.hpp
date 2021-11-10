@@ -9,14 +9,8 @@ namespace umpalumpa {
  */
 class GarbageCollector
 {
-  using KTTIdentifier = std::reference_wrapper<utils::KTTHelper>;
-  struct KTTIdentifierCmp
-  {
-    bool operator()(const KTTIdentifier &l, const KTTIdentifier &r) const
-    {
-      return &l.get() < &r.get();
-    }
-  };
+  // KTTHelper doesn't have anything else that can be used as a key in a map.
+  using KTTIdentifier = utils::KTTHelper *;
 
   /**
    * Internal class used for tracking and removing the KTT ids.
@@ -74,10 +68,25 @@ class GarbageCollector
         data.erase(id);
       }
     }
+
+    /**
+     * Returns true when the IdTracker doesn't contain any data.
+     */
+    bool IsEmpty() const { return data.empty(); }
   };
 
   // We need to distinguish ids of different KTTs
-  std::map<KTTIdentifier, IdTracker, KTTIdentifierCmp> kttIds;
+  std::map<KTTIdentifier, IdTracker> kttIds;
+
+  /**
+   * Registers KTTHelper and its KTT tuner for tracking the ids, if it wasn't registered before.
+   * Returns KTTIdentifier used for accessing the correct IdTracker.
+   */
+  KTTIdentifier GetIdentifier(utils::KTTHelper &kttHelper)
+  {
+    kttIds.try_emplace(&kttHelper, kttHelper);
+    return &kttHelper;
+  }
 
 public:
   /**
@@ -85,26 +94,27 @@ public:
    * definition ids. If for some definition id the reference counter drops to zero, the definition
    * id is removed from KTT.
    */
-  void CleanupIds(KTTIdentifier kttIdentifier,
+  void CleanupIds(utils::KTTHelper &kttHelper,
     const std::vector<ktt::KernelId> &kernelIds,
     const std::vector<ktt::KernelDefinitionId> &definitionIds)
   {
-    kttIds.try_emplace(kttIdentifier, kttIdentifier.get());
+    auto kttIdentifier = GetIdentifier(kttHelper);
     auto &tracker = kttIds.at(kttIdentifier);
     std::lock_guard<std::mutex> lck(tracker.kttHelper.GetMutex());
 
     // Order of cleanup is important
     for (auto kId : kernelIds) { tracker.kttHelper.GetTuner().RemoveKernel(kId); }
     for (auto dId : definitionIds) { tracker.Cleanup(dId); }
+    // if (tracker.IsEmpty()) { kttIds.erase(kttIdentifier); }// maybe not needed
   }
 
   /**
    * Increases the reference counter for the specified kernel definition id.
    * If the specified id is not being tracked yet, it gets created.
    */
-  void RegisterKernelDefinitionId(ktt::KernelDefinitionId id, KTTIdentifier kttIdentifier)
+  void RegisterKernelDefinitionId(ktt::KernelDefinitionId id, utils::KTTHelper &kttHelper)
   {
-    kttIds.try_emplace(kttIdentifier, kttIdentifier.get());
+    auto kttIdentifier = GetIdentifier(kttHelper);
     // If 'id' isn't present yet, creates a new DefinitionData
     // In the end increases the reference counter
     kttIds.at(kttIdentifier).data[id].referenceCounter++;
@@ -115,9 +125,9 @@ public:
    */
   void RegisterArgumentIds(ktt::KernelDefinitionId definitionId,
     const std::vector<ktt::ArgumentId> &argumentIds,
-    KTTIdentifier kttIdentifier)
+    utils::KTTHelper &kttHelper)
   {
-    kttIds.try_emplace(kttIdentifier, kttIdentifier.get());
+    auto kttIdentifier = GetIdentifier(kttHelper);
     auto &v = kttIds.at(kttIdentifier).data.at(definitionId).arguments;
     v.insert(v.end(), argumentIds.begin(), argumentIds.end());
   }
