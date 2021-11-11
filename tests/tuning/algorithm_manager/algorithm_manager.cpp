@@ -86,7 +86,7 @@ protected:
   {
     // NOTE AlgorithmManager is a singleton and therefore has a global state. It needs to be reset
     // before each test.
-    AlgorithmManager::Get().Reset();
+    AlgorithmManager::Get().Cleanup();
   }
 
   const Settings settings;

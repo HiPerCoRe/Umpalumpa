@@ -68,7 +68,7 @@ public:
    * Resets the AlgorithmManager, clearing all the saved data (registered strategies, garbage
    * collection metadata).
    */
-  void Reset();
+  void Cleanup();
 
   /**
    * Returns a KTT's kernel definition Id. If the specified kernel definition already exists,

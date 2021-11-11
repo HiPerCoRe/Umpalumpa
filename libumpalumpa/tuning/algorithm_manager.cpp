@@ -95,7 +95,7 @@ ktt::KernelConfiguration AlgorithmManager::GetBestConfiguration(size_t stratHash
   return {};// or throw?
 }
 
-void AlgorithmManager::Reset()
+void AlgorithmManager::Cleanup()
 {
   // Causes deadlock because during destruction we call Unregister
   // std::lock_guard<std::mutex> lck(mutex);
