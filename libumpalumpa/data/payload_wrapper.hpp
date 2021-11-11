@@ -40,7 +40,10 @@ template<typename... Args> struct PayloadWrapper
   }
 
   /**
-   * TODO documentation
+   * Creates subset of all the Payloads in the PayloadWrapper.
+   *
+   * Intended usage: Derived class can use this method to get std::tuple of Payload subsets
+   * to construct new instance.
    */
   auto Subset(size_t startN, size_t count) const
   {
