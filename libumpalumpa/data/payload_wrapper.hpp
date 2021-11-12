@@ -17,7 +17,7 @@ template<typename... Args> struct PayloadWrapper
    **/
   bool IsValid() const
   {
-    return std::apply([this](const auto &... p) { return ReduceBools(IsValid(p)...); }, payloads);
+    return std::apply([this](const auto &...p) { return ReduceBools(IsValid(p)...); }, payloads);
   }
 
   /**
@@ -36,42 +36,58 @@ template<typename... Args> struct PayloadWrapper
   auto CopyWithoutData() const
   {
     return std::apply(
-      [this](const auto &... p) { return std::make_tuple(RemoveData(p)...); }, payloads);
+      [this](const auto &...p) { return std::make_tuple(RemoveData(p)...); }, payloads);
   }
 
   /**
-   * Creates subset of all the Payloads in the PayloadWrapper.
-   *
-   * Intended usage: Derived class can use this method to get std::tuple of Payload subsets
-   * to construct new instance.
-   */
-  auto Subset(size_t startN, size_t count) const
-  {
-    return std::apply([this, startN, count](
-                        const auto &... p) { return std::make_tuple(Subset(p, startN, count)...); },
-      payloads);
-  }
+   * Type of all Payloads
+   * Internally we store only references to them
+   **/
+  typedef std::tuple<Args...> PayloadCollection;
 
 protected:
-  // NOTE not sure if the following constructor is needed
-  // All 'args' would have to be copy-constructible
-  // PayloadWrapper(const Args &... args) : payload(args...) {}
-
-  PayloadWrapper(Args &&... args) : payloads(std::move(args)...) {}
-  PayloadWrapper(std::tuple<Args...> &&t) : payloads(std::move(t)) {}
-
   /**
    * Specific Payload can be accessed using std::get<N>(payloads) function, where N is a position
    * of the requested Payload.
    */
-  const std::tuple<Args...> payloads;
+  const std::tuple<Args &...> payloads;// holds references to all Payloads
+
+  // NOTE not sure if the following constructor is needed
+  // All 'args' would have to be copy-constructible
+  // PayloadWrapper(const Args &... args) : payload(args...) {}
+
+  /**
+   * Create a wrapper of passed Payloads.
+   * References to those Payloads are stored, i.e. the wrapper is not taking their ownership
+   * Constructor for cases when you want to directly specify Payloads to be wrapped:
+   * PayloadWrapper(payload1, payload2);
+   **/
+  PayloadWrapper(Args &...args) : payloads(args...) {}
+
+  /**
+   * Create a wrapper of passed collection of Payloads.
+   * References to those Payloads are stored, i.e. the wrapper is not taking their ownership
+   * Constructor for cases when you want to pass a std::tuple of Payloads to be wrapped:
+   * wrapper 1 = ...
+   * auto emptyPayloads = wrapper.CopyWithoutData();
+   * auto emptyWrapper = PayloadWrapper(emptyPayloads);
+   **/
+  PayloadWrapper(std::tuple<Args...> &t) : payloads(MakeTupleRef(t)) {}
 
 private:
-  template<typename T> T RemoveData(const T &t) const { return t.CopyWithoutData(); }
-  template<typename T> T Subset(const T &t, size_t startN, size_t count) const
+  template<std::size_t... Is>
+  std::tuple<Args &...> MakeTupleRef(std::tuple<Args...> &tuple, std::index_sequence<Is...>)
   {
-    return t.Subset(startN, count);
+    return std::tie(std::get<Is>(tuple)...);
   }
+
+  std::tuple<Args &...> MakeTupleRef(std::tuple<Args...> &tuple)
+  {
+    return MakeTupleRef(tuple, std::make_index_sequence<sizeof...(Args)>());
+  }
+
+  template<typename T> T RemoveData(const T &t) const { return t.CopyWithoutData(); }
+
   template<typename T> bool IsValid(const T &t) const { return t.IsValid(); }
 
   template<typename T> bool AreEquivalent(const T &t, const T &ref) const
@@ -80,14 +96,15 @@ private:
   }
 
   template<size_t... I>
-  auto InternalEquivalent(const std::tuple<Args...> &t1,
-    const std::tuple<Args...> &t2,
+  auto InternalEquivalent(const std::tuple<Args &...> &t1,
+    const std::tuple<Args &...> &t2,
     std::index_sequence<I...>) const
   {
     return ReduceBools(AreEquivalent(std::get<I>(t1), std::get<I>(t2))...);
   }
 
   bool ReduceBools(bool b, bool rest...) const { return b && ReduceBools(rest); }
+
   bool ReduceBools(bool b) const { return b; }
 };
 }// namespace umpalumpa::data

@@ -32,8 +32,10 @@ public:
     // test that input is not complete garbage
     if (!this->IsValid(out, in, s)) { return false; };
     // store information about init
-    this->outputRef = std::make_unique<OutputData>(out.CopyWithoutData());
-    this->inputRef = std::make_unique<InputData>(in.CopyWithoutData());
+    this->emptyOutputPayloads = std::make_unique<OPC>(out.CopyWithoutData());
+    this->outputRef = std::make_unique<OutputData>(*emptyOutputPayloads);
+    this->emptyInputPayloads = std::make_unique<IPC>(in.CopyWithoutData());
+    this->inputRef = std::make_unique<InputData>(*emptyInputPayloads);
     this->settings = std::make_unique<Settings>(s);
     // check if we have working implementation
     if (this->InitImpl()) {
@@ -153,8 +155,12 @@ protected:
    **/
   virtual std::vector<std::unique_ptr<Strategy>> GetStrategies() const { return {}; };
 
-
 private:
+  typedef typename O::PayloadCollection OPC;
+  typedef typename I::PayloadCollection IPC;
+
+  std::unique_ptr<OPC> emptyOutputPayloads;
+  std::unique_ptr<IPC> emptyInputPayloads;
   std::unique_ptr<OutputData> outputRef;
   std::unique_ptr<InputData> inputRef;
   std::unique_ptr<Settings> settings;

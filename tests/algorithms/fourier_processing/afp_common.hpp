@@ -1,118 +1,226 @@
 #pragma once
 
-#include <iostream>
 #include <gtest/gtest.h>
-#include <libumpalumpa/algorithms/fourier_transformation/settings.hpp>
-#include <libumpalumpa/algorithms/fourier_transformation/locality.hpp>
-#include <libumpalumpa/algorithms/fourier_transformation/direction.hpp>
 #include <libumpalumpa/algorithms/fourier_processing/afp.hpp>
-#include <libumpalumpa/data/payload.hpp>
-#include <libumpalumpa/data/fourier_descriptor.hpp>
 #include <complex>
 
-namespace ft = umpalumpa::fourier_transformation;
 using namespace umpalumpa::fourier_processing;
 using namespace umpalumpa::data;
 
-TEST_F(NAME, ImageCropping)
+/**
+ * Class responsible for testing.
+ * Specific implementation of the algorithms should inherit from it.
+ **/
+class FP_Tests : public ::testing::Test
 {
-  ft::Locality locality = ft::Locality::kOutOfPlace;
-  Settings settings(locality);
+protected:
+  virtual AFP &GetFourierProcessor() = 0;
+  /**
+   *  Methods to create / delete Payload Descriptor (i.e. to create / delete data).
+   **/
+  virtual PhysicalDescriptor Create(size_t bytes, DataType type) = 0;
+  virtual void Remove(const PhysicalDescriptor &pd) = 0;
+  /**
+   * Methods that will register some memory in the memory manager, if any.
+   **/
+  virtual void Register(const PhysicalDescriptor &pd) = 0;
+  virtual void Unregister(const PhysicalDescriptor &pd) = 0;
+  /**
+   * Methods that will bring data to the current memory node.
+   * These methods will be called before / after the results are checked.
+   * If necessary, these method should be blocking.
+   **/
+  virtual void Acquire(const PhysicalDescriptor &pd) = 0;
+  virtual void Release(const PhysicalDescriptor &pd) = 0;
 
-  Size inSize(10, 10, 1, 1);
-  Size outSize(5, 5, 1, 1);
+  auto CreatePayloadIn(const Settings &settings, const Size &size)
+  {
+    auto fd = FourierDescriptor::FourierSpaceDescriptor{};
+    auto ld = FourierDescriptor(size, PaddingDescriptor(), fd);
+    auto bytes = ld.Elems() * Sizeof(DataType::kComplexFloat);
+    auto pd = Create(bytes, DataType::kComplexFloat);
+    return Payload(ld, std::move(pd), "Input data");
+  }
 
-  SetUpFP(settings, inSize, outSize);
+  auto CreatePayloadOut(const Settings &settings, const Size &size)
+  {
+    auto fd = FourierDescriptor::FourierSpaceDescriptor{};
+    auto ld = FourierDescriptor(size, PaddingDescriptor(), fd);
+    auto bytes = ld.Elems() * Sizeof(DataType::kComplexFloat);
+    auto pd = [settings, this, bytes]() {
+      if (settings.IsOutOfPlace()) {
+        return Create(bytes, DataType::kComplexFloat);
+      } else {
+        // TODO find out if in StarPU we can use the same Physical Descriptor
+        // or if we have to create a new handle
+        throw std::runtime_error("Not implemented yet!");
+      }
+    }();
+    return Payload(ld, std::move(pd), "Output data");
+  }
 
-  auto inP =
-    AFP::InputData(Payload(*ldIn, *pdIn, "Input data"), Payload(*ldFilter, *pdFilter, "Filter"));
-  auto outP = AFP::OutputData(Payload(*ldOut, *pdOut, "Output data"));
+  auto CreatePayloadFilter(const Settings &settings, const Size &size)
+  {
+    auto ld = LogicalDescriptor(size);
+    auto bytes = ld.Elems() * Sizeof(DataType::kFloat);
+    auto pd = Create(bytes, DataType::kFloat);
+    return Payload(ld, std::move(pd), "Filter");
+  }
 
-  testFP(outP, inP, settings);
-}
+  void SetUp(const Settings &settings, const Size &sizeIn, const Size &sizeOut)
+  {
+    pIn = std::make_unique<Payload<FourierDescriptor>>(CreatePayloadIn(settings, sizeIn));
+    Register(pIn->dataInfo);
 
-TEST_F(NAME, ImageNoCropping)
-{
-  ft::Locality locality = ft::Locality::kOutOfPlace;
-  Settings settings(locality);
+    pOut = std::make_unique<Payload<FourierDescriptor>>(CreatePayloadIn(settings, sizeOut));
+    Register(pOut->dataInfo);
 
-  Size size(10, 10, 1, 1);
+    pFilter = std::make_unique<Payload<LogicalDescriptor>>(CreatePayloadFilter(settings, sizeOut));
+    Register(pFilter->dataInfo);
+  }
 
-  SetUpFP(settings, size, size);
+  /**
+   * Called at the end of each test fixture
+   **/
+  void TearDown() override
+  {
+    Unregister(pIn->dataInfo);
+    Remove(pIn->dataInfo);
 
-  auto inP =
-    AFP::InputData(Payload(*ldIn, *pdIn, "Input data"), Payload(*ldFilter, *pdFilter, "Filter"));
-  auto outP = AFP::OutputData(Payload(*ldOut, *pdOut, "Output data"));
+    Unregister(pOut->dataInfo);
+    Remove(pOut->dataInfo);
 
-  testFP(outP, inP, settings);
-}
+    Unregister(pFilter->dataInfo);
+    Remove(pFilter->dataInfo);
+  }
 
-TEST_F(NAME, ImageNormalize)
-{
-  ft::Locality locality = ft::Locality::kOutOfPlace;
-  Settings settings(locality);
-  settings.SetNormalize(true);
+  std::unique_ptr<Payload<FourierDescriptor>> pIn;
+  std::unique_ptr<Payload<FourierDescriptor>> pOut;
+  std::unique_ptr<Payload<LogicalDescriptor>> pFilter;
 
-  Size size(10, 10, 1, 1);
+  void testFP(AFP::OutputData &out, AFP::InputData &in, const Settings &settings)
+  {
+    auto *input = reinterpret_cast<std::complex<float> *>(in.GetData().GetPtr());
+    auto *output = reinterpret_cast<std::complex<float> *>(out.GetData().GetPtr());
+    auto *filter = reinterpret_cast<float *>(in.GetFilter().GetPtr());
+    auto inSize = in.GetData().info.GetSize();
+    auto outSize = out.GetData().info.GetSize();
 
-  SetUpFP(settings, size, size);
+    for (size_t i = 0; i < inSize.total; i++) {
+      input[i] = { static_cast<float>(i), static_cast<float>(i) };
+    }
 
-  auto inP =
-    AFP::InputData(Payload(*ldIn, *pdIn, "Input data"), Payload(*ldFilter, *pdFilter, "Filter"));
-  auto outP = AFP::OutputData(Payload(*ldOut, *pdOut, "Output data"));
+    if (settings.GetApplyFilter()) {
+      for (size_t i = 0; i < in.GetFilter().info.GetSize().total; i += 2) {
+        reinterpret_cast<float *>(filter)[i] = -1.0f;
+      }
+      for (size_t i = 1; i < in.GetFilter().info.GetSize().total; i += 2) {
+        reinterpret_cast<float *>(filter)[i] = 0.5f;
+      }
+    }
 
-  testFP(outP, inP, settings);
-}
+    // PrintData(input, inSize);
+    // PrintData(filter, in.GetFilter().info.GetSize());
 
-TEST_F(NAME, ImageCentering)
-{
-  ft::Locality locality = ft::Locality::kOutOfPlace;
-  Settings settings(locality);
-  settings.SetCenter(true);
+    auto &fp = GetFourierProcessor();
 
-  Size size(12, 12, 1, 1);
+    ASSERT_TRUE(fp.Init(out, in, settings));
+    ASSERT_TRUE(fp.Execute(out, in));
+    // wait till the work is done
+    fp.Synchronize();
+    // make sure that data are on this memory node
+    Acquire(out.GetData().dataInfo);
+    // check results
+    float delta = 0.00001f;
+    checkEdges(output, outSize, delta);
+    float normFactor = 1.f / in.GetData().info.GetSpatialSize().single;
+    checkInside(output, outSize, input, inSize, normFactor, filter, settings, delta);
+    // we're done with those data
+    Release(out.GetData().dataInfo);
+  }
 
-  SetUpFP(settings, size, size);
+  void checkEdges(const std::complex<float> *out, const Size &outSize, float delta = 0.00001f) const
+  {
+    for (size_t n = 0; n < outSize.n; n++) {
+      for (size_t x = 0; x < outSize.x; x++) {
+        auto outIndex = n * outSize.single + x;// y == 0
+        ASSERT_NEAR(0.f, out[outIndex].real(), delta) << " at checkEdges";
+        ASSERT_NEAR(0.f, out[outIndex].imag(), delta) << " at checkEdges";
+      }
+      for (size_t y = 0; y < outSize.y; y++) {
+        auto outIndex = n * outSize.single + y * outSize.x;// x == 0
+        ASSERT_NEAR(0.f, out[outIndex].real(), delta) << " at checkEdges";
+        ASSERT_NEAR(0.f, out[outIndex].imag(), delta) << " at checkEdges";
+      }
+    }
+  }
 
-  auto inP =
-    AFP::InputData(Payload(*ldIn, *pdIn, "Input data"), Payload(*ldFilter, *pdFilter, "Filter"));
-  auto outP = AFP::OutputData(Payload(*ldOut, *pdOut, "Output data"));
+  void checkInside(const std::complex<float> *output,
+    const Size &outSize,
+    const std::complex<float> *input,
+    const Size &inSize,
+    float normFactor,
+    const float *filter,
+    const Settings &s,
+    float delta = 0.00001f) const
+  {
+    for (size_t n = 0; n < outSize.n; n++) {
+      size_t cropIndex = outSize.y / 2 + 1;
+      for (size_t y = 1; y < outSize.y; y++) {
+        for (size_t x = 1; x < outSize.x; x++) {
+          auto inIndex =
+            n * inSize.single + (y < cropIndex ? y : inSize.y - outSize.y + y) * inSize.x + x;
+          auto outIndex = n * outSize.single + y * outSize.x + x;
+          float inReal = input[inIndex].real();
+          float inImag = input[inIndex].imag();
+          if (s.GetApplyFilter()) {
+            float filterCoef = filter[y * outSize.x + x];
+            inReal *= filterCoef;
+            inImag *= filterCoef;
+          }
+          if (s.GetNormalize()) {
+            inReal *= normFactor;
+            inImag *= normFactor;
+          }
+          if (s.GetCenter()) {
+            float centerCoef =
+              1 - 2 * ((static_cast<int>(x + y)) & 1);// center FT, input must be even
+            inReal *= centerCoef;
+            inImag *= centerCoef;
+          }
+          ASSERT_NEAR(inReal, output[outIndex].real(), delta) << " at real " << outIndex;
+          ASSERT_NEAR(inImag, output[outIndex].imag(), delta) << " at imag " << outIndex;
+        }
+      }
+    }
+  }
 
-  testFP(outP, inP, settings);
-}
+  template<typename T> void PrintData(T *data, const Size size)
+  {
+    ASSERT_EQ(size.GetDim(), Dimensionality::k2Dim);
+    for (size_t n = 0; n < size.n; ++n) {
+      size_t offset = n * size.single;
+      for (size_t y = 0; y < size.y; ++y) {
+        for (size_t x = 0; x < size.x; ++x) { printf("%+.3f\t", data[offset + y * size.x + x]); }
+        std::cout << "\n";
+      }
+      std::cout << "\n";
+    }
+  }
 
-TEST_F(NAME, ImageCropNormalizeCenter)
-{
-  ft::Locality locality = ft::Locality::kOutOfPlace;
-  Settings settings(locality);
-  settings.SetNormalize(true);
-  settings.SetCenter(true);
-
-  Size inSize(40, 40, 1, 5);
-  Size outSize(20, 20, 1, 5);
-
-  SetUpFP(settings, inSize, outSize);
-
-  auto inP =
-    AFP::InputData(Payload(*ldIn, *pdIn, "Input data"), Payload(*ldFilter, *pdFilter, "Filter"));
-  auto outP = AFP::OutputData(Payload(*ldOut, *pdOut, "Output data"));
-
-  testFP(outP, inP, settings);
-}
-
-TEST_F(NAME, Filtering)
-{
-  ft::Locality locality = ft::Locality::kOutOfPlace;
-  Settings settings(locality);
-  settings.SetApplyFilter(true);
-
-  Size size(12, 12, 1, 1);
-
-  SetUpFP(settings, size, size);
-
-  auto inP =
-    AFP::InputData(Payload(*ldIn, *pdIn, "Input data"), Payload(*ldFilter, *pdFilter, "Filter"));
-  auto outP = AFP::OutputData(Payload(*ldOut, *pdOut, "Output data"));
-
-  testFP(outP, inP, settings);
-}
+  void PrintData(std::complex<float> *data, const Size size)
+  {
+    ASSERT_EQ(size.GetDim(), Dimensionality::k2Dim);
+    for (size_t n = 0; n < size.n; ++n) {
+      size_t offset = n * size.single;
+      for (size_t y = 0; y < size.y; ++y) {
+        for (size_t x = 0; x < size.x; ++x) {
+          auto v = data[offset + y * size.x + x];
+          printf("(%+.3f,%+.3f)\t", v.real(), v.imag());
+        }
+        std::cout << "\n";
+      }
+      std::cout << "\n";
+    }
+  }
+};

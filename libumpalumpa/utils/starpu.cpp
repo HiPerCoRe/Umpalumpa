@@ -1,5 +1,5 @@
 #include <libumpalumpa/utils/starpu.hpp>
-#include <libumpalumpa/utils/cuda.hpp>
+#include <libumpalumpa/system_includes/spdlog.hpp>
 
 namespace umpalumpa::utils {
 
@@ -16,19 +16,28 @@ std::vector<unsigned> StarPUUtils::GetCPUWorkerIDs(unsigned n)
   return mask;
 }
 
-unsigned StarPUUtils::GetMemoryNode(const umpalumpa::data::PhysicalDescriptor &pd)
+void StarPUUtils::Register(const data::PhysicalDescriptor &pd)
 {
-  using umpalumpa::data::ManagedBy;
-  switch (pd.GetManager()) {
-  case ManagedBy::StarPU:
-    return static_cast<unsigned>(pd.GetMemoryNode());
-  case ManagedBy::CUDA:
-    return STARPU_CPU_RAM;// FIXME can we find out if managed memory is on GPU already?
-  case ManagedBy::Manually:
-    return (IsGpuPointer(pd.GetPtr()) ? STARPU_CUDA_RAM : STARPU_CPU_RAM);
-  default:
-    break;
-  }
-  return STARPU_MAIN_RAM;// because we don't know any better
+  spdlog::debug("[StarPU] Registering {} bytes at {} with handle {}",
+    pd.GetBytes(),
+    fmt::ptr(pd.GetPtr()),
+    fmt::ptr(pd.GetHandle()));
+  starpu_vector_data_register(reinterpret_cast<starpu_data_handle_t *>(pd.GetHandle()),
+    STARPU_MAIN_RAM,
+    reinterpret_cast<uintptr_t>(pd.GetPtr()),
+    static_cast<uint32_t>(pd.GetBytes() / Sizeof(pd.GetType())),
+    Sizeof(pd.GetType()));
 }
+
+void *StarPUUtils::ReceivePDPtr(void *buffer)
+{
+  return reinterpret_cast<void *>(STARPU_VECTOR_GET_PTR(buffer));
+}
+
+void StarPUUtils::Unregister(const data::PhysicalDescriptor &pd)
+{
+  spdlog::debug("[StarPU] Unregistering handle {}", fmt::ptr(pd.GetHandle()));
+  starpu_data_unregister(*reinterpret_cast<starpu_data_handle_t *>(pd.GetHandle()));
+}
+
 }// namespace umpalumpa::utils

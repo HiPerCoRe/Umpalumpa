@@ -1,44 +1,57 @@
+#include <tests/algorithms/fourier_processing/afp_common.hpp>
 #include <libumpalumpa/algorithms/fourier_processing/fp_starpu.hpp>
-#include <starpu.h>
-#include <gtest/gtest.h>
-#include <tests/algorithms/fourier_processing/fp_tests.hpp>
+#include <libumpalumpa/utils/starpu.hpp>
 
-using namespace umpalumpa::fourier_processing;
-using namespace umpalumpa::data;
-class FPStarPUTest
-  : public ::testing::Test
-  , public FP_Tests
+using umpalumpa::utils::StarPUUtils;
+
+class FPStarPUTest : public FP_Tests
 {
 public:
   FPStarPU &GetFourierProcessor() override { return transformer; }
-  void SetUp() override { STARPU_CHECK_RETURN_VALUE(starpu_init(NULL), "StarPU init"); }
 
-  void TearDown() override { starpu_shutdown(); }
+  static void SetUpTestSuite() { STARPU_CHECK_RETURN_VALUE(starpu_init(NULL), "StarPU init"); }
+
+  using FP_Tests::SetUp;
+
+  static void TearDownTestSuite() { starpu_shutdown(); }
 
   void WaitTillDone()
   {
     STARPU_CHECK_RETURN_VALUE(starpu_task_wait_for_all(), "Waiting for all tasks");
   }
 
-  void *Allocate(size_t bytes)
+  PhysicalDescriptor Create(size_t bytes, DataType type) override
   {
     void *ptr = nullptr;
     starpu_malloc(&ptr, bytes);
-    return ptr;
+    memset(ptr, 0, bytes);
+    auto *handle = new starpu_data_handle_t();
+    return PhysicalDescriptor(ptr, bytes, type, ManagedBy::StarPU, handle);
   }
-  void Free(void *ptr) { starpu_free(ptr); }
 
-  FreeFunction GetFree() override
+  void Remove(const PhysicalDescriptor &pd) override
   {
-    return [](void *ptr) { starpu_free(ptr); };
+    starpu_free(pd.GetPtr());
+    delete StarPUUtils::GetHandle(pd);
   }
 
-  ManagedBy GetManager() override { return ManagedBy::StarPU; };
+  void Register(const PhysicalDescriptor &pd) override { StarPUUtils::Register(pd); };
 
-  int GetMemoryNode() override { return STARPU_MAIN_RAM; }
+  void Unregister(const PhysicalDescriptor &pd) override { StarPUUtils::Unregister(pd); };
+
+  void Acquire(const PhysicalDescriptor &pd) override
+  {
+    starpu_data_acquire(*StarPUUtils::GetHandle(pd), STARPU_RW);
+  }
+
+  virtual void Release(const PhysicalDescriptor &pd)
+  {
+    starpu_data_release(*StarPUUtils::GetHandle(pd));
+  }
 
 private:
   FPStarPU transformer;
 };
+
 #define NAME FPStarPUTest
-#include <tests/algorithms/fourier_processing/afp_common.hpp>
+#include <tests/algorithms/fourier_processing/fp_tests.hpp>
