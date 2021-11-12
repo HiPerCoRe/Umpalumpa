@@ -7,7 +7,9 @@
 namespace umpalumpa {
 
 /**
- * This class takes care of cleaning a memory of all the registered KTT ids.
+ * GarbageCollector takes care of cleaning a memory of all the registered KTT ids.
+ *
+ * GarbageCollector is thread safe.
  */
 class GarbageCollector
 {
@@ -80,7 +82,7 @@ class GarbageCollector
   // We need to distinguish ids of different KTTs
   std::map<KTTIdentifier, IdTracker> kttIds;
 
-  // FIXME don't lock entire GarbageCollector, different KTTs can be cleaned concurrently
+  // TODO don't lock entire GarbageCollector, different KTTs can be cleaned concurrently
   std::mutex mutex;
 
   /**

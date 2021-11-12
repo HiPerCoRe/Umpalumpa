@@ -71,29 +71,9 @@ public:
   void Cleanup();
 
   /**
-   * Returns a KTT's kernel definition Id. If the specified kernel definition already exists,
-   * returns the existing Id; otherwise, creates a new one.
+   * Returns a reference to the GarbageCollector.
    */
-  ktt::KernelDefinitionId GetKernelDefinitionId(utils::KTTHelper &kttHelper,
-    const std::string &kernelName,
-    const std::string &sourceFile,
-    const ktt::DimensionVector &gridDimensions,
-    const std::vector<std::string> &templateArgs = {});
-
-  /**
-   * Registers the argument Ids into garbageCollector.
-   */
-  void SetKTTArguments(utils::KTTHelper &kttHelper,
-    ktt::KernelDefinitionId definitionId,
-    const std::vector<ktt::ArgumentId> &argumentIds);
-
-  /**
-   * Cleans up provided Ids.
-   * If the definition Ids are not used by other strategy removes them from the KTT.
-   */
-  void CleanupIds(utils::KTTHelper &kttHelper,
-    const std::vector<ktt::KernelId> &kernelIds,
-    const std::vector<ktt::KernelDefinitionId> &definitionIds);
+  GarbageCollector &GetGarbageCollector();
 };
 
 }// namespace umpalumpa::algorithm

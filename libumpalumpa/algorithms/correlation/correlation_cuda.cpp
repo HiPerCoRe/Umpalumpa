@@ -56,11 +56,13 @@ namespace {// to avoid poluting
       // might run on the same worker
       const auto &s = alg.Get().GetSettings();
       std::lock_guard<std::mutex> lck(kttHelper.GetMutex());
-      definitionId = GetKernelDefinitionId(kTMP,
+      AddKernelDefinition(kTMP,
         kKernelFile,
         ktt::DimensionVector{ size.x, size.y, size.z },
         { "float2", std::to_string(s.GetCenter()) });
-      kernelId = tuner.CreateSimpleKernel(kTMP + std::to_string(strategyId), definitionId);
+      auto definitionId = GetDefinitionId();
+      AddSimpleKernel(kTMP, definitionId);
+      auto kernelId = GetKernelId();
 
       tuner.AddParameter(kernelId, "TILE", std::vector<uint64_t>{ 1, 2, 4, 8 });
 
@@ -132,10 +134,12 @@ namespace {// to avoid poluting
       auto isWithin =
         tuner.AddArgumentScalar(static_cast<int>(in.GetData1().GetPtr() == in.GetData2().GetPtr()));
 
+      auto definitionId = GetDefinitionId();
       SetArguments(definitionId, { argOut, argIn1, inSize, argIn2, in2N, isWithin });
 
+      auto kernelId = GetKernelId();
       const auto &size = out.GetCorrelations().info.GetPaddedSize();
-      tuner.SetLauncher(kernelId, [this, &size](ktt::ComputeInterface &interface) {
+      tuner.SetLauncher(kernelId, [definitionId, &size](ktt::ComputeInterface &interface) {
         auto blockDim = interface.GetCurrentLocalSize(definitionId);
         ktt::DimensionVector gridDim(size.x, size.y, size.z);
         gridDim.RoundUp(blockDim);

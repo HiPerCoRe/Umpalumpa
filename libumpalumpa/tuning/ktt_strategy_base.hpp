@@ -59,13 +59,14 @@ public:
   }
 
   /**
-   * Registers the ids into an automatic clean up routine. The ids are removed from KTT when they
-   * are no longer needed.
    * Calls ktt::Tuner::SetArguments method.
+   * At the same time registers the ids into an automatic clean up routine. The ids are removed from
+   * KTT when they are no longer needed.
    */
   void SetArguments(ktt::KernelDefinitionId defId, const std::vector<ktt::ArgumentId> &argumentIds)
   {
-    AlgorithmManager::Get().SetKTTArguments(kttHelper, defId, argumentIds);
+    AlgorithmManager::Get().GetGarbageCollector().RegisterArgumentIds(
+      defId, argumentIds, kttHelper);
     kttHelper.GetTuner().SetArguments(defId, argumentIds);
   }
 };
