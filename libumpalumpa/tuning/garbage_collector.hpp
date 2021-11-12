@@ -1,5 +1,7 @@
 #pragma once
 #include <map>
+#include <mutex>
+#include <atomic>
 #include <libumpalumpa/tuning/ktt_helper.hpp>
 
 namespace umpalumpa {
@@ -22,7 +24,7 @@ class GarbageCollector
      */
     struct DefinitionData
     {
-      size_t referenceCounter = 0;
+      std::atomic<size_t> referenceCounter = 0;
       std::vector<ktt::ArgumentId> arguments;
     };
 
@@ -78,6 +80,9 @@ class GarbageCollector
   // We need to distinguish ids of different KTTs
   std::map<KTTIdentifier, IdTracker> kttIds;
 
+  // FIXME don't lock entire GarbageCollector, different KTTs can be cleaned concurrently
+  std::mutex mutex;
+
   /**
    * Registers KTTHelper and its KTT tuner for tracking the ids, if it wasn't registered before.
    * Returns KTTIdentifier used for accessing the correct IdTracker.
@@ -98,9 +103,11 @@ public:
     const std::vector<ktt::KernelId> &kernelIds,
     const std::vector<ktt::KernelDefinitionId> &definitionIds)
   {
+    std::lock_guard<std::mutex> lck(mutex);// FIXME see comment at mutex declaration
     auto kttIdentifier = GetIdentifier(kttHelper);
     auto &tracker = kttIds.at(kttIdentifier);
-    std::lock_guard<std::mutex> lck(tracker.kttHelper.GetMutex());
+    // We lock access to the KTT while we clean up (to not interleave insertion and removal)
+    std::lock_guard<std::mutex> kttLck(tracker.kttHelper.GetMutex());
 
     // Order of cleanup is important
     for (auto kId : kernelIds) { tracker.kttHelper.GetTuner().RemoveKernel(kId); }
@@ -114,6 +121,7 @@ public:
    */
   void RegisterKernelDefinitionId(ktt::KernelDefinitionId id, utils::KTTHelper &kttHelper)
   {
+    std::lock_guard<std::mutex> lck(mutex);// FIXME see comment at mutex declaration
     auto kttIdentifier = GetIdentifier(kttHelper);
     // If 'id' isn't present yet, creates a new DefinitionData
     // In the end increases the reference counter
@@ -127,6 +135,7 @@ public:
     const std::vector<ktt::ArgumentId> &argumentIds,
     utils::KTTHelper &kttHelper)
   {
+    std::lock_guard<std::mutex> lck(mutex);// FIXME see comment at mutex declaration
     auto kttIdentifier = GetIdentifier(kttHelper);
     auto &v = kttIds.at(kttIdentifier).data.at(definitionId).arguments;
     v.insert(v.end(), argumentIds.begin(), argumentIds.end());
