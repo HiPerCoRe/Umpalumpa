@@ -4,7 +4,7 @@
 class FPCUDATest : public FP_Tests
 {
 public:
-  FPCUDA &GetFourierProcessor() override { return transformer; }
+  FPCUDA &GetAlg() override { return transformer; }
 
   using FP_Tests::SetUp;
 
@@ -26,9 +26,7 @@ public:
     CudaErrchk(cudaMemPrefetchAsync(pd.GetPtr(), pd.GetBytes(), worker));
   }
 
-  void Release(const PhysicalDescriptor &pd) override
-  { /* nothing to do */
-  }
+  void Release(const PhysicalDescriptor &pd) override{ /* nothing to do */ };
 
 private:
   const int worker = 0;

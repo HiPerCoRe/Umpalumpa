@@ -1,40 +1,37 @@
+#include <tests/algorithms/fourier_transformation/afft_common.hpp>
 #include <libumpalumpa/algorithms/fourier_transformation/fft_cuda.hpp>
-#include <gtest/gtest.h>
-#include <tests/algorithms/fourier_transformation/fft_tests.hpp>
 
-#include <cuda_runtime.h>
-
-using namespace umpalumpa::fourier_transformation;
-using namespace umpalumpa::data;
-
-class FFTCUDATest
-  : public ::testing::Test
-  , public FFT_Tests
+class FFTCUDATest : public FFT_Tests
 {
 public:
-  void *Allocate(size_t bytes) override
+  FFTCUDA &GetAlg() override { return transformer; }
+
+  using FFT_Tests::SetUp;
+
+  PhysicalDescriptor Create(size_t bytes, DataType type) override
   {
     void *ptr;
     CudaErrchk(cudaMallocManaged(&ptr, bytes));
-    return ptr;
+    return PhysicalDescriptor(ptr, bytes, type, ManagedBy::CUDA, nullptr);
   }
 
-  void Free(void *ptr) override { cudaFree(ptr); }
+  void Remove(const PhysicalDescriptor &pd) override { CudaErrchk(cudaFree(pd.GetPtr())); }
 
-  // CANNOT return "Free" method, because of the destruction order
-  FreeFunction GetFree() override
+  void Register(const PhysicalDescriptor &pd) override{ /* nothing to do */ };
+
+  void Unregister(const PhysicalDescriptor &pd) override{ /* nothing to do */ };
+
+  void Acquire(const PhysicalDescriptor &pd) override
   {
-    return [](void *ptr) { CudaErrchk(cudaFree(ptr)); };
+    CudaErrchk(cudaMemPrefetchAsync(pd.GetPtr(), pd.GetBytes(), worker));
   }
 
-  FFTCUDA &GetTransformer() override { return transformer; }
+  void Release(const PhysicalDescriptor &pd) override{ /* nothing to do */ };
 
-  ManagedBy GetManager() override { return ManagedBy::CUDA; };
-
-  int GetMemoryNode() override { return 0; }
-
-protected:
-  FFTCUDA transformer = FFTCUDA(0);
+private:
+  const int worker = 0;
+  FFTCUDA transformer = FFTCUDA(worker);
 };
+
 #define NAME FFTCUDATest
-#include <tests/algorithms/fourier_transformation/afft_common.hpp>
+#include <tests/algorithms/fourier_transformation/fft_tests.hpp>

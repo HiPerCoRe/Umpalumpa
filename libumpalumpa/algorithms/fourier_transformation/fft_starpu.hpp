@@ -1,42 +1,39 @@
 #pragma once
 #include <libumpalumpa/algorithms/fourier_transformation/afft.hpp>
-#include <libumpalumpa/data/starpu_payload.hpp>
-#include <vector>
-#include <memory>
+#include <queue>
+
+// forward declaration
+struct starpu_task;
 
 namespace umpalumpa::fourier_transformation {
 class FFTStarPU final : public AFFT
 {
-
 public:
-  void Synchronize() override{
-    // don't do anything. Each task is synchronized, now it's StarPU's problem
-    // consider calling starpu_task_wait_for_all() instead
-  };
+  ~FFTStarPU();
 
-  // make 'normal' Init() and Execute() available
-  using AFFT::Init;
-  using AFFT::Execute;
+  void Cleanup() override;
 
-  using StarpuOutputData =
-    OutputDataWrapper<std::unique_ptr<data::StarpuPayload<OutputData::PayloadType::LDType>>>;
-  using StarpuInputData =
-    InputDataWrapper<std::unique_ptr<data::StarpuPayload<OutputData::PayloadType::LDType>>>;
-
-  [[nodiscard]] bool
-    Init(const StarpuOutputData &out, const StarpuInputData &in, const Settings &s);
-  [[nodiscard]] bool Execute(const StarpuOutputData &out, const StarpuInputData &in);
+  void Synchronize() override;
 
 protected:
   bool InitImpl() override;
   bool ExecuteImpl(const OutputData &out, const InputData &in);
-  bool ExecuteImpl(const StarpuOutputData &out, const StarpuInputData &in);
 
 private:
+  void DeleteAlgs();
+
   inline static const std::string taskName = "FFT StarPU";
 
-  std::vector<std::unique_ptr<AFFT>> algs;
-  const StarpuOutputData *outPtr = nullptr;
-  const StarpuInputData *inPtr = nullptr;
+  /**
+   * Holds pointers to used algorithms.
+   * Notice that those pointer (if any) refer to the worker-specific
+   * memory nodes, i.e. it is safe to access them only on 'their' workers.
+   * Only nonnull algorithms are properly initialized.
+   **/
+  std::vector<AFFT *> algs;
+  long noOfInitWorkers = 0;
+
+
+  std::queue<starpu_task *> taskQueue;
 };
 }// namespace umpalumpa::fourier_transformation

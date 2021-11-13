@@ -7,7 +7,7 @@ using umpalumpa::utils::StarPUUtils;
 class FPStarPUTest : public FP_Tests
 {
 public:
-  FPStarPU &GetFourierProcessor() override { return transformer; }
+  FPStarPU &GetAlg() override { return transformer; }
 
   static void SetUpTestSuite() { STARPU_CHECK_RETURN_VALUE(starpu_init(NULL), "StarPU init"); }
 

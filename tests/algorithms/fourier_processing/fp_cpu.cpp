@@ -4,7 +4,7 @@
 class FPCPUTest : public FP_Tests
 {
 public:
-  FPCPU &GetFourierProcessor() override { return transformer; }
+  FPCPU &GetAlg() override { return transformer; }
 
   using FP_Tests::SetUp;
 
@@ -19,13 +19,9 @@ public:
 
   void Unregister(const PhysicalDescriptor &pd) override{ /* nothing to do */ };
 
-  void Acquire(const PhysicalDescriptor &pd) override
-  { /* nothing to do */
-  }
+  void Acquire(const PhysicalDescriptor &pd) override{ /* nothing to do */ };
 
-  void Release(const PhysicalDescriptor &pd) override
-  { /* nothing to do */
-  }
+  void Release(const PhysicalDescriptor &pd) override{ /* nothing to do */ };
 
 private:
   FPCPU transformer;
