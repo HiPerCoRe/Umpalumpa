@@ -5,7 +5,6 @@
 #include <libumpalumpa/system_includes/spdlog.hpp>
 
 namespace umpalumpa::fourier_transformation {
-
 namespace {// to avoid poluting
   struct Args
   {

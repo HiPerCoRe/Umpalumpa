@@ -20,8 +20,6 @@ protected:
   bool ExecuteImpl(const OutputData &out, const InputData &in);
 
 private:
-  void DeleteAlgs();
-
   inline static const std::string taskName = "FFT StarPU";
 
   /**
@@ -32,7 +30,6 @@ private:
    **/
   std::vector<AFFT *> algs;
   long noOfInitWorkers = 0;
-
 
   std::queue<starpu_task *> taskQueue;
 };

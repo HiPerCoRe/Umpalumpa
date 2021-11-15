@@ -10,7 +10,7 @@ using namespace umpalumpa::test;
 class FFT_Tests : public TestAlg<AFFT>
 {
 protected:
-  auto CreatePayloadSpatial(const Settings &settings, const Size &size)
+  auto CreatePayloadSpatial(const Size &size)
   {
     auto ld = FourierDescriptor(size);
     auto bytes = ld.Elems() * Sizeof(DataType::kFloat);
@@ -37,7 +37,7 @@ protected:
 
   void SetUp(const Settings &settings, const Size &size)
   {
-    pSpatial = std::make_unique<Payload<FourierDescriptor>>(CreatePayloadSpatial(settings, size));
+    pSpatial = std::make_unique<Payload<FourierDescriptor>>(CreatePayloadSpatial(size));
     Register(pSpatial->dataInfo);
 
     pFrequency =

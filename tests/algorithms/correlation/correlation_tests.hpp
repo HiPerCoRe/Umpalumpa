@@ -1,208 +1,120 @@
-#include <fcntl.h>
-#include <gtest/gtest.h>
-#include <libumpalumpa/algorithms/fourier_transformation/locality.hpp>
-#include <libumpalumpa/algorithms/fourier_transformation/direction.hpp>
-#include <libumpalumpa/algorithms/correlation/acorrelation.hpp>
-#include <complex>
-#include <random>
+#pragma once
 
-using namespace umpalumpa::correlation;
-using namespace umpalumpa::data;
+// TODO tests:
+//  - correct correlations
+//  - centering
+//  - center + odd sized image -> not working
 
-class Correlation_Tests
+TEST_F(NAME, CorrelationOnetoOneIntraBufferNoCenter)
 {
-public:
-  virtual ACorrelation &GetTransformer() = 0;
-  virtual void *Allocate(size_t bytes) = 0;
-  virtual void Free(void *ptr) = 0;
-  virtual ManagedBy GetManager() = 0;
-  virtual int GetMemoryNode() = 0;
+  Settings settings(CorrelationType::kOneToN);
+  settings.SetCenter(false);
 
-  // Works correctly only with float
-  void testCorrelationSimple(ACorrelation::OutputData &out,
-    ACorrelation::InputData &in,
-    const Settings &settings)
-  {
-    auto f = [](std::complex<float> *arr, size_t size) {
-      for (size_t i = 0; i < size; i++) { arr[i] = { 1.f, 1.f }; }
-    };
-    testCorrelation(out, in, settings, f);
-  }
+  Size inSize(20, 20, 1, 2);
 
-  // Works correctly only with float
-  void testCorrelationRandomData(ACorrelation::OutputData &out,
-    ACorrelation::InputData &in,
-    const Settings &settings)
-  {
-    // Not part of the function f, so that more invocations produce different output
-    auto mt = std::mt19937(42);
-    auto dist = std::normal_distribution<float>((float)0, (float)1);
-    auto f = [&mt, &dist](std::complex<float> *arr, size_t size) {
-      for (size_t i = 0; i < size; i++) { arr[i] = { dist(mt), dist(mt) }; }
-    };
-    testCorrelation(out, in, settings, f);
-  }
+  SetUp(settings, inSize, inSize, true);
 
-protected:
-  template<typename InputProvider>
-  void testCorrelation(ACorrelation::OutputData &out,
-    ACorrelation::InputData &in,
-    const Settings &settings,
-    InputProvider ip)
-  {
-    auto *input1 = reinterpret_cast<std::complex<float> *>(in.GetData1().GetPtr());
-    auto *input2 = reinterpret_cast<std::complex<float> *>(in.GetData2().GetPtr());
-    auto *output = reinterpret_cast<std::complex<float> *>(out.GetCorrelations().GetPtr());
-    auto inSize = in.GetData1().info.GetSize();
-    auto inSize2 = in.GetData2().info.GetSize();
-    // auto outSize = out.GetCorrelations().info.GetSize();
+  auto in = ACorrelation::InputData(*pData1, *pData2);
+  auto out = ACorrelation::OutputData(*pOut);
 
-    ip(input1, inSize.total);
-    if (input1 != input2) { ip(input2, inSize2.total); }
+  testCorrelationSimple(out, in, settings);
+}
 
-    // PrintData(input1, inSize);
+TEST_F(NAME, CorrelationOnetoOneInterBufferNoCenter)
+{
+  Settings settings(CorrelationType::kOneToN);
+  settings.SetCenter(false);
 
-    auto &corr = GetTransformer();
+  Size inSize(20, 20, 1, 1);
 
-    ASSERT_TRUE(corr.Init(out, in, settings));
-    ASSERT_TRUE(corr.Execute(out, in));
-    corr.Synchronize();
+  SetUp(settings, inSize, inSize, false);
 
-    // PrintData(output, outSize);
+  auto in = ACorrelation::InputData(*pData1, *pData2);
+  auto out = ACorrelation::OutputData(*pOut);
 
-    float delta = 0.00001f;
-    check(output, settings, input1, inSize, input2, inSize2, delta);
-  }
+  testCorrelationSimple(out, in, settings);
+}
 
-  void check(const std::complex<float> *output,
-    const Settings &s,
-    const std::complex<float> *input1,
-    const Size &inSize,
-    const std::complex<float> *input2,
-    const Size &in2Size,
-    float delta = 0.00001f) const
-  {
-    auto imageCounter = 0;
-    // all pairs (combination without repetitions), in reasonable ordering
-    for (size_t i1 = 0; i1 < inSize.n; i1++) {
-      for (size_t i2 = input1 == input2 ? i1 + 1 : 0; i2 < in2Size.n; i2++) {
-        auto imageOffset = imageCounter * inSize.single;
-        // all pixels (2D)
-        for (size_t y = 0; y < inSize.y; y++) {
-          for (size_t x = 0; x < inSize.x; x++) {
-            auto pixelOffset = y * inSize.x + x;
-            auto totalOffset = imageOffset + pixelOffset;
-            auto val1 = input1[i1 * inSize.single + y * inSize.x + x];
-            auto val2 = input2[i2 * inSize.single + y * inSize.x + x];
-            auto realRes = val1.real() * val2.real() + val1.imag() * val2.imag();
-            auto imagRes = val1.imag() * val2.real() - val1.real() * val2.imag();
-            if (s.GetCenter()) {
-              float centerCoef = 1 - 2 * ((static_cast<int>(x) + static_cast<int>(y)) & 1);
-              realRes *= centerCoef;
-              imagRes *= centerCoef;
-            }
-            ASSERT_NEAR(realRes, output[totalOffset].real(), delta)
-              << " at <" << i1 << "," << i2 << "> (" << x << "," << y << ")";
-            ASSERT_NEAR(imagRes, output[totalOffset].imag(), delta)
-              << " at <" << i1 << "," << i2 << "> (" << x << "," << y << ")";
-          }
-        }
-        imageCounter++;
-      }
-    }
-  }
+TEST_F(NAME, CorrelationOnetoOneIntraBuffer)
+{
+  Settings settings(CorrelationType::kOneToN);
 
-  template<typename T> void PrintData(T *data, const Size size)
-  {
-    ASSERT_EQ(size.GetDim(), Dimensionality::k2Dim);
-    for (size_t n = 0; n < size.n; ++n) {
-      size_t offset = n * size.single;
-      for (size_t y = 0; y < size.y; ++y) {
-        for (size_t x = 0; x < size.x; ++x) { printf("%+.3f\t", data[offset + y * size.x + x]); }
-        std::cout << "\n";
-      }
-      std::cout << "\n";
-    }
-  }
+  Size inSize(20, 20, 1, 2);
 
-  void PrintData(std::complex<float> *data, const Size size)
-  {
-    ASSERT_EQ(size.GetDim(), Dimensionality::k2Dim);
-    for (size_t n = 0; n < size.n; ++n) {
-      size_t offset = n * size.single;
-      for (size_t y = 0; y < size.y; ++y) {
-        for (size_t x = 0; x < size.x; ++x) {
-          auto v = data[offset + y * size.x + x];
-          printf("(%+.3f,%+.3f)\t", v.real(), v.imag());
-        }
-        std::cout << "\n";
-      }
-      std::cout << "\n";
-    }
-  }
+  SetUp(settings, inSize, inSize, true);
 
-  using FreeFunction = std::function<void(void *)>;
+  auto in = ACorrelation::InputData(*pData1, *pData2);
+  auto out = ACorrelation::OutputData(*pOut);
 
-  // Could be left as pure virtual, but in case of an error, it might be
-  // difficult to realize, where the pure virtual method was called. Instead
-  // throw reasonable exception.
-  virtual FreeFunction GetFree() { throw std::logic_error("GetFree() method not overridden!"); }
+  testCorrelationSimple(out, in, settings);
+}
 
-  // Deliberately not using gtest's SetUp method, because we need to know Settings and
-  // Size of the current test to properly initialize memory
-  // ONLY float currently supported!!
-  // Assumes size == paddedSize
-  void SetUpCorrelation(const Settings &settings, const Size &inSize, int in2N = 0)
-  {
-    bool isWithin = in2N == 0;
-    size_t outImages = inSize.n * in2N;
-    if (isWithin) {
-      in2N = inSize.n;
-      for (size_t i = 0; i < inSize.n; i++)
-        for (size_t j = i + 1; j < inSize.n; j++) outImages++;
-    }
+TEST_F(NAME, CorrelationOnetoOneInterBuffer)
+{
+  Settings settings(CorrelationType::kOneToN);
 
-    auto in2Size = Size(inSize.x, inSize.y, inSize.z, in2N);
-    auto outSize = Size(inSize.x, inSize.y, inSize.z, outImages);
+  Size inSize(20, 20, 1, 1);
 
-    ldIn1 = std::make_unique<FourierDescriptor>(
-      inSize, PaddingDescriptor(), FourierDescriptor::FourierSpaceDescriptor{});
+  SetUp(settings, inSize, inSize, false);
 
-    auto inputSizeInBytes = ldIn1->GetPaddedSize().total * Sizeof(DataType::kComplexFloat);
-    inData1 = std::shared_ptr<void>(Allocate(inputSizeInBytes), GetFree());
-    memset(inData1.get(), 0, inputSizeInBytes);
-    pdIn1 = std::make_unique<PhysicalDescriptor>(
-      inData1.get(), inputSizeInBytes, DataType::kComplexFloat, GetManager(), GetMemoryNode());
+  auto in = ACorrelation::InputData(*pData1, *pData2);
+  auto out = ACorrelation::OutputData(*pOut);
 
-    ldIn2 = std::make_unique<FourierDescriptor>(
-      in2Size, PaddingDescriptor(), FourierDescriptor::FourierSpaceDescriptor{});
+  testCorrelationSimple(out, in, settings);
+}
 
-    auto input2SizeInBytes = ldIn2->GetPaddedSize().total * Sizeof(DataType::kComplexFloat);
-    if (isWithin) {
-      inData2 = inData1;
-    } else {
-      inData2 = std::shared_ptr<void>(Allocate(input2SizeInBytes), GetFree());
-      memset(inData2.get(), 0, input2SizeInBytes);
-    }
-    pdIn2 = std::make_unique<PhysicalDescriptor>(
-      inData2.get(), input2SizeInBytes, DataType::kComplexFloat, GetManager(), GetMemoryNode());
+TEST_F(NAME, CorrelationMtoNIntraBuffer)
+{
+  Settings settings(CorrelationType::kMToN);
 
-    ldOut = std::make_unique<FourierDescriptor>(
-      outSize, PaddingDescriptor(), FourierDescriptor::FourierSpaceDescriptor{});
+  Size inSize(20, 20, 1, 5);
 
-    auto outputSizeInBytes = ldOut->GetPaddedSize().total * Sizeof(DataType::kComplexFloat);
-    outData = std::shared_ptr<void>(Allocate(outputSizeInBytes), GetFree());
-    pdOut = std::make_unique<PhysicalDescriptor>(
-      outData.get(), outputSizeInBytes, DataType::kComplexFloat, GetManager(), GetMemoryNode());
-  }
+  SetUp(settings, inSize, inSize, true);
 
-  std::shared_ptr<void> inData1;
-  std::unique_ptr<PhysicalDescriptor> pdIn1;
-  std::unique_ptr<FourierDescriptor> ldIn1;
-  std::shared_ptr<void> inData2;
-  std::unique_ptr<PhysicalDescriptor> pdIn2;
-  std::unique_ptr<FourierDescriptor> ldIn2;
-  std::shared_ptr<void> outData;
-  std::unique_ptr<PhysicalDescriptor> pdOut;
-  std::unique_ptr<FourierDescriptor> ldOut;
-};
+  auto in = ACorrelation::InputData(*pData1, *pData2);
+  auto out = ACorrelation::OutputData(*pOut);
+
+  testCorrelationSimple(out, in, settings);
+}
+
+TEST_F(NAME, CorrelationMtoNInterBuffer)
+{
+  Settings settings(CorrelationType::kMToN);
+
+  Size inSize(20, 20, 1, 3);
+
+  SetUp(settings, inSize, inSize.CopyFor(2), false);
+
+  auto in = ACorrelation::InputData(*pData1, *pData2);
+  auto out = ACorrelation::OutputData(*pOut);
+
+  testCorrelationSimple(out, in, settings);
+}
+
+TEST_F(NAME, CorrelationMtoNIntraBufferRandomData)
+{
+  Settings settings(CorrelationType::kMToN);
+
+  Size inSize(20, 20, 1, 5);
+
+  SetUp(settings, inSize, inSize, true);
+
+  auto in = ACorrelation::InputData(*pData1, *pData2);
+  auto out = ACorrelation::OutputData(*pOut);
+
+  testCorrelationSimple(out, in, settings);
+}
+
+TEST_F(NAME, CorrelationMtoNInterBufferRandomData)
+{
+  Settings settings(CorrelationType::kMToN);
+
+  Size inSize(20, 20, 1, 3);
+
+  SetUp(settings, inSize, inSize.CopyFor(2), false);
+
+  auto in = ACorrelation::InputData(*pData1, *pData2);
+  auto out = ACorrelation::OutputData(*pOut);
+
+  testCorrelationSimple(out, in, settings);
+}
