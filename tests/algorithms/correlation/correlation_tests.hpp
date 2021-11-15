@@ -102,7 +102,7 @@ TEST_F(NAME, CorrelationMtoNIntraBufferRandomData)
   auto in = ACorrelation::InputData(*pData1, *pData2);
   auto out = ACorrelation::OutputData(*pOut);
 
-  testCorrelationSimple(out, in, settings);
+  testCorrelationRandomData(out, in, settings);
 }
 
 TEST_F(NAME, CorrelationMtoNInterBufferRandomData)
@@ -116,5 +116,5 @@ TEST_F(NAME, CorrelationMtoNInterBufferRandomData)
   auto in = ACorrelation::InputData(*pData1, *pData2);
   auto out = ACorrelation::OutputData(*pOut);
 
-  testCorrelationSimple(out, in, settings);
+  testCorrelationRandomData(out, in, settings);
 }
