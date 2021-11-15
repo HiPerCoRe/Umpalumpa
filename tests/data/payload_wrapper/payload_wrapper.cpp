@@ -9,7 +9,6 @@ struct MockPayload
 {
   MOCK_METHOD(bool, IsEquivalentTo, (const MockPayload &), (const));
   MOCK_METHOD(bool, IsValid, (), (const));
-  MOCK_METHOD(std::shared_ptr<MockPayload>, Subset, (size_t, size_t), (const));
   MOCK_METHOD(std::shared_ptr<MockPayload>, CopyWithoutData, (), (const));
   MOCK_METHOD(int, GetData, (), (const));
 };
@@ -22,10 +21,6 @@ struct MockPayloadWrapper
 
   bool IsEquivalentTo(const MockPayloadWrapper &mp) const { return mock->IsEquivalentTo(*mp.mock); }
   bool IsValid() const { return mock->IsValid(); }
-  MockPayloadWrapper Subset(size_t n, size_t c) const
-  {
-    return MockPayloadWrapper(mock->Subset(n, c));
-  }
   MockPayloadWrapper CopyWithoutData() const { return MockPayloadWrapper(mock->CopyWithoutData()); }
   int GetData() const { return mock->GetData(); }
 
@@ -45,8 +40,8 @@ struct MockPayloadWrapperOther : public MockPayloadWrapper
 
 template<typename... Args> struct TestPayloadWrapper : public PayloadWrapper<Args...>
 {
-  TestPayloadWrapper(std::tuple<Args...> &&t) : PayloadWrapper<Args...>(std::move(t)) {}
-  TestPayloadWrapper(Args &&... args) : PayloadWrapper<Args...>(std::move(args)...) {}
+  TestPayloadWrapper(std::tuple<Args...> &t) : PayloadWrapper<Args...>(t) {}
+  TestPayloadWrapper(Args &...args) : PayloadWrapper<Args...>(args...) {}
 
   const auto &GetPayloads() { return PayloadWrapper<Args...>::payloads; }
 };
@@ -54,16 +49,20 @@ template<typename... Args> struct TestPayloadWrapper : public PayloadWrapper<Arg
 TEST(TestPayloadWrapperTest, Create_MPW_with_multiple_rvalue_payloads_same_type)
 {
   // This tests mainly the ability to compile the code using TestPayloadWrapper
-  auto mpw = TestPayloadWrapper(MockPayloadWrapper(), MockPayloadWrapper(), MockPayloadWrapper());
+  auto mpw1 = MockPayloadWrapper();
+  auto mpw2 = MockPayloadWrapper();
+  auto mpw3 = MockPayloadWrapper();
+  auto tpw = TestPayloadWrapper(mpw1, mpw2, mpw3);
 }
 
 TEST(TestPayloadWrapperTest, Create_MPW_with_multiple_rvalue_payloads_various_types)
 {
+  auto mpw1 = MockPayloadWrapper();
+  auto mpw2 = MockPayloadWrapper();
+  auto mpwo1 = MockPayloadWrapperOther();
+  auto mpwo2 = MockPayloadWrapperOther();
   // This tests mainly the ability to compile the code using TestPayloadWrapper
-  auto mpw = TestPayloadWrapper(MockPayloadWrapper(),
-    MockPayloadWrapperOther(),
-    MockPayloadWrapperOther(),
-    MockPayloadWrapper());
+  auto mpw = TestPayloadWrapper(mpw1, mpwo1, mpwo2, mpw2);
 }
 
 TEST(TestPayloadWrapperTest, Get_payload)
@@ -75,7 +74,7 @@ TEST(TestPayloadWrapperTest, Get_payload)
   EXPECT_CALL(*m0.mock, GetData()).WillRepeatedly(Return(val0));
   EXPECT_CALL(*m1.mock, GetData()).WillRepeatedly(Return(val1));
 
-  auto mpw = TestPayloadWrapper(std::move(m0), std::move(m1));
+  auto mpw = TestPayloadWrapper(m0, m1);
 
   const auto &p0 = std::get<0>(mpw.GetPayloads());
   const auto &p1 = std::get<1>(mpw.GetPayloads());
@@ -92,7 +91,7 @@ TEST(TestPayloadWrapperTest, IsValid_all_payloads_always_return_true)
   EXPECT_CALL(*m0.mock, IsValid()).WillRepeatedly(Return(true));
   EXPECT_CALL(*m1.mock, IsValid()).WillRepeatedly(Return(true));
   EXPECT_CALL(*m2.mock, IsValid()).WillRepeatedly(Return(true));
-  auto mpw = TestPayloadWrapper(std::move(m0), std::move(m1), std::move(m2));
+  auto mpw = TestPayloadWrapper(m0, m1, m2);
 
   ASSERT_TRUE(mpw.IsValid());
 }
@@ -105,7 +104,7 @@ TEST(TestPayloadWrapperTest, IsValid_all_payloads_always_return_false)
   EXPECT_CALL(*m0.mock, IsValid()).WillRepeatedly(Return(false));
   EXPECT_CALL(*m1.mock, IsValid()).WillRepeatedly(Return(false));
   EXPECT_CALL(*m2.mock, IsValid()).WillRepeatedly(Return(false));
-  auto mpw = TestPayloadWrapper(std::move(m0), std::move(m1), std::move(m2));
+  auto mpw = TestPayloadWrapper(m0, m1, m2);
 
   ASSERT_FALSE(mpw.IsValid());
 }
@@ -118,7 +117,7 @@ TEST(TestPayloadWrapperTest, IsValid_one_payload_returns_false_rest_return_true)
   EXPECT_CALL(*m0.mock, IsValid()).WillRepeatedly(Return(true));
   EXPECT_CALL(*m1.mock, IsValid()).WillRepeatedly(Return(false));
   EXPECT_CALL(*m2.mock, IsValid()).WillRepeatedly(Return(true));
-  auto mpw = TestPayloadWrapper(std::move(m0), std::move(m1), std::move(m2));
+  auto mpw = TestPayloadWrapper(m0, m1, m2);
 
   ASSERT_FALSE(mpw.IsValid());
 }
@@ -133,8 +132,8 @@ TEST(TestPayloadWrapperTest, IsEquivalentTo_all_payloads_always_return_true)
   EXPECT_CALL(*m1.mock, IsEquivalentTo).WillRepeatedly(Return(true));
   EXPECT_CALL(*m2.mock, IsEquivalentTo).WillRepeatedly(Return(true));
   EXPECT_CALL(*m3.mock, IsEquivalentTo).WillRepeatedly(Return(true));
-  auto mpw = TestPayloadWrapper(std::move(m0), std::move(m1));
-  auto mpw2 = TestPayloadWrapper(std::move(m2), std::move(m3));
+  auto mpw = TestPayloadWrapper(m0, m1);
+  auto mpw2 = TestPayloadWrapper(m2, m3);
 
   ASSERT_TRUE(mpw.IsEquivalentTo(mpw2));
 }
@@ -149,8 +148,8 @@ TEST(TestPayloadWrapperTest, IsEquivalentTo_all_payloads_always_return_false)
   EXPECT_CALL(*m1.mock, IsEquivalentTo).WillRepeatedly(Return(false));
   EXPECT_CALL(*m2.mock, IsEquivalentTo).WillRepeatedly(Return(false));
   EXPECT_CALL(*m3.mock, IsEquivalentTo).WillRepeatedly(Return(false));
-  auto mpw = TestPayloadWrapper(std::move(m0), std::move(m1));
-  auto mpw2 = TestPayloadWrapper(std::move(m2), std::move(m3));
+  auto mpw = TestPayloadWrapper(m0, m1);
+  auto mpw2 = TestPayloadWrapper(m2, m3);
 
   ASSERT_FALSE(mpw.IsEquivalentTo(mpw2));
 }
@@ -165,8 +164,8 @@ TEST(TestPayloadWrapperTest, IsEquivalentTo_one_payload_returns_false_rest_retur
   EXPECT_CALL(*m1.mock, IsEquivalentTo).WillRepeatedly(Return(false));
   EXPECT_CALL(*m2.mock, IsEquivalentTo).WillRepeatedly(Return(true));
   EXPECT_CALL(*m3.mock, IsEquivalentTo).WillRepeatedly(Return(false));
-  auto mpw = TestPayloadWrapper(std::move(m0), std::move(m1));
-  auto mpw2 = TestPayloadWrapper(std::move(m2), std::move(m3));
+  auto mpw = TestPayloadWrapper(m0, m1);
+  auto mpw2 = TestPayloadWrapper(m2, m3);
 
   ASSERT_FALSE(mpw.IsEquivalentTo(mpw2));
 }
@@ -193,9 +192,10 @@ TEST(TestPayloadWrapperTest, CopyWithoutData_no_data)
   MockPayloadWrapper m1;
   EXPECT_CALL(*m0.mock, CopyWithoutData()).WillOnce(Return(nullptr));
   EXPECT_CALL(*m1.mock, CopyWithoutData()).WillOnce(Return(nullptr));
-  auto mpw = TestPayloadWrapper(std::move(m0), std::move(m1));
+  auto mpw = TestPayloadWrapper(m0, m1);
 
-  TestPayloadWrapper noDataCopy = mpw.CopyWithoutData();
+  auto payloadsNoData = mpw.CopyWithoutData();
+  TestPayloadWrapper noDataCopy(payloadsNoData);
   const auto &noDataP0 = std::get<0>(noDataCopy.GetPayloads());
   const auto &noDataP1 = std::get<1>(noDataCopy.GetPayloads());
   const auto &p0 = std::get<0>(mpw.GetPayloads());
@@ -218,9 +218,10 @@ TEST(TestPayloadWrapperTest, CopyWithoutData_original_payloads_have_data)
   EXPECT_CALL(*m1.mock, CopyWithoutData()).WillOnce(Return(nullptr));
   EXPECT_CALL(*m0.mock, GetData()).WillRepeatedly(Return(val0));
   EXPECT_CALL(*m1.mock, GetData()).WillRepeatedly(Return(val1));
-  auto mpw = TestPayloadWrapper(std::move(m0), std::move(m1));
+  auto mpw = TestPayloadWrapper(m0, m1);
 
-  TestPayloadWrapper noDataCopy = mpw.CopyWithoutData();
+  auto payloadsNoData = mpw.CopyWithoutData();
+  TestPayloadWrapper noDataCopy(payloadsNoData);
   const auto &noDataP0 = std::get<0>(noDataCopy.GetPayloads());
   const auto &noDataP1 = std::get<1>(noDataCopy.GetPayloads());
   const auto &p0 = std::get<0>(mpw.GetPayloads());
