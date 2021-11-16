@@ -46,7 +46,7 @@ template<typename... Args> struct TestPayloadWrapper : public PayloadWrapper<Arg
   const auto &GetPayloads() { return PayloadWrapper<Args...>::payloads; }
 };
 
-TEST(TestPayloadWrapperTest, Create_MPW_with_multiple_rvalue_payloads_same_type)
+TEST(TestPayloadWrapperTest, Create_MPW_with_multiple_lvalue_payloads_same_type)
 {
   // This tests mainly the ability to compile the code using TestPayloadWrapper
   auto mpw1 = MockPayloadWrapper();
@@ -55,7 +55,7 @@ TEST(TestPayloadWrapperTest, Create_MPW_with_multiple_rvalue_payloads_same_type)
   auto tpw = TestPayloadWrapper(mpw1, mpw2, mpw3);
 }
 
-TEST(TestPayloadWrapperTest, Create_MPW_with_multiple_rvalue_payloads_various_types)
+TEST(TestPayloadWrapperTest, Create_MPW_with_multiple_lvalue_payloads_various_types)
 {
   auto mpw1 = MockPayloadWrapper();
   auto mpw2 = MockPayloadWrapper();
