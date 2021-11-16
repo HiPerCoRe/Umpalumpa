@@ -10,27 +10,17 @@ namespace umpalumpa::extrema_finder {
 
 template<typename T> struct OutputDataWrapper : public data::PayloadWrapper<T, T>
 {
-  OutputDataWrapper(std::tuple<T, T> &&t) : data::PayloadWrapper<T, T>(std::move(t)) {}
-  OutputDataWrapper(T vals, T locs) : data::PayloadWrapper<T, T>(std::move(vals), std::move(locs))
-  {}
+  OutputDataWrapper(std::tuple<T, T> &t) : data::PayloadWrapper<T, T>(t) {}
+  OutputDataWrapper(T &vals, T &locs) : data::PayloadWrapper<T, T>(vals, locs) {}
   const T &GetValues() const { return std::get<0>(this->payloads); };
   const T &GetLocations() const { return std::get<1>(this->payloads); };
-  static OutputDataWrapper ValuesOnly(T vals)
-  {
-    return OutputDataWrapper(std::move(vals), T(vals.info, "Default Locations"));
-  }
-
-  static OutputDataWrapper LocationsOnly(T locs)
-  {
-    return OutputDataWrapper(T(locs.info, "Default Values"), std::move(locs));
-  }
   typedef T PayloadType;
 };
 
 template<typename T> struct InputDataWrapper : public data::PayloadWrapper<T>
 {
-  InputDataWrapper(std::tuple<T> &&t) : data::PayloadWrapper<T>(std::move(t)) {}
-  InputDataWrapper(T data) : data::PayloadWrapper<T>(std::move(data)) {}
+  InputDataWrapper(std::tuple<T> &t) : data::PayloadWrapper<T>(t) {}
+  InputDataWrapper(T &data) : data::PayloadWrapper<T>(data) {}
   const T &GetData() const { return std::get<0>(this->payloads); };
   typedef T PayloadType;
 };
