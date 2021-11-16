@@ -37,8 +37,8 @@ protected:
     if (SearchResult::kLocation != settings.GetResult()) {
       return Payload(ld, Create(0, DataType::kVoid), "Default (empty) Locations");
     }
-    auto bytes = ld.Elems() * Sizeof(DataType::kFloat);// FIXME this should be size_t
-    auto pd = Create(bytes, DataType::kFloat);// FIXME this should be size_t
+    auto bytes = ld.Elems() * Sizeof(DataType::kFloat);
+    auto pd = Create(bytes, DataType::kFloat);
     return Payload(ld, std::move(pd), "Locations");
   }
 
