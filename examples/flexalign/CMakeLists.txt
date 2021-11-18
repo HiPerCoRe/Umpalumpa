@@ -3,8 +3,8 @@ add_executable(flexalign)
 set(sources
     main.cpp
     flexalign.cpp
-	empty.cu # to link cuda libraries
-    # flexalign_cpu.cpp
+    empty.cu # to link cuda libraries
+    flexalign_cpu.cpp
     # flexalign_cuda.cpp
 	)
 

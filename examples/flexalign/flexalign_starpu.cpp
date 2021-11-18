@@ -2,6 +2,8 @@
 #include <libumpalumpa/utils/starpu.hpp>
 #include <libumpalumpa/algorithms/fourier_transformation/fft_starpu.hpp>
 #include <libumpalumpa/algorithms/fourier_processing/fp_starpu.hpp>
+#include <libumpalumpa/algorithms/correlation/correlation_starpu.hpp>
+#include <libumpalumpa/algorithms/extrema_finder/single_extrema_finder_starpu.hpp>
 
 using umpalumpa::utils::StarPUUtils;
 using umpalumpa::data::ManagedBy;
@@ -10,34 +12,18 @@ using namespace umpalumpa;
 
 template<typename T>
 FlexAlignStarPU<T>::FlexAlignStarPU()
-  : fftAlg(std::make_unique<fourier_transformation::FFTStarPU>()),
-    cropAlg(std::make_unique<fourier_processing::FPStarPU>())
+  : forwardFFTAlg(std::make_unique<fourier_transformation::FFTStarPU>()),
+    inverseFFTAlg(std::make_unique<fourier_transformation::FFTStarPU>()),
+    cropAlg(std::make_unique<fourier_processing::FPStarPU>()),
+    corrAlg(std::make_unique<correlation::Correlation_StarPU>()),
+    extremaFinderAlg(std::make_unique<extrema_finder::SingleExtremaFinderStarPU>())
 {}
-// template<typename T>
-// Payload<FourierDescriptor> FlexAlignStarPU<T>::ConvertToFFTAndCrop(size_t index,
-//   Payload<LogicalDescriptor> &img,
-//   const Size &cropSize)
-// {
-//   std::cout << "[StarPU]: FFT and crop of image " << index << "\n";
-
-// // define settings
-
-
-//   auto cropSettings = fourier_processing::Settings(
-//       fourier_transformation::Locality::kOutOfPlace);
-//   cropSettings.SetApplyFilter(true);
-//   cropSettings.SetNormalize(true);
-
-//   auto ld = FourierDescriptor(cropSize);
-//   auto type = this->GetComplexDataType();
-//   auto bytes = ld.Elems() * Sizeof(type);
-//   return Payload<FourierDescriptor>(ld, Create(bytes, type), "");
-// };
 
 template<typename T>
 PhysicalDescriptor FlexAlignStarPU<T>::Create(size_t bytes, DataType type, bool tmp) const
 {
   void *ptr = nullptr;
+  tmp = false; // FIXME remove
   if (!(tmp || 0 == bytes)) {
     starpu_malloc(&ptr, bytes);
     memset(ptr, 0, bytes);
@@ -53,6 +39,16 @@ template<typename T> void FlexAlignStarPU<T>::Remove(const PhysicalDescriptor &p
   StarPUUtils::Unregister(pd);
   delete StarPUUtils::GetHandle(pd);
   starpu_free(pd.GetPtr());
+}
+
+template<typename T> void FlexAlignStarPU<T>::Acquire(const PhysicalDescriptor &pd) const
+{
+  starpu_data_acquire(*StarPUUtils::GetHandle(pd), STARPU_RW);
+}
+
+template<typename T> void FlexAlignStarPU<T>::Release(const PhysicalDescriptor &pd) const
+{
+  starpu_data_release(*StarPUUtils::GetHandle(pd));
 }
 
 template class FlexAlignStarPU<float>;
