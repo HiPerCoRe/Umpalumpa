@@ -1,31 +1,13 @@
 #include <libumpalumpa/algorithms/fourier_processing/fp_starpu.hpp>
 #include <libumpalumpa/algorithms/fourier_processing/fp_cpu.hpp>
 #include <libumpalumpa/algorithms/fourier_processing/fp_cuda.hpp>
+#include <libumpalumpa/utils/starpu.hpp>
 #include <libumpalumpa/system_includes/spdlog.hpp>
 
 namespace umpalumpa::fourier_processing {
 namespace {// to avoid poluting
-  struct ExecuteArgs
-  {
-    Settings settings;
-    const std::vector<std::unique_ptr<AFP>> *algs;
-  };
 
-  void Codelet(void *buffers[], void *func_arg)
-  {
-    auto *outP = reinterpret_cast<AFP::OutputData::DataType *>(buffers[0]);
-    auto out = AFP::OutputData(std::move(*outP));
-    auto *inD = reinterpret_cast<AFP::InputData::DataType *>(buffers[1]);
-    auto *inF = reinterpret_cast<AFP::InputData::FilterType *>(buffers[2]);
-    auto in = AFP::InputData(std::move(*inD), std::move(*inF));
-    auto *args = reinterpret_cast<ExecuteArgs *>(func_arg);
-    auto &alg = args->algs->at(static_cast<size_t>(starpu_worker_get_id()));
-    std::ignore = alg->Execute(out, in);// we have no way of comunicate the result
-    alg->Synchronize();// this codelet is run asynchronously, but we have to wait till it's done
-                       // to be able to use starpu task synchronization properly
-  }
-
-  struct InitArgs
+  struct Args
   {
     const AFP::OutputData &out;
     const AFP::InputData &in;
@@ -33,9 +15,28 @@ namespace {// to avoid poluting
     std::vector<std::unique_ptr<AFP>> &algs;
   };
 
+  void Codelet(void *buffers[], void *func_arg)
+  {
+    using umpalumpa::utils::StarPUUtils;
+    auto *args = reinterpret_cast<Args *>(func_arg);
+
+    auto pOut = StarPUUtils::Assemble(args->out.GetData(), StarPUUtils::ReceivePDPtr(buffers[0]));
+    auto out = AFP::OutputData(pOut);
+
+    auto pInData = StarPUUtils::Assemble(args->in.GetData(), StarPUUtils::ReceivePDPtr(buffers[1]));
+    auto pInFilter =
+      StarPUUtils::Assemble(args->in.GetFilter(), StarPUUtils::ReceivePDPtr(buffers[2]));
+    auto in = AFP::InputData(pInData, pInFilter);
+
+    auto &alg = args->algs.at(static_cast<size_t>(starpu_worker_get_id()));
+    std::ignore = alg->Execute(out, in);// we have no way of comunicate the result
+    alg->Synchronize();// this codelet is run asynchronously, but we have to wait till it's done
+                       // to be able to use starpu task synchronization properly
+  }
+
   void CpuInit(void *args)
   {
-    auto *a = reinterpret_cast<InitArgs *>(args);
+    auto *a = reinterpret_cast<Args *>(args);
     auto alg = std::make_unique<FPCPU>();
     if (alg->Init(a->out, a->in, a->settings)) {
       a->algs[static_cast<size_t>(starpu_worker_get_id())] = std::move(alg);
@@ -44,7 +45,7 @@ namespace {// to avoid poluting
 
   void CudaInit(void *args)
   {
-    auto *a = reinterpret_cast<InitArgs *>(args);
+    auto *a = reinterpret_cast<Args *>(args);
     std::vector<CUstream> stream = { starpu_cuda_get_local_stream() };
     auto alg = std::make_unique<FPCUDA>(starpu_worker_get_id(), stream);
     if (alg->Init(a->out, a->in, a->settings)) {
@@ -53,86 +54,44 @@ namespace {// to avoid poluting
   }
 }// namespace
 
-bool FPStarPU::Init(const StarpuOutputData &out, const StarpuInputData &in, const Settings &s)
-{
-  return AFP::Init(
-    out.GetData()->GetPayload(), { in.GetData()->GetPayload(), in.GetFilter()->GetPayload() }, s);
-}
-
 bool FPStarPU::InitImpl()
 {
   if (0 == starpu_worker_get_count()) {
     spdlog::warn("No workers available. Is StarPU properly initialized?");
   }
+  noOfInitWorkers = 0;
   const auto &out = this->GetOutputRef();
   const auto &in = this->GetInputRef();
   const auto &s = this->GetSettings();
   algs.clear();
   algs.resize(starpu_worker_get_count());
-  InitArgs args = { out, in, s, algs };
+  Args args = { out, in, s, algs };
   starpu_execute_on_each_worker(CpuInit, &args, STARPU_CPU);
   starpu_execute_on_each_worker(
-    CudaInit, &args, STARPU_CUDA);// FIXME if one of the workers is not initialized, then we
-                                  // should prevent starpu from running execute() on it
-  spdlog::info("{} worker(s) initialized",
-    std::count_if(algs.begin(), algs.end(), [](const auto &i) { return i != nullptr; }));
-  return (algs.size()) > 0;
+    CudaInit, &args, STARPU_CUDA);
+  noOfInitWorkers =
+    std::count_if(algs.begin(), algs.end(), [](const auto &i) { return i != nullptr; });
+  auto level = (0 == noOfInitWorkers) ? spdlog::level::warn : spdlog::level::info;
+  spdlog::log(level, "{} worker(s) initialized", noOfInitWorkers);
+  return noOfInitWorkers > 0;
 }
 
 bool FPStarPU::ExecuteImpl(const OutputData &out, const InputData &in)
 {
-  bool res = false;
-  if ((nullptr == outPtr) && (nullptr == inPtr)) {
-    // input and output data are not Starpu Payloads
-    using DType = data::StarpuPayload<InputData::DataType::LDType>;
-    using FType = data::StarpuPayload<InputData::FilterType::LDType>;
-    auto o = StarpuOutputData(std::make_unique<DType>(out.GetData()));
-    auto i = StarpuInputData(
-      std::make_unique<DType>(in.GetData()), std::make_unique<FType>(in.GetFilter()));
-    res = ExecuteImpl(o, i);
-    // assume that results are requested
-    o.GetData()->Unregister();
-  } else {
-    // input and output are Starpu Payload, stored locally
-    res = ExecuteImpl(*outPtr, *inPtr);
-  }
-  return res;
-}
-
-bool FPStarPU::Execute(const StarpuOutputData &out, const StarpuInputData &in)
-{
-  // store the reference to payloads locally
-  outPtr = &out;
-  inPtr = &in;
-  // call normal execute with the normal Payloads to get all checks etc.
-  auto res = AFP::Execute(
-    out.GetData()->GetPayload(), { in.GetData()->GetPayload(), in.GetFilter()->GetPayload() });
-  // cleanup
-  outPtr = nullptr;
-  inPtr = nullptr;
-  return res;
-}
-
-bool FPStarPU::ExecuteImpl(const StarpuOutputData &out, const StarpuInputData &in)
-{
-  auto createArgs = [this]() {
-    // need to use malloc, because task can only call free
-    auto *args = reinterpret_cast<ExecuteArgs *>(malloc(sizeof(ExecuteArgs)));
-    args->algs = &this->algs;
-    args->settings = this->GetSettings();
-    return args;
-  };
+  using utils::StarPUUtils;
+  // we need at least one initialized worker, otherwise mask would be 0 and all workers
+  // would be used
+  if (noOfInitWorkers < 1) return false;
   struct starpu_task *task = starpu_task_create();
-  task->handles[0] = out.GetData()->GetHandle();
-  task->handles[1] = in.GetData()->GetHandle();
-  task->handles[2] = in.GetFilter()->GetHandle();
+  task->handles[0] = *StarPUUtils::GetHandle(out.GetData().dataInfo);
+  task->handles[1] = *StarPUUtils::GetHandle(in.GetData().dataInfo);
+  task->handles[2] = *StarPUUtils::GetHandle(in.GetFilter().dataInfo);
   task->workerids = utils::StarPUUtils::CreateWorkerMask(task->workerids_len,
-    algs);// FIXME bug in the StarPU? If the mask is completely 0, codelet is being invoked anyway
-  task->cl_arg = createArgs();
-  task->cl_arg_size = sizeof(ExecuteArgs);
-  task->cl_arg_free = 1;
+    algs);
+  task->cl_arg = new Args{ out, in, this->GetSettings(), algs }; // FIXME memory leak
+  task->cl_arg_size = sizeof(Args);
   // make sure we free the mask
-  task->callback_func = [](void*) {/* empty on purpose */};
+  task->callback_func = [](void *) { /* empty on purpose */ };
   task->callback_arg = task->workerids;
   task->callback_arg_free = 1;
   task->cl = [] {

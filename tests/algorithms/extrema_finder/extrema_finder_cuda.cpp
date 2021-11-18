@@ -1,32 +1,37 @@
+#include <tests/algorithms/extrema_finder/extrema_finder_common.hpp>
 #include <libumpalumpa/algorithms/extrema_finder/single_extrema_finder_cuda.hpp>
-#include <gtest/gtest.h>
 
-#include <cuda_runtime.h>
-
-using namespace umpalumpa::extrema_finder;
-using namespace umpalumpa::data;
-
-class SingleExtremaFinderCUDATest : public ::testing::Test
+class SingleExtremaFinderCUDATest : public ExtremaFinder_Tests
 {
 public:
-  auto &GetSearcher() { return searcher; }
-  auto Allocate(size_t bytes)
+  SingleExtremaFinderCUDA &GetAlg() override { return transformer; }
+
+  using ExtremaFinder_Tests::SetUp;
+
+  PhysicalDescriptor Create(size_t bytes, DataType type) override
   {
     void *ptr;
-    cudaMallocManaged(&ptr, bytes);
-    return ptr;
+    CudaErrchk(cudaMallocManaged(&ptr, bytes));
+    return PhysicalDescriptor(ptr, bytes, type, ManagedBy::CUDA, nullptr);
   }
 
-  void Free(void *ptr) { cudaFree(ptr); }
+  void Remove(const PhysicalDescriptor &pd) override { CudaErrchk(cudaFree(pd.GetPtr())); }
 
-  void WaitTillDone() { searcher.Synchronize(); };
+  void Register(const PhysicalDescriptor &pd) override{ /* nothing to do */ };
 
-  ManagedBy GetManager() { return ManagedBy::CUDA; };
+  void Unregister(const PhysicalDescriptor &pd) override{ /* nothing to do */ };
 
-  int GetMemoryNode() { return 0; }
+  void Acquire(const PhysicalDescriptor &pd) override
+  {
+    CudaErrchk(cudaMemPrefetchAsync(pd.GetPtr(), pd.GetBytes(), worker));
+  }
+
+  void Release(const PhysicalDescriptor &pd) override{ /* nothing to do */ };
 
 private:
-  SingleExtremaFinderCUDA searcher = SingleExtremaFinderCUDA(0);
+  const int worker = 0;
+  SingleExtremaFinderCUDA transformer = SingleExtremaFinderCUDA(worker);
 };
+
 #define NAME SingleExtremaFinderCUDATest
-#include <tests/algorithms/extrema_finder/extrema_finder_common.hpp>
+#include <tests/algorithms/extrema_finder/extrema_finder_tests.hpp>

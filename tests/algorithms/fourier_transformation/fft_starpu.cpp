@@ -1,45 +1,52 @@
+#include <tests/algorithms/fourier_transformation/afft_common.hpp>
 #include <libumpalumpa/algorithms/fourier_transformation/fft_starpu.hpp>
-#include <starpu.h>
-#include <gtest/gtest.h>
-#include <tests/algorithms/fourier_transformation/fft_tests.hpp>
+#include <libumpalumpa/utils/starpu.hpp>
 
-using namespace umpalumpa::fourier_transformation;
-using namespace umpalumpa::data;
+using umpalumpa::utils::StarPUUtils;
 
-class FFTStarPUTest
-  : public ::testing::Test
-  , public FFT_Tests
+class FFTStarPUTest : public FFT_Tests
 {
 public:
-  FFTStarPU &GetTransformer() override { return transformer; }
-  void SetUp() override { STARPU_CHECK_RETURN_VALUE(starpu_init(NULL), "StarPU init"); }
+  FFTStarPU &GetAlg() override { return transformer; }
 
-  void TearDown() override { starpu_shutdown(); }
+  static void SetUpTestSuite() { STARPU_CHECK_RETURN_VALUE(starpu_init(NULL), "StarPU init"); }
 
-  void WaitTillDone()
-  {
-    STARPU_CHECK_RETURN_VALUE(starpu_task_wait_for_all(), "Waiting for all tasks");
-  }
+  using FFT_Tests::SetUp;
 
-  void *Allocate(size_t bytes)
+  static void TearDownTestSuite() { starpu_shutdown(); }
+
+  PhysicalDescriptor Create(size_t bytes, DataType type) override
   {
     void *ptr = nullptr;
     starpu_malloc(&ptr, bytes);
-    return ptr;
+    memset(ptr, 0, bytes);
+    auto *handle = new starpu_data_handle_t();
+    return PhysicalDescriptor(ptr, bytes, type, ManagedBy::StarPU, handle);
   }
-  void Free(void *ptr) { starpu_free(ptr); }
 
-  FreeFunction GetFree() override
+  void Remove(const PhysicalDescriptor &pd) override
   {
-    return [](void *ptr) { starpu_free(ptr); };
+    starpu_free(pd.GetPtr());
+    delete StarPUUtils::GetHandle(pd);
   }
 
-  ManagedBy GetManager() override { return ManagedBy::StarPU; };
+  void Register(const PhysicalDescriptor &pd) override { StarPUUtils::Register(pd); };
 
-  int GetMemoryNode() override { return STARPU_MAIN_RAM; }
+  void Unregister(const PhysicalDescriptor &pd) override { StarPUUtils::Unregister(pd); };
+
+  void Acquire(const PhysicalDescriptor &pd) override
+  {
+    starpu_data_acquire(*StarPUUtils::GetHandle(pd), STARPU_RW);
+  }
+
+  void Release(const PhysicalDescriptor &pd) override
+  {
+    starpu_data_release(*StarPUUtils::GetHandle(pd));
+  }
 
 private:
   FFTStarPU transformer;
 };
+
 #define NAME FFTStarPUTest
-#include <tests/algorithms/fourier_transformation/afft_common.hpp>
+#include <tests/algorithms/fourier_transformation/fft_tests.hpp>

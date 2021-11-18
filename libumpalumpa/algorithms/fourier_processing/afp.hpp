@@ -11,10 +11,8 @@ namespace umpalumpa::fourier_processing {
 
 template<typename T, typename U> struct InputDataWrapper : public data::PayloadWrapper<T, U>
 {
-  InputDataWrapper(std::tuple<T, U> &&t) : data::PayloadWrapper<T, U>(std::move(t)) {}
-  InputDataWrapper(T data, U filter)
-    : data::PayloadWrapper<T, U>(std::move(data), std::move(filter))
-  {}
+  InputDataWrapper(std::tuple<T, U> &t) : data::PayloadWrapper<T, U>(t) {}
+  InputDataWrapper(T &data, U &filter) : data::PayloadWrapper<T, U>(data, filter) {}
   const T &GetData() const { return std::get<0>(this->payloads); };
   const U &GetFilter() const { return std::get<1>(this->payloads); };
   typedef T DataType;
@@ -23,8 +21,8 @@ template<typename T, typename U> struct InputDataWrapper : public data::PayloadW
 
 template<typename T> struct OutputDataWrapper : public data::PayloadWrapper<T>
 {
-  OutputDataWrapper(std::tuple<T> &&t) : data::PayloadWrapper<T>(std::move(t)) {}
-  OutputDataWrapper(T data) : data::PayloadWrapper<T>(std::move(data)) {}
+  OutputDataWrapper(std::tuple<T> &t) : data::PayloadWrapper<T>(t) {}
+  OutputDataWrapper(T &data) : data::PayloadWrapper<T>(data) {}
   const T &GetData() const { return std::get<0>(this->payloads); };
   typedef T DataType;
 };

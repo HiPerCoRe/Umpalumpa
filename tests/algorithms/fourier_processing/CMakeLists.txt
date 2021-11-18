@@ -17,7 +17,8 @@ target_link_libraries(
           gtest_main
           gmock_main
           cudart
-          cufft)
+          cufft
+          tbb)
 
 include(GoogleTest)
 gtest_discover_tests(fourier_processing_tests)

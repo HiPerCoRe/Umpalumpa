@@ -12,7 +12,8 @@ target_link_libraries(
   PRIVATE project_options
           umpalumpa
           gtest_main
-          gmock_main)
+          gmock_main
+          cufft)
 
 include(GoogleTest)
 gtest_discover_tests(algorithm_manager_tests)

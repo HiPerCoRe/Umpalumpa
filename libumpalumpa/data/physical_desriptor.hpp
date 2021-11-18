@@ -3,16 +3,20 @@
 #include <libumpalumpa/data/size.hpp>
 #include <libumpalumpa/data/data_type.hpp>
 #include <libumpalumpa/data/managed_by.hpp>
+#include <type_traits>
 
 namespace umpalumpa::data {
+/**
+ * Class describing actual storage of some data chunk
+ **/
 class PhysicalDescriptor
 {
 public:
-  explicit PhysicalDescriptor(void *data, size_t b, DataType dataType, ManagedBy m, int node)
-    : ptr(data), bytes(b), type(dataType), manager(m), memoryNode(node){};
-
-  explicit PhysicalDescriptor()
-    : PhysicalDescriptor(nullptr, 0, DataType::kVoid, ManagedBy::Unknown, 0){};
+  explicit PhysicalDescriptor(void *data, size_t b, DataType dataType, ManagedBy m, void *h)
+    : ptr(data), bytes(b), type(dataType), manager(m), handle(h)
+  {
+    static_assert(std::is_move_constructible<PhysicalDescriptor>::value);
+  };
 
   auto GetBytes() const { return bytes; }
 
@@ -26,11 +30,13 @@ public:
 
   auto GetManager() const { return manager; }
 
-  auto GetMemoryNode() const { return memoryNode; }
+  auto *GetHandle() const { return handle; }
 
   void *GetPtr() const { return ptr; }
 
-  auto CopyWithoutData() const { return PhysicalDescriptor(nullptr, 0, type, manager, memoryNode); }
+  auto CopyWithoutData() const { return PhysicalDescriptor(nullptr, 0, type, manager, nullptr); }
+
+  auto CopyWithPtr(void *p) const { return PhysicalDescriptor(p, bytes, type, manager, handle); }
 
   /**
    * Descriptor is valid if it describes empty storage or non-empty storage,
@@ -43,11 +49,16 @@ public:
    **/
   bool IsEmpty() const { return (0 == bytes) && (nullptr == ptr); }
 
+  PhysicalDescriptor(PhysicalDescriptor &&) = default;
+
 private:
+  // Prevent copying of this instance (to avoid accidental handle copy)
+  PhysicalDescriptor(const PhysicalDescriptor &) = default;
+  constexpr PhysicalDescriptor &operator=(const PhysicalDescriptor &) = default;
   void *ptr;// type defined by DataType
   size_t bytes;// how big block is available
   DataType type;// what type is stored
   ManagedBy manager;// who is responsible for data
-  int memoryNode;// says where exactly is data stored (if supported by Manager)
+  void *handle;// handle used by the manager (if any)
 };
 }// namespace umpalumpa::data

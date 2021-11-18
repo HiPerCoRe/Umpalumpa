@@ -5,24 +5,23 @@
 #include <libumpalumpa/data/fourier_descriptor.hpp>
 #include <libumpalumpa/data/payload.hpp>
 #include <libumpalumpa/algorithms/fourier_transformation/settings.hpp>
-#include <memory>
 
 namespace umpalumpa::fourier_transformation {
 
 template<typename T> struct OutputDataWrapper : public data::PayloadWrapper<T>
 {
-  OutputDataWrapper(std::tuple<T> &&t) : data::PayloadWrapper<T>(std::move(t)) {}
-  OutputDataWrapper(T data) : data::PayloadWrapper<T>(std::move(data)) {}
-  const T &GetData() const { return std::get<0>(this->payloads); };
-  typedef T PayloadType;
+  OutputDataWrapper(std::tuple<T> &t) : data::PayloadWrapper<T>(t) {}
+  OutputDataWrapper(T &data) : data::PayloadWrapper<T>(data) {}
+  T &GetData() const { return std::get<0>(this->payloads); };
+  typedef T DataType;
 };
 
 template<typename T> struct InputDataWrapper : public data::PayloadWrapper<T>
 {
-  InputDataWrapper(std::tuple<T> &&t) : data::PayloadWrapper<T>(std::move(t)) {}
-  InputDataWrapper(T data) : data::PayloadWrapper<T>(std::move(data)) {}
-  const T &GetData() const { return std::get<0>(this->payloads); };
-  typedef T PayloadType;
+  InputDataWrapper(std::tuple<T> &t) : data::PayloadWrapper<T>(t) {}
+  InputDataWrapper(T &data) : data::PayloadWrapper<T>(data) {}
+  T &GetData() const { return std::get<0>(this->payloads); };
+  typedef T DataType;
 };
 
 class AFFT

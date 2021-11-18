@@ -5,18 +5,18 @@ __global__ void correlate2D(T *__restrict__ correlations,
   const T *__restrict__ in1,
   umpalumpa::data::Size in1Size,
   const T *__restrict__ in2,
-  int in2N, bool isWithin)
+  unsigned in2N, bool isWithin)
 {
   // assign pixel to thread
 #if TILE > 1
-  int id = threadIdx.y * blockDim.x + threadIdx.x;
-  int tidX = threadIdx.x % TILE + (id / (blockDim.y * TILE)) * TILE;
-  int tidY = (id / TILE) % blockDim.y;
-  int idx = blockIdx.x * blockDim.x + tidX;
-  int idy = blockIdx.y * blockDim.y + tidY;
+  unsigned id = threadIdx.y * blockDim.x + threadIdx.x;
+  unsigned tidX = threadIdx.x % TILE + (id / (blockDim.y * TILE)) * TILE;
+  unsigned tidY = (id / TILE) % blockDim.y;
+  unsigned idx = blockIdx.x * blockDim.x + tidX;
+  unsigned idy = blockIdx.y * blockDim.y + tidY;
 #else
-  int idx = blockIdx.x * blockDim.x + threadIdx.x;
-  int idy = blockIdx.y * blockDim.y + threadIdx.y;
+  unsigned idx = blockIdx.x * blockDim.x + threadIdx.x;
+  unsigned idy = blockIdx.y * blockDim.y + threadIdx.y;
 #endif
   int centerCoef = 1 - 2 * ((idx + idy) & 1);// center FFT, input must be even
 
@@ -24,17 +24,20 @@ __global__ void correlate2D(T *__restrict__ correlations,
   if (idx >= in1Size.x || idy >= in1Size.y) return;
   size_t pixelIndex = idy * in1Size.x + idx;// index within single image
 
-  int counter = 0;
-  for (int i = 0; i <= in1Size.n; i++) {
-    int tmpOffset = i * in1Size.single;
+  unsigned counter = 0;
+  // for each signal in the first buffer
+  for (unsigned i = 0; i < in1Size.n; i++) {
+    unsigned tmpOffset = i * in1Size.single;
     T tmp = in1[tmpOffset + pixelIndex];
-    for (int j = isWithin ? i + 1 : 0; j < in2N; j++) {
-      int tmp2Offset = j * in1Size.single;
+    // for each signal in the second buffer
+    for (unsigned j = isWithin ? i + 1 : 0; j < in2N; j++) {
+      unsigned tmp2Offset = j * in1Size.single;
       T tmp2 = in2[tmp2Offset + pixelIndex];
       T res;
       res.x = (tmp.x * tmp2.x) + (tmp.y * tmp2.y);
       res.y = (tmp.y * tmp2.x) - (tmp.x * tmp2.y);
       if (center) {
+        // center FFT, input must be even
         res.x *= centerCoef;
         res.y *= centerCoef;
       }

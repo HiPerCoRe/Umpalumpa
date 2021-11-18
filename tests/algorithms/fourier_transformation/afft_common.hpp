@@ -1,128 +1,270 @@
 #pragma once
 
-#include <iostream>
-#include <gtest/gtest.h>
-#include <libumpalumpa/algorithms/fourier_transformation/settings.hpp>
-#include <libumpalumpa/algorithms/fourier_transformation/locality.hpp>
-#include <libumpalumpa/algorithms/fourier_transformation/direction.hpp>
 #include <libumpalumpa/algorithms/fourier_transformation/afft.hpp>
-#include <libumpalumpa/data/payload.hpp>
-#include <libumpalumpa/data/fourier_descriptor.hpp>
-#include <complex>
-#include <thread>
+#include <tests/algorithms/common.hpp>
+#include <tests/utils.hpp>
 
 using namespace umpalumpa::fourier_transformation;
 using namespace umpalumpa::data;
+using namespace umpalumpa::test;
 
-TEST_F(NAME, InpulseOriginForward)
+class FFT_Tests : public TestAlg<AFFT>
 {
-  Locality locality = Locality::kOutOfPlace;
-  Direction direction = Direction::kForward;
-  Settings settings(locality, direction);
+protected:
+  auto CreatePayloadSpatial(const Size &size)
+  {
+    auto ld = FourierDescriptor(size);
+    auto bytes = ld.Elems() * Sizeof(DataType::kFloat);
+    auto pd = Create(bytes, DataType::kFloat);
+    return Payload(ld, std::move(pd), "Spatial data");
+  }
 
-  Size size(5, 5, 1, 1);
+  auto CreatePayloadFrequencyOut(const Settings &settings, const Size &size)
+  {
+    auto fd = FourierDescriptor::FourierSpaceDescriptor{};
+    auto ld = FourierDescriptor(size, PaddingDescriptor(), fd);
+    auto bytes = ld.Elems() * Sizeof(DataType::kComplexFloat);
+    auto pd = [settings, this, bytes]() {
+      if (settings.IsOutOfPlace()) {
+        return Create(bytes, DataType::kComplexFloat);
+      } else {
+        // TODO find out if in StarPU we can use the same Physical Descriptor
+        // or if we have to create a new handle
+        throw std::runtime_error("Not implemented yet!");
+      }
+    }();
+    return Payload(ld, std::move(pd), "Output data");
+  }
 
-  SetUpFFT(settings, size, PaddingDescriptor());
+  void SetUp(const Settings &settings, const Size &size)
+  {
+    pSpatial = std::make_unique<Payload<FourierDescriptor>>(CreatePayloadSpatial(size));
+    Register(pSpatial->dataInfo);
 
-  auto inP = AFFT::InputData(Payload(*ldSpatial, *pdSpatial, "Input data"));
-  auto outP = AFFT::OutputData(Payload(*ldFrequency, *pdFrequency, "Result data"));
+    pFrequency =
+      std::make_unique<Payload<FourierDescriptor>>(CreatePayloadFrequencyOut(settings, size));
+    Register(pFrequency->dataInfo);
+  }
 
-  testFFTInpulseOrigin(outP, inP, settings);
-}
+  /**
+   * Called at the end of each test fixture
+   **/
+  void TearDown() override
+  {
+    Unregister(pSpatial->dataInfo);
+    Remove(pSpatial->dataInfo);
 
-TEST_F(NAME, InpulseOriginInverse)
-{
-  Locality locality = Locality::kOutOfPlace;
-  Direction direction = Direction::kInverse;
-  Settings settings(locality, direction);
+    Unregister(pFrequency->dataInfo);
+    Remove(pFrequency->dataInfo);
+  }
 
-  Size size(5, 5, 1, 1);
+  template<typename T, typename P, typename F> void Generate(P &p, F f)
+  {
+    Acquire(p.dataInfo);
+    auto *inData = reinterpret_cast<T *>(p.GetPtr());
+    memset(inData, 0, p.dataInfo.GetBytes());
+    f(inData);
+    // PrintData(inData, p.info.GetSize());
+    Release(p.dataInfo);
+  }
 
-  SetUpFFT(settings, size, PaddingDescriptor());
+  void testFFTInpulseOrigin(AFFT::OutputData &out, AFFT::InputData &in, const Settings &settings)
+  {
+    Generate<float>(in.GetData(), [&in](auto *ptr) {
+      for (size_t n = 0; n < in.GetData().info.GetSize().n; ++n) {
+        // impulse at the origin ...
+        ptr[n * in.GetData().info.GetPaddedSize().single] = 1.f;
+      }
+    });
 
-  auto inP = AFFT::InputData(Payload(*ldFrequency, *pdFrequency, "Input data"));
-  auto outP = AFFT::OutputData(Payload(*ldSpatial, *pdSpatial, "Result data"));
+    auto &alg = GetAlg();
 
-  testIFFTInpulseOrigin(outP, inP, settings);
-}
+    ASSERT_TRUE(alg.Init(out, in, settings));
+    ASSERT_TRUE(alg.Execute(out, in));
+    // wait till the work is done
+    alg.Synchronize();
+    // make sure that data are on this memory node
+    Acquire(out.GetData().dataInfo);
+    // check results
+    auto *outData = reinterpret_cast<std::complex<float> *>(out.GetData().GetPtr());
+    // PrintData(outData, out.GetData().info.GetPaddedSize());
 
-TEST_F(NAME, InpulseShiftedForward)
-{
-  Locality locality = Locality::kOutOfPlace;
-  Direction direction = Direction::kForward;
-  Settings settings(locality, direction);
+    float delta = 0.00001f;
+    for (size_t i = 0; i < out.GetData().info.GetPaddedSize().total; ++i) {
+      // ... will result in constant real value, and no imag value
+      ASSERT_NEAR(1, outData[i].real(), delta) << " at " << i;
+      ASSERT_NEAR(0, outData[i].imag(), delta) << " at " << i;
+    }
+    // we're done with those data
+    Release(out.GetData().dataInfo);
+  }
 
-  Size size(5, 5, 1, 1);
+  void testIFFTInpulseOrigin(AFFT::OutputData &out, AFFT::InputData &in, const Settings &settings)
+  {
+    Generate<std::complex<float>>(in.GetData(), [&in](auto *ptr) {
+      for (size_t n = 0; n < in.GetData().info.GetPaddedSize().single; ++n) {
+        // constant real value, and no imag value ...
+        ptr[n] = { 1.f, 0 };
+      }
+    });
 
-  SetUpFFT(settings, size, PaddingDescriptor());
+    auto &alg = GetAlg();
 
-  auto inP = AFFT::InputData(Payload(*ldSpatial, *pdSpatial, "Input data"));
-  auto outP = AFFT::OutputData(Payload(*ldFrequency, *pdFrequency, "Result data"));
+    ASSERT_TRUE(alg.Init(out, in, settings));
+    ASSERT_TRUE(alg.Execute(out, in));
+    // wait till the work is done
+    alg.Synchronize();
+    // make sure that data are on this memory node
+    Acquire(out.GetData().dataInfo);
+    // check results
+    auto *outData = reinterpret_cast<float *>(out.GetData().GetPtr());
+    // PrintData(outData, out.GetData().info.GetSize());
 
-  testFFTInpulseShifted(outP, inP, settings);
-}
+    float delta = 0.00001f;
+    for (size_t n = 0; n < out.GetData().info.GetSize().n; ++n) {
+      size_t offset = n * out.GetData().info.GetPaddedSize().single;
+      // skip the padded area, it can contain garbage data
+      for (size_t z = 0; z < out.GetData().info.GetSize().z; ++z) {
+        for (size_t y = 0; y < out.GetData().info.GetSize().y; ++y) {
+          for (size_t x = 0; x < out.GetData().info.GetSize().x; ++x) {
+            size_t index = offset
+                           + z * out.GetData().info.GetSize().x * out.GetData().info.GetSize().y
+                           + y * out.GetData().info.GetSize().x + x;
+            // output is not normalized, so normalize it to make the the test more stable
+            if (index == offset) {
+              // ... will result in impulse at the origin ...
+              ASSERT_NEAR(1.f, outData[index] / out.GetData().info.GetSize().single, delta)
+                << "at " << index;
+            } else {
+              // ... and zeros elsewhere
+              ASSERT_NEAR(0.f, outData[index] / out.GetData().info.GetSize().single, delta)
+                << "at " << index;
+            }
+          }
+        }
+      }
+    }
+    // we're done with those data
+    Release(out.GetData().dataInfo);
+  }
 
-TEST_F(NAME, FFTIFFT)
-{
-  Locality locality = Locality::kOutOfPlace;
-  Direction direction = Direction::kForward;
-  Settings settings(locality, direction);
+  void testFFTInpulseShifted(AFFT::OutputData &out, AFFT::InputData &in, const Settings &settings)
+  {
+    Generate<float>(in.GetData(), [&in](auto *ptr) {
+      for (size_t n = 0; n < in.GetData().info.GetSize().n; ++n) {
+        // impulse at the origin ...
+        ptr[n * in.GetData().info.GetPaddedSize().single + 1] = 1.f;
+      }
+    });
 
-  Size size(5, 5, 1, 15);
+    auto &alg = GetAlg();
 
-  SetUpFFT(settings, size, PaddingDescriptor());
+    ASSERT_TRUE(alg.Init(out, in, settings));
+    ASSERT_TRUE(alg.Execute(out, in));
+    // wait till the work is done
+    alg.Synchronize();
+    // make sure that data are on this memory node
+    Acquire(out.GetData().dataInfo);
+    // check results
+    auto *outData = reinterpret_cast<std::complex<float> *>(out.GetData().GetPtr());
+    // PrintData(outData, out.GetData().info.GetPaddedSize());
 
-  auto inP = AFFT::InputData(Payload(*ldSpatial, *pdSpatial, "Input data"));
-  auto outP = AFFT::OutputData(Payload(*ldFrequency, *pdFrequency, "Result data"));
+    float delta = 0.00001f;
+    for (size_t i = 0; i < out.GetData().info.GetPaddedSize().total; ++i) {
+      // ... will result in constant magnitude
+      auto re = outData[i].real();
+      auto im = outData[i].imag();
+      auto mag = re * re + im * im;
+      ASSERT_NEAR(1.f, std::sqrt(mag), delta) << " at " << i;
+    }
+    // we're done with those data
+    Release(out.GetData().dataInfo);
+  }
 
-  testFFTIFFT(outP, inP, settings, 0);
-}
+  void testFFTIFFT(AFFT::OutputData &out,
+    AFFT::InputData &in,
+    const Settings &settings,
+    size_t batchSize = 0)
+  {
+    auto *outData = reinterpret_cast<std::complex<float> *>(out.GetData().GetPtr());
+    auto inverseIn = AFFT::InputData(out.GetData());
+    auto inverseOut = AFFT::OutputData(in.GetData());
 
+    // generate reference data
+    auto ref = std::make_unique<float[]>(in.GetData().info.GetPaddedSize().total);
+    // FillRandom(ref, in.GetData().dataInfo.GetBytes());
+    FillNormalDist(ref.get(), in.GetData().info.GetPaddedSize().total);
 
-TEST_F(NAME, FFTIFFT_Batch)
-{
-  Locality locality = Locality::kOutOfPlace;
-  Direction direction = Direction::kForward;
-  Settings settings(locality, direction);
+    Acquire(in.GetData().dataInfo);
+    auto *inData = reinterpret_cast<float *>(in.GetData().GetPtr());
+    memcpy(
+      in.GetData().GetPtr(), ref.get(), in.GetData().info.GetPaddedSize().total * sizeof(float));
+    // Print(inData, in.GetData().info.GetPaddedSize());
+    Release(in.GetData().dataInfo);
 
-  Size size(5, 5, 1, 50);
+    auto &alg = GetAlg();
+    auto forwardSettings =
+      (settings.GetDirection() == Direction::kForward) ? settings : settings.CreateInverse();
 
-  SetUpFFT(settings, size, PaddingDescriptor());
+    if (0 == batchSize) {
+      ASSERT_TRUE(alg.Init(out, in, forwardSettings));
+      ASSERT_TRUE(alg.Execute(out, in));
+    } else {
+      GTEST_SKIP() << "Batching is not yet supported";
+      // for (size_t offset = 0; offset < in.GetData().info.GetSize().n; offset += batchSize) {
+      //   auto tmpOut = AFFT::OutputData(out.GetData().Subset(offset, batchSize));
+      //   auto tmpIn = AFFT::InputData(in.GetData().Subset(offset, batchSize));
+      //   if (0 == offset) { ASSERT_TRUE(alg.Init(tmpOut, tmpIn, forwardSettings)); }
+      //   ASSERT_TRUE(alg.Execute(tmpOut, tmpIn));
+      // }
+    }
 
-  auto inP = AFFT::InputData(Payload(*ldSpatial, *pdSpatial, "Input data"));
-  auto outP = AFFT::OutputData(Payload(*ldFrequency, *pdFrequency, "Result data"));
+    auto inverseSettings = forwardSettings.CreateInverse();
+    if (0 == batchSize) {
+      ASSERT_TRUE(alg.Init(inverseOut, inverseIn, inverseSettings));
+      ASSERT_TRUE(alg.Execute(inverseOut, inverseIn));
+    } else {
+      GTEST_SKIP() << "Batching is not yet supported";
+      // for (size_t offset = 0; offset < in.GetData().info.GetSize().n; offset += batchSize) {
+      //   auto tmpOut = AFFT::OutputData(inverseOut.GetData().Subset(offset, batchSize));
+      //   auto tmpIn = AFFT::InputData(inverseIn.GetData().Subset(offset, batchSize));
+      //   if (0 == offset) { ASSERT_TRUE(alg.Init(tmpOut, tmpIn, inverseSettings)); }
+      //   ASSERT_TRUE(alg.Execute(tmpOut, tmpIn));
+      // }
+    }
+    // wait till the work is done
+    alg.Synchronize();
+    // make sure that data are on this memory node
+    Acquire(inverseOut.GetData().dataInfo);
+    // check results
+    // Print(inData, in.GetData().info.GetPaddedSize());
 
-  testFFTIFFT(outP, inP, settings, 10);
-}
+    float delta = 0.00001f;
+    const float normFact = inverseOut.GetData().info.GetNormFactor();
+    for (size_t n = 0; n < inverseOut.GetData().info.GetSize().n; ++n) {
+      size_t offsetN = n * inverseOut.GetData().info.GetPaddedSize().single;
+      // skip the padded area, it can contain garbage data
+      for (size_t z = 0; z < inverseOut.GetData().info.GetSize().z; ++z) {
+        for (size_t y = 0; y < inverseOut.GetData().info.GetSize().y; ++y) {
+          auto offset =
+            offsetN
+            + z * inverseOut.GetData().info.GetSize().x * inverseOut.GetData().info.GetSize().y
+            + y * inverseOut.GetData().info.GetSize().x;
 
-TEST_F(NAME, FFTIFFT_MultipleThreads)
-{
-  Locality locality = Locality::kOutOfPlace;
-  Direction direction = Direction::kForward;
-  Settings settings(locality, direction, std::max(std::thread::hardware_concurrency(), 1u));
+          std::for_each_n(std::execution::par,
+            ref.get() + offset,
+            inverseOut.GetData().info.GetSize().x,
+            [&ref, offset, &inData, normFact, delta](auto &pos) {
+              auto dist = std::distance(ref.get() + offset, &pos);
+              EXPECT_NEAR(pos, inData[offset + dist] * normFact, delta) << "at " << dist;
+            });
+        }
+      }
+    }
+    // we're done with those data
+    Release(inverseOut.GetData().dataInfo);
+  }
 
-  Size size(300, 200, 32, 55);
-
-  SetUpFFT(settings, size, PaddingDescriptor());
-
-  auto inP = AFFT::InputData(Payload(*ldSpatial, *pdSpatial, "Input data"));
-  auto outP = AFFT::OutputData(Payload(*ldFrequency, *pdFrequency, "Result data"));
-
-  testFFTIFFT(outP, inP, settings);
-}
-
-TEST_F(NAME, FFTIFFT_BatchNotDivisible)
-{
-  Locality locality = Locality::kOutOfPlace;
-  Direction direction = Direction::kForward;
-  Settings settings(locality, direction);
-
-  Size size(5, 5, 1, 53);
-
-  SetUpFFT(settings, size, PaddingDescriptor());
-
-  auto inP = AFFT::InputData(Payload(*ldSpatial, *pdSpatial, "Input data"));
-  auto outP = AFFT::OutputData(Payload(*ldFrequency, *pdFrequency, "Result data"));
-
-  testFFTIFFT(outP, inP, settings, 10);
-}
+  std::unique_ptr<Payload<FourierDescriptor>> pSpatial;
+  std::unique_ptr<Payload<FourierDescriptor>> pFrequency;
+};
