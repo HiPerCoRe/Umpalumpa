@@ -20,7 +20,7 @@ void PrivatePrint(std::ostream &out,
 
   auto original = out.flags();
   // prepare output formatting
-  out << std::setfill(' ') << std::left << std::setprecision(3) << std::showpos;
+  out << std::fixed << std::setfill(' ') << std::left << std::setprecision(3) << std::showpos;
 
   auto *data = reinterpret_cast<DT *>(p.GetPtr());
   for (size_t n = offset.n; n < offset.n + dims.n; n++) {

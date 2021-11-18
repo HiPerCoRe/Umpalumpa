@@ -37,9 +37,6 @@ __global__ void scaleFFT2DKernel(const float2 *__restrict__ in,
       out[oIndex].x *= filter[fIndex];
       out[oIndex].y *= filter[fIndex];
     }
-    if (0 == idx || 0 == idy) {
-      out[oIndex] = { 0, 0 };// ignore low frequency, this should increase precision a bit
-    }
     if (normalize) {
       out[oIndex].x *= normFactor;
       out[oIndex].y *= normFactor;
