@@ -19,8 +19,8 @@ using namespace umpalumpa::algorithm;
 
 template<typename T = Payload<LogicalDescriptor>> struct DataWrapper : public PayloadWrapper<T>
 {
-  DataWrapper(std::tuple<T> &&t) : PayloadWrapper<T>(std::move(t)) {}
-  DataWrapper(T d) : PayloadWrapper<T>(std::move(d)) {}
+  DataWrapper(std::tuple<T> &t) : PayloadWrapper<T>(t) {}
+  DataWrapper(T &d) : PayloadWrapper<T>(d) {}
   const T &GetData() const { return std::get<0>(this->payloads); };
 };
 
@@ -81,8 +81,13 @@ protected:
   // Constructor is called before every test
   AlgorithmManagerTests()
     : settings(), size(42, 1, 1, 1), ld(size),
-      pd(nullptr, 0, DataType::kFloat, ManagedBy::Manually, 0), inP(Payload(ld, pd, "Input data")),
-      outP(Payload(ld, pd, "Output data"))
+      pIn(Payload(ld,
+        PhysicalDescriptor(nullptr, 0, DataType::kFloat, ManagedBy::Manually, nullptr),
+        "Input data")),
+      pOut(Payload(ld,
+        PhysicalDescriptor(nullptr, 0, DataType::kFloat, ManagedBy::Manually, nullptr),
+        "Output data")),
+      in(pIn), out(pOut)
   {
     // NOTE AlgorithmManager is a singleton and therefore has a global state. It needs to be reset
     // before each test.
@@ -92,10 +97,12 @@ protected:
   const Settings settings;
   const Size size;
   const LogicalDescriptor ld;
-  const PhysicalDescriptor pd;
 
-  const TestAlgorithm_CUDA::InputData inP;
-  const TestAlgorithm_CUDA::OutputData outP;
+  Payload<LogicalDescriptor> pIn;
+  Payload<LogicalDescriptor> pOut;
+
+  const TestAlgorithm_CUDA::InputData in;
+  const TestAlgorithm_CUDA::OutputData out;
 };
 
 TEST_F(AlgorithmManagerTests, strategy_registered_automatically_when_init_succeeds)
@@ -104,7 +111,7 @@ TEST_F(AlgorithmManagerTests, strategy_registered_automatically_when_init_succee
   EXPECT_CALL(*algo.mockStratPtr, InitImpl()).WillOnce(Return(true));
 
   ASSERT_TRUE(AlgorithmManager::Get().GetRegisteredStrategies().empty());
-  ASSERT_TRUE(algo.Init(outP, inP, settings));
+  ASSERT_TRUE(algo.Init(out, in, settings));
   ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().size(), 1u);
   ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().at(0).size(), 1u);
 }
@@ -115,7 +122,7 @@ TEST_F(AlgorithmManagerTests, strategy_not_registered_when_init_failed)
   EXPECT_CALL(*algo.mockStratPtr, InitImpl()).WillOnce(Return(false));
 
   ASSERT_TRUE(AlgorithmManager::Get().GetRegisteredStrategies().empty());
-  ASSERT_FALSE(algo.Init(outP, inP, settings));
+  ASSERT_FALSE(algo.Init(out, in, settings));
   ASSERT_TRUE(AlgorithmManager::Get().GetRegisteredStrategies().empty());
 }
 
@@ -126,7 +133,7 @@ TEST_F(AlgorithmManagerTests, strategy_unregistered_automatically_when_destroyed
     EXPECT_CALL(*algo.mockStratPtr, InitImpl()).WillOnce(Return(true));
 
     ASSERT_TRUE(AlgorithmManager::Get().GetRegisteredStrategies().empty());
-    ASSERT_TRUE(algo.Init(outP, inP, settings));
+    ASSERT_TRUE(algo.Init(out, in, settings));
     ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().size(), 1u);
     ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().at(0).size(), 1u);
   }// the algorithm and the strategy are destroyed
@@ -140,7 +147,7 @@ TEST_F(AlgorithmManagerTests, strategy_already_registered_cant_register_again)
   EXPECT_CALL(*algo.mockStratPtr, InitImpl()).WillOnce(Return(true));
 
   ASSERT_TRUE(AlgorithmManager::Get().GetRegisteredStrategies().empty());
-  ASSERT_TRUE(algo.Init(outP, inP, settings));
+  ASSERT_TRUE(algo.Init(out, in, settings));
   ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().size(), 1u);
   // Now we have 1 strategy registered and now we try to insert again the same strategy
   // To force this situation we use explicit call to Register method
@@ -176,13 +183,13 @@ TEST_F(AlgorithmManagerTests,
   EXPECT_CALL(*algo.mockStratPtr, GetHash()).WillRepeatedly(Return(42));
 
   ASSERT_TRUE(AlgorithmManager::Get().GetRegisteredStrategies().empty());
-  ASSERT_TRUE(algo.Init(outP, inP, settings));
+  ASSERT_TRUE(algo.Init(out, in, settings));
   ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().size(), 1u);
   ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().at(0).size(), 1u);
   // We need to execute the algorithm, so that KTT can generate some config
   // TODO either properly define TestAlgorithm_CUDA to use KTT or generate the config in some other
   // way
-  ASSERT_TRUE(algo.Execute(outP, inP));
+  ASSERT_TRUE(algo.Execute(out, in));
 
   auto bestConfig = AlgorithmManager::Get().GetBestConfiguration(algo.mockStratPtr->GetHash());
   // TODO some assert
@@ -209,9 +216,9 @@ TEST_F(AlgorithmManagerTests, multiple_equivalent_strategies_registered_at_once)
   EXPECT_CALL(*algo3.mockStratPtr, GetHash()).WillRepeatedly(Return(42));
 
   ASSERT_TRUE(AlgorithmManager::Get().GetRegisteredStrategies().empty());
-  ASSERT_TRUE(algo1.Init(outP, inP, settings));
-  ASSERT_TRUE(algo2.Init(outP, inP, settings));
-  ASSERT_TRUE(algo3.Init(outP, inP, settings));
+  ASSERT_TRUE(algo1.Init(out, in, settings));
+  ASSERT_TRUE(algo2.Init(out, in, settings));
+  ASSERT_TRUE(algo3.Init(out, in, settings));
   ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().size(), 1u);
   ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().at(0).size(), 3u);
 }
@@ -236,9 +243,9 @@ TEST_F(AlgorithmManagerTests, multiple_similar_strategies_registered_at_once)
   EXPECT_CALL(*algo3.mockStratPtr, IsSimilarTo).WillRepeatedly(Return(true));
 
   ASSERT_TRUE(AlgorithmManager::Get().GetRegisteredStrategies().empty());
-  ASSERT_TRUE(algo1.Init(outP, inP, settings));
-  ASSERT_TRUE(algo2.Init(outP, inP, settings));
-  ASSERT_TRUE(algo3.Init(outP, inP, settings));
+  ASSERT_TRUE(algo1.Init(out, in, settings));
+  ASSERT_TRUE(algo2.Init(out, in, settings));
+  ASSERT_TRUE(algo3.Init(out, in, settings));
   ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().size(), 1u);
   ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().at(0).size(), 3u);
 }
@@ -263,9 +270,9 @@ TEST_F(AlgorithmManagerTests, multiple_different_strategies_registered_at_once)
   EXPECT_CALL(*algo3.mockStratPtr, IsSimilarTo).WillRepeatedly(Return(false));
 
   ASSERT_TRUE(AlgorithmManager::Get().GetRegisteredStrategies().empty());
-  ASSERT_TRUE(algo1.Init(outP, inP, settings));
-  ASSERT_TRUE(algo2.Init(outP, inP, settings));
-  ASSERT_TRUE(algo3.Init(outP, inP, settings));
+  ASSERT_TRUE(algo1.Init(out, in, settings));
+  ASSERT_TRUE(algo2.Init(out, in, settings));
+  ASSERT_TRUE(algo3.Init(out, in, settings));
   ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().size(), 3u);
   ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().at(0).size(), 1u);
   ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().at(1).size(), 1u);
@@ -296,9 +303,9 @@ TEST_F(AlgorithmManagerTests, multiple_similar_strategies_unregistered_correctly
         EXPECT_CALL(*algo3.mockStratPtr, IsSimilarTo).WillRepeatedly(Return(true));
 
         ASSERT_TRUE(AlgorithmManager::Get().GetRegisteredStrategies().empty());
-        ASSERT_TRUE(algo1.Init(outP, inP, settings));
-        ASSERT_TRUE(algo2.Init(outP, inP, settings));
-        ASSERT_TRUE(algo3.Init(outP, inP, settings));
+        ASSERT_TRUE(algo1.Init(out, in, settings));
+        ASSERT_TRUE(algo2.Init(out, in, settings));
+        ASSERT_TRUE(algo3.Init(out, in, settings));
         ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().size(), 1u);
         ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().at(0).size(), 3u);
       }// algo3 is destroyed, therefore its strategy is unregistered
@@ -335,9 +342,9 @@ TEST_F(AlgorithmManagerTests, multiple_different_strategies_unregistered_correct
         EXPECT_CALL(*algo3.mockStratPtr, IsSimilarTo).WillRepeatedly(Return(false));
 
         ASSERT_TRUE(AlgorithmManager::Get().GetRegisteredStrategies().empty());
-        ASSERT_TRUE(algo1.Init(outP, inP, settings));
-        ASSERT_TRUE(algo2.Init(outP, inP, settings));
-        ASSERT_TRUE(algo3.Init(outP, inP, settings));
+        ASSERT_TRUE(algo1.Init(out, in, settings));
+        ASSERT_TRUE(algo2.Init(out, in, settings));
+        ASSERT_TRUE(algo3.Init(out, in, settings));
         ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().size(), 3u);
         ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().at(0).size(), 1u);
         ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().at(1).size(), 1u);

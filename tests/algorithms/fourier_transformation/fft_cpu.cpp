@@ -1,33 +1,31 @@
+#include <tests/algorithms/fourier_transformation/afft_common.hpp>
 #include <libumpalumpa/algorithms/fourier_transformation/fft_cpu.hpp>
-#include <gtest/gtest.h>
-#include <tests/algorithms/fourier_transformation/fft_tests.hpp>
 
-using namespace umpalumpa::fourier_transformation;
-using namespace umpalumpa::data;
-
-class FFTCPUTest
-  : public ::testing::Test
-  , public FFT_Tests
+class FFTCPUTest : public FFT_Tests
 {
 public:
-  void *Allocate(size_t bytes) override { return malloc(bytes); }
+  FFTCPU &GetAlg() override { return transformer; }
 
-  void Free(void *ptr) override { free(ptr); }
+  using FFT_Tests::SetUp;
 
-  // CANNOT return "Free" method, because of the destruction order
-  FreeFunction GetFree() override
+  PhysicalDescriptor Create(size_t bytes, DataType type) override
   {
-    return [](void *ptr) { free(ptr); };
+    return PhysicalDescriptor(malloc(bytes), bytes, type, ManagedBy::Manually, nullptr);
   }
 
-  FFTCPU &GetTransformer() override { return transformer; }
+  void Remove(const PhysicalDescriptor &pd) override { free(pd.GetPtr()); }
 
-  ManagedBy GetManager() override { return ManagedBy::Manually; };
+  void Register(const PhysicalDescriptor &pd) override{ /* nothing to do */ };
 
-  int GetMemoryNode() override { return 0; }
+  void Unregister(const PhysicalDescriptor &pd) override{ /* nothing to do */ };
 
-protected:
-  FFTCPU transformer = FFTCPU();
+  void Acquire(const PhysicalDescriptor &pd) override{ /* nothing to do */ };
+
+  void Release(const PhysicalDescriptor &pd) override{ /* nothing to do */ };
+
+private:
+  FFTCPU transformer;
 };
+
 #define NAME FFTCPUTest
-#include <tests/algorithms/fourier_transformation/afft_common.hpp>
+#include <tests/algorithms/fourier_transformation/fft_tests.hpp>

@@ -7,18 +7,13 @@ using umpalumpa::utils::StarPUUtils;
 class FPStarPUTest : public FP_Tests
 {
 public:
-  FPStarPU &GetFourierProcessor() override { return transformer; }
+  FPStarPU &GetAlg() override { return transformer; }
 
   static void SetUpTestSuite() { STARPU_CHECK_RETURN_VALUE(starpu_init(NULL), "StarPU init"); }
 
   using FP_Tests::SetUp;
 
   static void TearDownTestSuite() { starpu_shutdown(); }
-
-  void WaitTillDone()
-  {
-    STARPU_CHECK_RETURN_VALUE(starpu_task_wait_for_all(), "Waiting for all tasks");
-  }
 
   PhysicalDescriptor Create(size_t bytes, DataType type) override
   {
@@ -44,7 +39,7 @@ public:
     starpu_data_acquire(*StarPUUtils::GetHandle(pd), STARPU_RW);
   }
 
-  virtual void Release(const PhysicalDescriptor &pd)
+  void Release(const PhysicalDescriptor &pd) override
   {
     starpu_data_release(*StarPUUtils::GetHandle(pd));
   }

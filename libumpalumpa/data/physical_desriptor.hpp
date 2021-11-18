@@ -49,11 +49,10 @@ public:
    **/
   bool IsEmpty() const { return (0 == bytes) && (nullptr == ptr); }
 
-  // Prevent copying of this instance (to avoid handle copy)
   PhysicalDescriptor(PhysicalDescriptor &&) = default;
-  // void operator=(PhysicalDescriptor&&) = delete;
 
 private:
+  // Prevent copying of this instance (to avoid accidental handle copy)
   PhysicalDescriptor(const PhysicalDescriptor &) = default;
   constexpr PhysicalDescriptor &operator=(const PhysicalDescriptor &) = default;
   void *ptr;// type defined by DataType

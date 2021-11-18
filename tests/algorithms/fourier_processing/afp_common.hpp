@@ -1,38 +1,20 @@
 #pragma once
 
-#include <gtest/gtest.h>
 #include <libumpalumpa/algorithms/fourier_processing/afp.hpp>
-#include <complex>
+#include <tests/algorithms/common.hpp>
+#include <tests/utils.hpp>
 
 using namespace umpalumpa::fourier_processing;
 using namespace umpalumpa::data;
+using namespace umpalumpa::test;
 
 /**
  * Class responsible for testing.
  * Specific implementation of the algorithms should inherit from it.
  **/
-class FP_Tests : public ::testing::Test
+class FP_Tests : public TestAlg<AFP>
 {
 protected:
-  virtual AFP &GetFourierProcessor() = 0;
-  /**
-   *  Methods to create / delete Payload Descriptor (i.e. to create / delete data).
-   **/
-  virtual PhysicalDescriptor Create(size_t bytes, DataType type) = 0;
-  virtual void Remove(const PhysicalDescriptor &pd) = 0;
-  /**
-   * Methods that will register some memory in the memory manager, if any.
-   **/
-  virtual void Register(const PhysicalDescriptor &pd) = 0;
-  virtual void Unregister(const PhysicalDescriptor &pd) = 0;
-  /**
-   * Methods that will bring data to the current memory node.
-   * These methods will be called before / after the results are checked.
-   * If necessary, these method should be blocking.
-   **/
-  virtual void Acquire(const PhysicalDescriptor &pd) = 0;
-  virtual void Release(const PhysicalDescriptor &pd) = 0;
-
   auto CreatePayloadIn(const Settings &settings, const Size &size)
   {
     auto fd = FourierDescriptor::FourierSpaceDescriptor{};
@@ -119,15 +101,15 @@ protected:
       }
     }
 
-    // PrintData(input, inSize);
-    // PrintData(filter, in.GetFilter().info.GetSize());
+    // Print(input, inSize);
+    // Print(filter, in.GetFilter().info.GetSize());
 
-    auto &fp = GetFourierProcessor();
+    auto &alg = GetAlg();
 
-    ASSERT_TRUE(fp.Init(out, in, settings));
-    ASSERT_TRUE(fp.Execute(out, in));
+    ASSERT_TRUE(alg.Init(out, in, settings));
+    ASSERT_TRUE(alg.Execute(out, in));
     // wait till the work is done
-    fp.Synchronize();
+    alg.Synchronize();
     // make sure that data are on this memory node
     Acquire(out.GetData().dataInfo);
     // check results
@@ -192,35 +174,6 @@ protected:
           ASSERT_NEAR(inImag, output[outIndex].imag(), delta) << " at imag " << outIndex;
         }
       }
-    }
-  }
-
-  template<typename T> void PrintData(T *data, const Size size)
-  {
-    ASSERT_EQ(size.GetDim(), Dimensionality::k2Dim);
-    for (size_t n = 0; n < size.n; ++n) {
-      size_t offset = n * size.single;
-      for (size_t y = 0; y < size.y; ++y) {
-        for (size_t x = 0; x < size.x; ++x) { printf("%+.3f\t", data[offset + y * size.x + x]); }
-        std::cout << "\n";
-      }
-      std::cout << "\n";
-    }
-  }
-
-  void PrintData(std::complex<float> *data, const Size size)
-  {
-    ASSERT_EQ(size.GetDim(), Dimensionality::k2Dim);
-    for (size_t n = 0; n < size.n; ++n) {
-      size_t offset = n * size.single;
-      for (size_t y = 0; y < size.y; ++y) {
-        for (size_t x = 0; x < size.x; ++x) {
-          auto v = data[offset + y * size.x + x];
-          printf("(%+.3f,%+.3f)\t", v.real(), v.imag());
-        }
-        std::cout << "\n";
-      }
-      std::cout << "\n";
     }
   }
 };

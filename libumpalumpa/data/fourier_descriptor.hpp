@@ -25,9 +25,9 @@ namespace data {
     };
 
     /**
-     * Constructor for data which are still in Spacial domain.
+     * Constructor for data which are still in Spatial domain.
      * This constructor assumes no padding is present.
-     * Size is the size in the Spacial domain, i.e. before transformation to Fourier space
+     * Size is the size in the Spatial domain, i.e. before transformation to Fourier space
      **/
     explicit FourierDescriptor(const Size &s)
       : size(s), paddedSize(s), frequencyDomainSize(ComputeFrequencySize(s)),
@@ -36,8 +36,8 @@ namespace data {
     {}
 
     /**
-     * Constructor for data which are still in Spacial domain.
-     * Size is the size in the Spacial domain, i.e. before transformation to Fourier space
+     * Constructor for data which are still in Spatial domain.
+     * Size is the size in the Spatial domain, i.e. before transformation to Fourier space
      **/
     explicit FourierDescriptor(const Size &s, const PaddingDescriptor &p)
       : size(s), paddedSize(ComputePaddedSize(s, p)), frequencyDomainSize(ComputeFrequencySize(s)),
@@ -47,7 +47,7 @@ namespace data {
 
     /**
      * Constructor for data which are already converted to Fourier space.
-     * Size is the size in the Spacial domain, i.e. before transformation to Fourier space
+     * Size is the size in the Spatial domain, i.e. before transformation to Fourier space
      **/
     explicit FourierDescriptor(const Size &s,
       const PaddingDescriptor &p,

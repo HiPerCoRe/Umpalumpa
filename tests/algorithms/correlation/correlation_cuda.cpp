@@ -1,41 +1,52 @@
+#include <tests/algorithms/correlation/acorrelation_common.hpp>
 #include <libumpalumpa/algorithms/correlation/correlation_cuda.hpp>
-#include <gtest/gtest.h>
-#include <libumpalumpa/utils/cuda.hpp>
-#include <tests/algorithms/correlation/correlation_tests.hpp>
+#include <algorithm>
 
-#include <cuda_runtime.h>
-
-using namespace umpalumpa::correlation;
-using namespace umpalumpa::data;
-
-class CorrelationCUDATest
-  : public ::testing::Test
-  , public Correlation_Tests
+class CorrelationCUDATest : public Correlation_Tests
 {
 public:
-  void *Allocate(size_t bytes) override
+  Correlation_CUDA &GetAlg() override { return transformer; }
+
+  using Correlation_Tests::SetUp;
+
+  PhysicalDescriptor Create(size_t bytes, DataType type) override
   {
     void *ptr;
     CudaErrchk(cudaMallocManaged(&ptr, bytes));
-    return ptr;
+    memset(ptr, 0, bytes);
+    memory.emplace_back(ptr);
+    return PhysicalDescriptor(ptr, bytes, type, ManagedBy::CUDA, nullptr);
   }
 
-  void Free(void *ptr) override { cudaFree(ptr); }
-
-  // CANNOT return "Free" method, because of the destruction order
-  FreeFunction GetFree() override
+  PhysicalDescriptor Copy(const PhysicalDescriptor &pd) override
   {
-    return [](void *ptr) { CudaErrchk(cudaFree(ptr)); };
+    return pd.CopyWithPtr(pd.GetPtr());
   }
 
-  Correlation_CUDA &GetTransformer() override { return transformer; }
+  void Remove(const PhysicalDescriptor &pd) override
+  {
+    if (auto it = std::find(memory.begin(), memory.end(), pd.GetPtr()); memory.end() != it) {
+      CudaErrchk(cudaFree(pd.GetPtr()));
+      memory.erase(it);
+    }
+  }
 
-  ManagedBy GetManager() override { return ManagedBy::CUDA; };
+  void Register(const PhysicalDescriptor &pd) override{ /* nothing to do */ };
 
-  int GetMemoryNode() override { return 0; }
+  void Unregister(const PhysicalDescriptor &pd) override{ /* nothing to do */ };
 
-protected:
-  Correlation_CUDA transformer = Correlation_CUDA(0);
+  void Acquire(const PhysicalDescriptor &pd) override
+  {
+    CudaErrchk(cudaMemPrefetchAsync(pd.GetPtr(), pd.GetBytes(), worker));
+  }
+
+  void Release(const PhysicalDescriptor &pd) override{ /* nothing to do */ };
+
+private:
+  const int worker = 0;
+  Correlation_CUDA transformer = Correlation_CUDA(worker);
+  std::vector<void *> memory;
 };
+
 #define NAME CorrelationCUDATest
-#include <tests/algorithms/correlation/acorrelation_common.hpp>
+#include <tests/algorithms/correlation/correlation_tests.hpp>

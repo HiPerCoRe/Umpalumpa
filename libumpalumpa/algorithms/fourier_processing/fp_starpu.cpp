@@ -68,8 +68,7 @@ bool FPStarPU::InitImpl()
   Args args = { out, in, s, algs };
   starpu_execute_on_each_worker(CpuInit, &args, STARPU_CPU);
   starpu_execute_on_each_worker(
-    CudaInit, &args, STARPU_CUDA);// FIXME if one of the workers is not initialized, then we
-                                  // should prevent starpu from running execute() on it
+    CudaInit, &args, STARPU_CUDA);
   noOfInitWorkers =
     std::count_if(algs.begin(), algs.end(), [](const auto &i) { return i != nullptr; });
   auto level = (0 == noOfInitWorkers) ? spdlog::level::warn : spdlog::level::info;
@@ -80,13 +79,15 @@ bool FPStarPU::InitImpl()
 bool FPStarPU::ExecuteImpl(const OutputData &out, const InputData &in)
 {
   using utils::StarPUUtils;
+  // we need at least one initialized worker, otherwise mask would be 0 and all workers
+  // would be used
   if (noOfInitWorkers < 1) return false;
   struct starpu_task *task = starpu_task_create();
   task->handles[0] = *StarPUUtils::GetHandle(out.GetData().dataInfo);
   task->handles[1] = *StarPUUtils::GetHandle(in.GetData().dataInfo);
   task->handles[2] = *StarPUUtils::GetHandle(in.GetFilter().dataInfo);
   task->workerids = utils::StarPUUtils::CreateWorkerMask(task->workerids_len,
-    algs);// FIXME bug in the StarPU? If the mask is completely 0, codelet is being invoked anyway
+    algs);
   task->cl_arg = new Args{ out, in, this->GetSettings(), algs }; // FIXME memory leak
   task->cl_arg_size = sizeof(Args);
   // make sure we free the mask
