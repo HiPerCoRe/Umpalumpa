@@ -1,36 +1,66 @@
+#include <tests/algorithms/extrema_finder/extrema_finder_common.hpp>
 #include <libumpalumpa/algorithms/extrema_finder/single_extrema_finder_starpu.hpp>
-#include <starpu.h>
-#include <gtest/gtest.h>
-using namespace umpalumpa::extrema_finder;
-using namespace umpalumpa::data;
+#include <libumpalumpa/utils/starpu.hpp>
+#include <algorithm>
 
-class SingleExtremaFinderStarPUTest : public ::testing::Test
+using umpalumpa::utils::StarPUUtils;
+
+class SingleExtremaFinderStarPUTest : public ExtremaFinder_Tests
 {
 public:
-  auto &GetSearcher() { return searcher; }
-  void SetUp() override { STARPU_CHECK_RETURN_VALUE(starpu_init(NULL), "StarPU init"); }
+  SingleExtremaFinderStarPU &GetAlg() override { return transformer; }
 
-  void TearDown() override { starpu_shutdown(); }
+  static void SetUpTestSuite() { STARPU_CHECK_RETURN_VALUE(starpu_init(NULL), "StarPU init"); }
 
-  void WaitTillDone()
-  {
-    STARPU_CHECK_RETURN_VALUE(starpu_task_wait_for_all(), "Waiting for all tasks");
-  }
+  using ExtremaFinder_Tests::SetUp;
 
-  auto *Allocate(size_t bytes)
+  static void TearDownTestSuite() { starpu_shutdown(); }
+
+  PhysicalDescriptor Create(size_t bytes, DataType type) override
   {
     void *ptr = nullptr;
-    starpu_malloc(&ptr, bytes);
-    return ptr;
+    if (0 != bytes) {
+      starpu_malloc(&ptr, bytes);
+      memory.emplace_back(ptr);
+      memset(ptr, 0, bytes);
+    }
+    auto *handle = new starpu_data_handle_t();
+    handles.emplace_back(handle);
+    return PhysicalDescriptor(ptr, bytes, type, ManagedBy::StarPU, handle);
   }
-  auto Free(void *ptr) { starpu_free(ptr); }
 
-  ManagedBy GetManager() { return ManagedBy::StarPU; };
+  void Remove(const PhysicalDescriptor &pd) override
+  {
+    auto h = StarPUUtils::GetHandle(pd);
+    if (auto it = std::find(handles.begin(), handles.end(), h); handles.end() != it) {
+      delete StarPUUtils::GetHandle(pd);
+      handles.erase(it);
+    }
+    if (auto it = std::find(memory.begin(), memory.end(), pd.GetPtr()); memory.end() != it) {
+      starpu_free(pd.GetPtr());
+      memory.erase(it);
+    }
+  }
 
-  int GetMemoryNode() { return STARPU_MAIN_RAM; }
+  void Register(const PhysicalDescriptor &pd) override { StarPUUtils::Register(pd); };
+
+  void Unregister(const PhysicalDescriptor &pd) override { StarPUUtils::Unregister(pd); };
+
+  void Acquire(const PhysicalDescriptor &pd) override
+  {
+    starpu_data_acquire(*StarPUUtils::GetHandle(pd), STARPU_RW);
+  }
+
+  void Release(const PhysicalDescriptor &pd) override
+  {
+    starpu_data_release(*StarPUUtils::GetHandle(pd));
+  }
 
 private:
-  SingleExtremaFinderStarPU searcher;
+  SingleExtremaFinderStarPU transformer;
+  std::vector<starpu_data_handle_t *> handles;
+  std::vector<void *> memory;
 };
+
 #define NAME SingleExtremaFinderStarPUTest
-#include <tests/algorithms/extrema_finder/extrema_finder_common.hpp>
+#include <tests/algorithms/extrema_finder/extrema_finder_tests.hpp>

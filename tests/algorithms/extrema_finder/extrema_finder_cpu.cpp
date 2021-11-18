@@ -1,26 +1,32 @@
+#include <tests/algorithms/extrema_finder/extrema_finder_common.hpp>
 #include <libumpalumpa/algorithms/extrema_finder/single_extrema_finder_cpu.hpp>
-#include <gtest/gtest.h>
 
-using namespace umpalumpa::extrema_finder;
-using namespace umpalumpa::data;
-
-class SingleExtremaFinderCPUTest : public ::testing::Test
+class SingleExtremaFinderCPUTest : public ExtremaFinder_Tests
 {
 public:
-  auto &GetSearcher() { return searcher; }
+  SingleExtremaFinderCPU &GetAlg() override { return transformer; }
 
-  auto Allocate(size_t bytes) { return malloc(bytes); }
+  using ExtremaFinder_Tests::SetUp;
 
-  auto Free(void *ptr) { free(ptr); }
+  PhysicalDescriptor Create(size_t bytes, DataType type) override
+  {
+    return PhysicalDescriptor(
+      (0 == bytes) ? nullptr : malloc(bytes), bytes, type, ManagedBy::Manually, nullptr);
+  }
 
-  void WaitTillDone(){};
+  void Remove(const PhysicalDescriptor &pd) override { free(pd.GetPtr()); }
 
-  ManagedBy GetManager() { return ManagedBy::Manually; };
+  void Register(const PhysicalDescriptor &pd) override{ /* nothing to do */ };
 
-  int GetMemoryNode() { return 0; }
+  void Unregister(const PhysicalDescriptor &pd) override{ /* nothing to do */ };
+
+  void Acquire(const PhysicalDescriptor &pd) override{ /* nothing to do */ };
+
+  void Release(const PhysicalDescriptor &pd) override{ /* nothing to do */ };
 
 private:
-  SingleExtremaFinderCPU searcher;
+  SingleExtremaFinderCPU transformer;
 };
+
 #define NAME SingleExtremaFinderCPUTest
-#include <tests/algorithms/extrema_finder/extrema_finder_common.hpp>
+#include <tests/algorithms/extrema_finder/extrema_finder_tests.hpp>
