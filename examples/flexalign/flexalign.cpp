@@ -2,61 +2,168 @@
 #include <cassert>
 #include <iostream>
 #include <vector>
+#include <type_traits>
 
-template<typename T> void FlexAlign<T>::Execute(const umpalumpa::data::Size &size)
+template<typename T> void FlexAlign<T>::Execute(const umpalumpa::data::Size &sizeAll)
 {
-  assert(size.x > 5);
-  assert(size.y > 5);
-  assert(size.z == 1);
+  assert(sizeAll.x > 5);
+  assert(sizeAll.y > 5);
+  assert(sizeAll.z == 1);
 
-  auto cropSize = Size(size.x / 2, size.y / 2, size.z, size.n);
-  auto crossSize = Size(3, 3, 1, 1);
+  auto sizeSingle = sizeAll.CopyFor(1);
+  auto sizeSingleCrop = Size(sizeSingle.x / 2, sizeSingle.y / 2, sizeSingle.z, 1);
+  auto sizeCross = Size(3, 3, 1, 1);
 
-  auto images = std::vector<std::unique_ptr<Payload<LogicalDescriptor>>>();
-  images.reserve(size.n);
-  auto ffts = std::vector<std::unique_ptr<Payload<FourierDescriptor>>>();
-  ffts.reserve(size.n);
+  auto filter = CreatePayloadFilter(sizeSingleCrop);
 
-  for (size_t j = 0; j < size.n; ++j) {
-    images.emplace_back(Generate(j, size));
-    auto &img = *images.at(j).get();
-    GenerateCross(j, img, crossSize, 0, 0);
-    ffts.emplace_back(ConvertToFFTAndCrop(j, img, cropSize));
-    for (size_t i = 0; i < j; ++i) {
-      auto correlation = Correlate(i, j, *ffts.at(i), *ffts.at(j));
-      auto shift = FindMax(i, j, *correlation);
-      std::cout << "Shift of img " << i << " and " << j << " is [" << shift.x << ", " << shift.y
-                << "]\n";
-    }
+  auto images = std::vector<Payload<LogicalDescriptor>>();
+  images.reserve(sizeAll.n);
+  auto ffts = std::vector<Payload<FourierDescriptor>>();
+  ffts.reserve(sizeAll.n);
+
+  for (size_t j = 0; j < sizeAll.n; ++j) {
+    images.emplace_back(CreatePayloadImage(j, sizeSingle));
+    auto &img = images.at(j);
+    GenerateCross(j, img, sizeCross, 0, 0);
+    ffts.emplace_back(ConvertToFFTAndCrop(j, img, filter));
+    // for (size_t i = 0; i < j; ++i) {
+    //   auto correlation = Correlate(i, j, *ffts.at(i), *ffts.at(j));
+    //   auto shift = FindMax(i, j, *correlation);
+    //   std::cout << "Shift of img " << i << " and " << j << " is [" << shift.x << ", " << shift.y
+    //             << "]\n";
+    // }
   }
+  // Release allocated data
+  for (const auto &p : ffts) { Remove(p.dataInfo); }
+  for (const auto &p : images) { Remove(p.dataInfo); }
+  Remove(filter.dataInfo);
 }
 
 template<typename T>
-typename FlexAlign<T>::Shift
-  FlexAlign<T>::FindMax(size_t i, size_t j, Payload<FourierDescriptor> &correlation)
+Payload<FourierDescriptor> FlexAlign<T>::ConvertToFFTAndCrop(size_t index,
+  Payload<LogicalDescriptor> &img,
+  Payload<LogicalDescriptor> &filter)
 {
-  std::cout << "FindMax correlation " << i << " and " << j << "\n";
-  return { static_cast<float>(i), static_cast<float>(j) };
-};
-
-template<typename T>
-std::unique_ptr<Payload<FourierDescriptor>> FlexAlign<T>::Correlate(size_t i,
-  size_t j,
-  Payload<FourierDescriptor> &first,
-  Payload<FourierDescriptor> &second)
-{
-  std::cout << "Correlate img " << i << " and " << j << "\n";
-  auto ld = FourierDescriptor(first.info.GetSize());
-  return std::make_unique<Payload<FourierDescriptor>>(ld, "");
+  // Perform Fourier Transform
+  auto inFFT = CreatePayloadInFFT(index, img);
+  auto outFFT = CreatePayloadOutFFT(index, inFFT);
+  {
+    using namespace umpalumpa::fourier_transformation;
+    auto &alg = this->GetFFTAlg();
+    auto in = AFFT::InputData(inFFT);
+    auto out = AFFT::OutputData(outFFT);
+    if (!alg.IsInitialized()) {
+      auto settings = Settings(Locality::kOutOfPlace, Direction::kForward);
+      assert(alg.Init(out, in, settings));
+    }
+    assert(alg.Execute(out, in));
+  }
+  // Perform crop
+  auto inCrop = CreatePayloadInCroppedFFT(index, outFFT);
+  auto outCrop = CreatePayloadOutCroppedFFT(index, filter.info.GetSize());
+  {
+    using namespace umpalumpa::fourier_processing;
+    using umpalumpa::fourier_transformation::Locality;
+    auto &alg = this->GetCropAlg();
+    auto in = AFP::InputData(inCrop, filter);
+    auto out = AFP::OutputData(outCrop);
+    if (!alg.IsInitialized()) {
+      auto settings = Settings(Locality::kOutOfPlace);
+      settings.SetApplyFilter(true);
+      settings.SetNormalize(true);
+      assert(alg.Init(out, in, settings));
+    }
+    assert(alg.Execute(out, in));
+  }
+  // Release temp data. Input FFT is just reused Payload and we need output Payload for later
+  Remove(outFFT.dataInfo);
+  return outCrop;
 }
 
+// template<typename T>
+// typename FlexAlign<T>::Shift
+//   FlexAlign<T>::FindMax(size_t i, size_t j, Payload<FourierDescriptor> &correlation)
+// {
+//   std::cout << "FindMax correlation " << i << " and " << j << "\n";
+//   return { static_cast<float>(i), static_cast<float>(j) };
+// };
+
+// template<typename T>
+// std::unique_ptr<Payload<FourierDescriptor>> FlexAlign<T>::Correlate(size_t i,
+//   size_t j,
+//   Payload<FourierDescriptor> &first,
+//   Payload<FourierDescriptor> &second)
+// {
+//   std::cout << "Correlate img " << i << " and " << j << "\n";
+//   auto ld = FourierDescriptor(first.info.GetSize());
+//   return std::make_unique<Payload<FourierDescriptor>>(ld, "");
+// }
+
 template<typename T>
-std::unique_ptr<Payload<LogicalDescriptor>> FlexAlign<T>::Generate(size_t index, const Size &size)
+Payload<LogicalDescriptor> FlexAlign<T>::CreatePayloadImage(size_t index, const Size &size)
 {
-  std::cout << "Generating image " << index << "\n";
+  std::cout << "Creating Payload for image " << index << "\n";
   auto ld = LogicalDescriptor(size);
-  return std::make_unique<Payload<LogicalDescriptor>>(ld, "");
+  auto type = GetDataType();
+  auto bytes = ld.Elems() * Sizeof(type);
+  return Payload(ld, Create(bytes, type, false), "Image " + std::to_string(index));
 };
+
+template<typename T> Payload<LogicalDescriptor> FlexAlign<T>::CreatePayloadFilter(const Size &size)
+{
+  std::cout << "Creating Payload for filter\n";
+  auto ld = LogicalDescriptor(size);
+  auto type = GetDataType();
+  auto bytes = ld.Elems() * Sizeof(type);
+  return Payload(ld, Create(bytes, type, false), "Filter");
+};
+
+template<typename T>
+Payload<FourierDescriptor> FlexAlign<T>::CreatePayloadInFFT(size_t index,
+  const Payload<LogicalDescriptor> &img)
+{
+  std::cout << "Creating Payload for FFT (in) " << index << "\n";
+  // we 'convert' image payload to FFT payload
+  auto ld = FourierDescriptor(img.info.GetSize(), img.info.GetPadding());
+  return Payload(ld, img.dataInfo.CopyWithPtr(img.GetPtr()), "FFT (in) " + std::to_string(index));
+};
+
+template<typename T>
+Payload<FourierDescriptor> FlexAlign<T>::CreatePayloadOutFFT(size_t index,
+  const Payload<FourierDescriptor> &inFFT)
+{
+  std::cout << "Creating Payload for FFT (out) " << index << "\n";
+  auto ld = FourierDescriptor(inFFT.info.GetSize(),
+    inFFT.info.GetPadding(),
+    umpalumpa::data::FourierDescriptor::FourierSpaceDescriptor());
+  auto type = GetComplexDataType();
+  auto bytes = ld.Elems() * Sizeof(type);
+  // result of the FFT is only intermediary
+  return Payload(ld, Create(bytes, type, true), "FFT (in) " + std::to_string(index));
+};
+
+template<typename T>
+Payload<FourierDescriptor> FlexAlign<T>::CreatePayloadInCroppedFFT(size_t index,
+  const Payload<FourierDescriptor> &inFFT)
+{
+  std::cout << "Creating Payload for Crop (in) " << index << "\n";
+  // we don't need to change anything
+  return Payload(
+    inFFT.info, inFFT.dataInfo.CopyWithPtr(inFFT.GetPtr()), "Crop (in) " + std::to_string(index));
+}
+
+template<typename T>
+Payload<FourierDescriptor> FlexAlign<T>::CreatePayloadOutCroppedFFT(size_t index, const Size &size)
+{
+  std::cout << "Creating Payload for Crop (out) " << index << "\n";
+  auto ld = FourierDescriptor(size,
+    umpalumpa::data::PaddingDescriptor(),
+    umpalumpa::data::FourierDescriptor::FourierSpaceDescriptor());
+  auto type = GetComplexDataType();
+  auto bytes = ld.Elems() * Sizeof(type);
+  // result of the crop is for long term storage
+  return Payload(ld, Create(bytes, type, false), "Crop (out) " + std::to_string(index));
+}
 
 template<typename T>
 void FlexAlign<T>::GenerateCross(size_t index,
@@ -65,8 +172,28 @@ void FlexAlign<T>::GenerateCross(size_t index,
   size_t x,
   size_t y)
 {
-  //   assert(p.IsValid() && !p.IsEmpty());
+  assert(p.IsValid() && !p.IsEmpty());
   std::cout << "Generating cross " << index << "\n";
+}
+
+template<typename T> DataType FlexAlign<T>::GetDataType() const
+{
+  if (std::is_same<T, float>::value) {
+    return DataType::kFloat;
+  } else if (std::is_same<T, double>::value) {
+    return DataType::kDouble;
+  }
+  return DataType::kVoid;// unsupported
+}
+
+template<typename T> DataType FlexAlign<T>::GetComplexDataType() const
+{
+  if (std::is_same<T, float>::value) {
+    return DataType::kComplexFloat;
+  } else if (std::is_same<T, double>::value) {
+    return DataType::kComplexDouble;
+  }
+  return DataType::kVoid;// unsupported
 }
 
 template class FlexAlign<float>;

@@ -2,17 +2,15 @@
 
 #include <libumpalumpa/algorithms/fourier_transformation/afft.hpp>
 #include <libumpalumpa/algorithms/fourier_processing/afp.hpp>
-#include <memory>
 
 using umpalumpa::data::Size;
 using umpalumpa::data::Payload;
 using umpalumpa::data::FourierDescriptor;
 using umpalumpa::data::LogicalDescriptor;
-
-
-// FIXME remove
-#include <iostream>
-
+using umpalumpa::data::PhysicalDescriptor;
+using umpalumpa::data::DataType;
+using umpalumpa::fourier_transformation::AFFT;
+using umpalumpa::fourier_processing::AFP;
 
 /**
  * This example simulates core functionality of the FlexAlign.
@@ -34,21 +32,53 @@ public:
 
 
 protected:
+  Payload<FourierDescriptor>
+    ConvertToFFTAndCrop(size_t index, Payload<LogicalDescriptor> &img, Payload<LogicalDescriptor> &filter);
+  
+  
   /**
    * Generate Payload representing a single image of given size.
-   * Payload does not hold any data.
    **/
-  std::unique_ptr<Payload<LogicalDescriptor>> Generate(size_t index, const Size &size);
+  Payload<LogicalDescriptor> CreatePayloadImage(size_t index, const Size &size);
 
-  virtual std::unique_ptr<Payload<FourierDescriptor>>
-    ConvertToFFTAndCrop(size_t index, Payload<LogicalDescriptor> &img, const Size &cropSize) = 0;
+  /**
+   * Create Payload representing a filter applied to the data
+   **/
+  Payload<LogicalDescriptor> CreatePayloadFilter(const Size &size);
 
-  std::unique_ptr<Payload<FourierDescriptor>> Correlate(size_t i,
-    size_t j,
-    Payload<FourierDescriptor> &first,
-    Payload<FourierDescriptor> &second);
+  Payload<FourierDescriptor> CreatePayloadInFFT(size_t index,
+    const Payload<LogicalDescriptor> &img);
+  Payload<FourierDescriptor> CreatePayloadOutFFT(size_t index,
+    const Payload<FourierDescriptor> &inFFT);
 
-  Shift FindMax(size_t i, size_t j, Payload<FourierDescriptor> &correlation);
+  Payload<FourierDescriptor> CreatePayloadInCroppedFFT(size_t index,
+    const Payload<FourierDescriptor> &inFFT);
+  Payload<FourierDescriptor> CreatePayloadOutCroppedFFT(size_t index, const Size &size);
+
+
+  //   std::unique_ptr<Payload<FourierDescriptor>> Correlate(size_t i,
+  //     size_t j,
+  //     Payload<FourierDescriptor> &first,
+  //     Payload<FourierDescriptor> &second);
+
+  //   Shift FindMax(size_t i, size_t j, Payload<FourierDescriptor> &correlation);
+
+  /**
+   * This method creates a Physical Payload.
+   * If necessary, data should be registered in the respective Memory Manager.
+   * If tmp is True, this data are not meant for long-term storage.
+   **/
+  virtual PhysicalDescriptor Create(size_t bytes, DataType type, bool tmp) const = 0;
+
+  virtual void Remove(const PhysicalDescriptor &pd) const = 0;
+
+  DataType GetDataType() const;
+
+  DataType GetComplexDataType() const;
+
+  virtual AFFT &GetFFTAlg() const = 0;
+
+  virtual AFP &GetCropAlg() const = 0;
 
 private:
   /**
