@@ -1,8 +1,5 @@
 #pragma once
 
-#include <stdexcept>
-#include <ostream>
-#include <iomanip>
 #include <string>
 #include <libumpalumpa/data/physical_desriptor.hpp>
 
@@ -52,31 +49,6 @@ public:
       "");//, description + suffixEmpty);
   }
 
-  // Data need to be accessible from CPU
-  // FIXME printing methods should be defined elsewhere
-  void PrintData(std::ostream &out) const
-  {
-    Size offset(0, 0, 0, 0);
-    auto dims = info.GetSize();
-    PrintData(out, dims, offset);
-  }
-
-  // Data need to be accessible from CPU
-  void PrintData(std::ostream &out, const Size &dims, const Size &offset) const
-  {
-    auto total = info.GetSize();
-    switch (dataInfo.type) {
-    case DataType::kFloat:
-      PrivatePrint<float>(out, total, dims, offset);
-      break;
-    case DataType::kDouble:
-      PrivatePrint<double>(out, total, dims, offset);
-      break;
-    default:
-      throw std::logic_error("Trying to print unprintable type.");
-    }
-  }
-
   /**
    * Returns true if this Payload is equivalent to reference one,
    * i.e. it has:
@@ -121,39 +93,5 @@ public:
 
 private:
   static auto constexpr suffixEmpty = " [empty]";
-
-  template<typename DT>
-  void
-    PrivatePrint(std::ostream &out, const Size &total, const Size &dims, const Size &offset) const
-  {
-
-    auto original = out.flags();
-    // prepare output formatting
-    out << std::setfill(' ') << std::left << std::setprecision(3) << std::showpos;
-
-    auto *data = reinterpret_cast<DT *>(GetPtr());
-    for (size_t n = offset.n; n < offset.n + dims.n; n++) {
-      for (size_t z = offset.z; z < offset.z + dims.z; z++) {
-        for (size_t y = offset.y; y < offset.y + dims.y; y++) {
-          for (size_t x = offset.x; x < offset.x + dims.x; x++) {
-            auto index = n * total.single + z * total.y * total.x + y * total.x + x;
-            out << std::setw(7) << data[index] << ' ';
-          }
-          out << '\n';
-        }
-        if (dims.z > 1 && z < dims.z - 1) out << "---\n";
-      }
-      if (dims.n > 1 && n < dims.n - 1) out << "###\n";
-    }
-
-    out.flags(original);
-  }
 };
 }// namespace umpalumpa::data
-
-template<typename T>
-std::ostream &operator<<(std::ostream &out, const umpalumpa::data::Payload<T> &p)
-{
-  p.PrintData(out);
-  return out;
-}
