@@ -127,7 +127,7 @@ namespace {// to avoid poluting
         AddArgumentVector<float2>(out.GetCorrelations(), ktt::ArgumentAccessType::WriteOnly);
 
       auto inSize = tuner.AddArgumentScalar(in.GetData1().info.GetSize());
-      auto in2N = tuner.AddArgumentScalar(static_cast<int>(in.GetData2().info.GetSize().n));
+      auto in2N = tuner.AddArgumentScalar(static_cast<unsigned>(in.GetData2().info.GetSize().n));
       // FIXME this would be better as kernel template argument
       auto isWithin =
         tuner.AddArgumentScalar(static_cast<int>(in.GetData1().GetPtr() == in.GetData2().GetPtr()));

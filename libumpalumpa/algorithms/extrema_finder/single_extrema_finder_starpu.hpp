@@ -1,40 +1,37 @@
 #pragma once
 
 #include <libumpalumpa/algorithms/extrema_finder/aextrema_finder.hpp>
-#include <libumpalumpa/data/starpu_payload.hpp>
+#include <queue>
+
+// forward declaration
+struct starpu_task;
 
 namespace umpalumpa::extrema_finder {
 class SingleExtremaFinderStarPU : public AExtremaFinder
 {
 public:
-  void Synchronize() override{
-    // don't do anything. Each task is synchronized, now it's StarPU's problem
-    // consider calling starpu_task_wait_for_all() instead
-  };
+  ~SingleExtremaFinderStarPU();
 
-  // make 'normal' Init() and Execute() available
-  using AExtremaFinder::Init;
-  using AExtremaFinder::Execute;
+  void Cleanup() override;
 
-  using StarpuOutputData =
-    OutputDataWrapper<std::unique_ptr<data::StarpuPayload<data::LogicalDescriptor>>>;
-  using StarpuInputData =
-    InputDataWrapper<std::unique_ptr<data::StarpuPayload<data::LogicalDescriptor>>>;
-
-  [[nodiscard]] bool
-    Init(const StarpuOutputData &out, const StarpuInputData &in, const Settings &s);
-  [[nodiscard]] bool Execute(const StarpuOutputData &out, const StarpuInputData &in);
+  void Synchronize() override;
 
 protected:
   bool InitImpl() override;
   bool ExecuteImpl(const OutputData &out, const InputData &in);
-  bool ExecuteImpl(const StarpuOutputData &out, const StarpuInputData &in);
 
 private:
   inline static const std::string taskName = "Single Extrema Finder StarPU";
 
-  std::vector<std::unique_ptr<AExtremaFinder>> algs;
-  const StarpuOutputData *outPtr = nullptr;
-  const StarpuInputData *inPtr = nullptr;
+  /**
+   * Holds pointers to used algorithms.
+   * Notice that those pointer (if any) refer to the worker-specific
+   * memory nodes, i.e. it is safe to access them only on 'their' workers.
+   * Only nonnull algorithms are properly initialized.
+   **/
+  std::vector<AExtremaFinder *> algs;
+  long noOfInitWorkers = 0;
+
+  std::queue<starpu_task *> taskQueue;
 };
 }// namespace umpalumpa::extrema_finder

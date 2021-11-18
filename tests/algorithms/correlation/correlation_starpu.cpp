@@ -1,44 +1,72 @@
+#include <tests/algorithms/correlation/acorrelation_common.hpp>
 #include <libumpalumpa/algorithms/correlation/correlation_starpu.hpp>
-#include <starpu.h>
-#include <gtest/gtest.h>
-#include <tests/algorithms/correlation/correlation_tests.hpp>
+#include <libumpalumpa/utils/starpu.hpp>
+#include <algorithm>
 
-using namespace umpalumpa::correlation;
-using namespace umpalumpa::data;
-class CorrelationStarPUTest
-  : public ::testing::Test
-  , public Correlation_Tests
+using umpalumpa::utils::StarPUUtils;
+
+class CorrelationStarPUTest : public Correlation_Tests
 {
 public:
-  CorrelationStarPU &GetTransformer() override { return transformer; }
-  void SetUp() override { STARPU_CHECK_RETURN_VALUE(starpu_init(NULL), "StarPU init"); }
+  Correlation_StarPU &GetAlg() override { return transformer; }
 
-  void TearDown() override { starpu_shutdown(); }
+  static void SetUpTestSuite() { STARPU_CHECK_RETURN_VALUE(starpu_init(NULL), "StarPU init"); }
 
-  void WaitTillDone()
-  {
-    STARPU_CHECK_RETURN_VALUE(starpu_task_wait_for_all(), "Waiting for all tasks");
-  }
+  using Correlation_Tests::SetUp;
 
-  void *Allocate(size_t bytes)
+  static void TearDownTestSuite() { starpu_shutdown(); }
+
+  PhysicalDescriptor Create(size_t bytes, DataType type) override
   {
     void *ptr = nullptr;
     starpu_malloc(&ptr, bytes);
-    return ptr;
+    memory.emplace_back(ptr);
+    memset(ptr, 0, bytes);
+    auto *handle = new starpu_data_handle_t();
+    handles.emplace_back(handle);
+    return PhysicalDescriptor(ptr, bytes, type, ManagedBy::StarPU, handle);
   }
-  void Free(void *ptr) { starpu_free(ptr); }
 
-  FreeFunction GetFree() override
+  PhysicalDescriptor Copy(const PhysicalDescriptor &pd) override
   {
-    return [](void *ptr) { starpu_free(ptr); };
+    assert(pd.GetManager() == ManagedBy::StarPU);
+    auto *handle = new starpu_data_handle_t();
+    handles.emplace_back(handle);
+    return PhysicalDescriptor(pd.GetPtr(), pd.GetBytes(), pd.GetType(), pd.GetManager(), handle);
   }
 
-  ManagedBy GetManager() override { return ManagedBy::StarPU; };
+  void Remove(const PhysicalDescriptor &pd) override
+  {
+    auto h = StarPUUtils::GetHandle(pd);
+    if (auto it = std::find(handles.begin(), handles.end(), h); handles.end() != it) {
+      delete StarPUUtils::GetHandle(pd);
+      handles.erase(it);
+    }
+    if (auto it = std::find(memory.begin(), memory.end(), pd.GetPtr()); memory.end() != it) {
+      starpu_free(pd.GetPtr());
+      memory.erase(it);
+    }
+  }
 
-  int GetMemoryNode() override { return STARPU_MAIN_RAM; }
+  void Register(const PhysicalDescriptor &pd) override { StarPUUtils::Register(pd); };
+
+  void Unregister(const PhysicalDescriptor &pd) override { StarPUUtils::Unregister(pd); };
+
+  void Acquire(const PhysicalDescriptor &pd) override
+  {
+    starpu_data_acquire(*StarPUUtils::GetHandle(pd), STARPU_RW);
+  }
+
+  void Release(const PhysicalDescriptor &pd) override
+  {
+    starpu_data_release(*StarPUUtils::GetHandle(pd));
+  }
 
 private:
-  CorrelationStarPU transformer;
+  Correlation_StarPU transformer;
+  std::vector<starpu_data_handle_t *> handles;
+  std::vector<void *> memory;
 };
+
 #define NAME CorrelationStarPUTest
-#include <tests/algorithms/correlation/acorrelation_common.hpp>
+#include <tests/algorithms/correlation/correlation_tests.hpp>
