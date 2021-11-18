@@ -45,7 +45,7 @@ namespace {// to avoid poluting
       const auto &in = alg.Get().GetInputRef();
       const auto &s = alg.Get().GetSettings();
       return (s.GetVersion() == 1) && (!in.GetData().info.IsPadded())
-             && (s.GetLocation() == SearchLocation::kRectCenter)
+             && (s.GetLocation() == SearchLocation::kEntire)
              && (s.GetType() == SearchType::kMax) && (s.GetResult() == SearchResult::kLocation)
              && (in.GetData().dataInfo.GetType() == umpalumpa::data::DataType::kFloat);
     }
@@ -62,8 +62,8 @@ namespace {// to avoid poluting
       // FIXME these values should be read from settings
       // FIXME offset + rectDim cant be > inSize, add check
       // Compute the area to search in
-      size_t searchRectWidth = 28;
-      size_t searchRectHeight = 17;
+      size_t searchRectWidth = in.GetData().info.GetSize().x;
+      size_t searchRectHeight = in.GetData().info.GetSize().y;
       size_t searchRectOffsetX = (in.GetData().info.GetPaddedSize().x - searchRectWidth) / 2;
       size_t searchRectOffsetY = (in.GetData().info.GetPaddedSize().y - searchRectHeight) / 2;
 
