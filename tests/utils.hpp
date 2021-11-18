@@ -10,7 +10,7 @@ namespace umpalumpa::test {
 template<typename T> void FillRandom(T *dst, size_t bytes)
 {
   int fd = open("/dev/urandom", O_RDONLY);
-  read(fd, dst, bytes);
+  std::ignore = read(fd, dst, bytes);
   close(fd);
 }
 

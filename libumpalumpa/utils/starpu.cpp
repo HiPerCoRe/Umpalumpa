@@ -7,7 +7,8 @@ std::vector<unsigned> StarPUUtils::GetCPUWorkerIDs(unsigned n)
 {
   const auto cpuWorkerCount = starpu_worker_get_count_by_type(STARPU_CPU_WORKER);
   if (cpuWorkerCount < 1) {
-    spdlog::error("[StarPU] Return wrong number of CPU workers ({})", cpuWorkerCount);
+    auto level = (0 == cpuWorkerCount) ? spdlog::level::warn : spdlog::level::err;
+    spdlog::log(level, "[StarPU] Wrong number of CPU workers detected ({})", cpuWorkerCount);
   }
   auto ids = std::make_unique<int[]>(static_cast<size_t>(cpuWorkerCount));
 
@@ -19,7 +20,7 @@ std::vector<unsigned> StarPUUtils::GetCPUWorkerIDs(unsigned n)
   return mask;
 }
 
-void StarPUUtils::Register(const data::PhysicalDescriptor &pd)
+void StarPUUtils::Register(const data::PhysicalDescriptor &pd, int home_node)
 {
   auto nx = (0 == pd.GetBytes()) ? 0 : static_cast<uint32_t>(pd.GetBytes() / Sizeof(pd.GetType()));
   spdlog::debug("[StarPU] Registering {} bytes at {} with handle {}",
@@ -27,7 +28,7 @@ void StarPUUtils::Register(const data::PhysicalDescriptor &pd)
     fmt::ptr(pd.GetPtr()),
     fmt::ptr(pd.GetHandle()));
   starpu_vector_data_register(reinterpret_cast<starpu_data_handle_t *>(pd.GetHandle()),
-    STARPU_MAIN_RAM,
+    home_node,
     reinterpret_cast<uintptr_t>(pd.GetPtr()),
     nx,
     Sizeof(pd.GetType()));

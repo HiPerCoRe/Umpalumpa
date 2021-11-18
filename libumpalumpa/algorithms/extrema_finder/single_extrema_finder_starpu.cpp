@@ -9,9 +9,12 @@ namespace umpalumpa::extrema_finder {
 namespace {// to avoid poluting
   struct Args
   {
-    const AExtremaFinder::OutputData &out;
-    const AExtremaFinder::InputData &in;
-    const Settings &settings;
+    // we need to store local copies of the wrappers
+    // as references might not be valid by the time the codelet is executed
+    // FIXME this has to be refactored properly to work with MPI
+    const AExtremaFinder::OutputData out;
+    const AExtremaFinder::InputData in;
+    const Settings settings;
     std::vector<AExtremaFinder *> &algs;
   };
 
