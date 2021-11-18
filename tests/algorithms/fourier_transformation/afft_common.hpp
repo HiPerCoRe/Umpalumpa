@@ -1,3 +1,4 @@
+#pragma once
 
 #include <libumpalumpa/algorithms/fourier_transformation/afft.hpp>
 #include <tests/algorithms/common.hpp>
