@@ -79,21 +79,21 @@ void AlgorithmManager::Unregister(TunableStrategy &strat)
   spdlog::warn("You are trying to unregister strategy which wasn't previously registered.");// tmp
 }
 
-ktt::KernelConfiguration AlgorithmManager::GetBestConfiguration(size_t stratHash)
-{
-  std::lock_guard<std::mutex> lck(mutex);
-
-  // FIXME refactor
-  for (auto &stratGroup : strategies) {
-    for (auto s : stratGroup) {
-      if (s->GetHash() == stratHash) { return s->GetBestConfiguration(); }
-    }
-  }
-
-  // TODO Access DB
-
-  return {};// or throw?
-}
+// ktt::KernelConfiguration AlgorithmManager::GetBestConfiguration(size_t stratHash)
+// {
+//   std::lock_guard<std::mutex> lck(mutex);
+//
+//   // FIXME refactor
+//   for (auto &stratGroup : strategies) {
+//     for (auto s : stratGroup) {
+//       if (s->GetHash() == stratHash) { return s->GetBestConfiguration(); }
+//     }
+//   }
+//
+//   // TODO Access DB
+//
+//   return {};// or throw?
+// }
 
 }// namespace umpalumpa::algorithm
 
