@@ -44,6 +44,21 @@ namespace data {
 
     constexpr Dimensionality GetDim() const { return dim; }
 
+    constexpr unsigned short GetDimAsNumber() const
+    {
+      switch (dim) {
+      case Dimensionality::k1Dim:
+        return 1;
+        break;
+      case Dimensionality::k2Dim:
+        return 2;
+      case Dimensionality::k3Dim:
+        return 3;
+      default:
+        return static_cast<unsigned short>(-1);// unsupported
+      }
+    }
+
     /**
      * Returns true if all sizes of this are the same as those of referenec except for N,
      * which can be lower or equal than refernce.N.
