@@ -11,12 +11,19 @@ namespace {// to avoid poluting
 
     bool Init() override final
     {
+      using umpalumpa::data::DataType;
       const auto &in = alg.Get().GetInputRef();
+      const auto &out = alg.Get().GetOutputRef();
       const auto &s = alg.Get().GetSettings();
-      return (s.GetVersion() == 1) && (!in.GetData().info.IsPadded())
-             && (s.GetLocation() == Location::kEntire) && (s.GetType() == ExtremaType::kMax)
-             && (s.GetResult() == Result::kValue)
-             && (in.GetData().dataInfo.GetType() == umpalumpa::data::DataType::kFloat);
+      auto isValidVersion = 1 == s.GetVersion();
+      auto isValidLocationData = (s.GetResult() == Result::kLocation)
+                                 && (Precision::kSingle == s.GetPrecision())
+                                 && (DataType::kFloat == out.GetLocations().dataInfo.GetType());
+      auto isValidLocAndType =
+        (s.GetLocation() == Location::kEntire) && (s.GetType() == ExtremaType::kMax);
+      auto isValidData = !in.GetData().info.IsPadded();
+      return isValidVersion && isValidLocAndType
+             && (isValidLocationData || (s.GetResult() == Result::kValue)) && isValidData;
     }
 
     std::string GetName() const override { return "Strategy1"; }
@@ -24,13 +31,42 @@ namespace {// to avoid poluting
     bool Execute(const AExtremaFinder::OutputData &out,
       const AExtremaFinder::InputData &in) override
     {
-      if (!in.GetData().IsValid() || in.GetData().IsEmpty() || !out.GetValues().IsValid()
-          || out.GetValues().IsEmpty())
+      const auto &s = alg.Get().GetSettings();
+      if (!in.GetData().IsValid() || in.GetData().IsEmpty()
+          || (0 == in.GetData().info.GetSize().single) || !out.GetValues().IsValid()
+          || (out.GetValues().IsEmpty() && out.GetLocations().IsEmpty()))
         return false;
-      FindSingleExtremaValXDCPU(reinterpret_cast<float *>(out.GetValues().GetPtr()),
-        reinterpret_cast<float *>(in.GetData().GetPtr()),
-        in.GetData().info.GetSize(),
-        std::greater<float>());
+      const bool vals = s.GetResult() == Result::kValue;
+      const bool locs = s.GetResult() == Result::kLocation;
+      if (locs) {
+        if (vals) {
+          return FindSingleExtremaCPU<true, true>(
+            reinterpret_cast<float *>(out.GetValues().GetPtr()),
+            reinterpret_cast<float *>(out.GetLocations().GetPtr()),
+            reinterpret_cast<float *>(in.GetData().GetPtr()),
+            in.GetData().info.GetSize(),
+            std::greater<float>());
+        }
+        return FindSingleExtremaCPU<false, true, float>(nullptr,
+          reinterpret_cast<float *>(out.GetLocations().GetPtr()),
+          reinterpret_cast<float *>(in.GetData().GetPtr()),
+          in.GetData().info.GetSize(),
+          std::greater<float>());
+      } else {
+        if (vals) {
+          return FindSingleExtremaCPU<true, false>(
+            reinterpret_cast<float *>(out.GetValues().GetPtr()),
+            nullptr,
+            reinterpret_cast<float *>(in.GetData().GetPtr()),
+            in.GetData().info.GetSize(),
+            std::greater<float>());
+        }
+        return FindSingleExtremaCPU<false, false, float>(nullptr,
+          nullptr,
+          reinterpret_cast<float *>(in.GetData().GetPtr()),
+          in.GetData().info.GetSize(),
+          std::greater<float>());
+      }
       return true;
     }
   };
@@ -45,8 +81,8 @@ namespace {// to avoid poluting
       const auto &in = alg.Get().GetInputRef();
       const auto &s = alg.Get().GetSettings();
       return (s.GetVersion() == 1) && (!in.GetData().info.IsPadded())
-             && (s.GetLocation() == Location::kRectCenter)
-             && (s.GetType() == ExtremaType::kMax) && (s.GetResult() == Result::kLocation)
+             && (s.GetLocation() == Location::kRectCenter) && (s.GetType() == ExtremaType::kMax)
+             && (s.GetResult() == Result::kLocation)
              && (in.GetData().dataInfo.GetType() == umpalumpa::data::DataType::kFloat);
     }
 

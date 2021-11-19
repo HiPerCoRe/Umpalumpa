@@ -45,11 +45,15 @@ template<typename T> void Print(std::complex<T> *data, const data::Size size)
 
 template<typename T> void PrintData(T *data, const data::Size size)
 {
-  ASSERT_EQ(size.GetDim(), data::Dimensionality::k2Dim);
   for (size_t n = 0; n < size.n; ++n) {
     size_t offset = n * size.single;
-    for (size_t y = 0; y < size.y; ++y) {
-      for (size_t x = 0; x < size.x; ++x) { printf("%+.3f\t", data[offset + y * size.x + x]); }
+    for (size_t z = 0; z < size.z; ++z) {
+      for (size_t y = 0; y < size.y; ++y) {
+        for (size_t x = 0; x < size.x; ++x) {
+          printf("%+.3f\t", data[offset + z * size.x * size.y + y * size.x + x]);
+        }
+        std::cout << "\n";
+      }
       std::cout << "\n";
     }
     std::cout << "\n";

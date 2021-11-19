@@ -37,14 +37,22 @@ protected:
     bool result = in.GetData().IsValid();
 
     if (s.GetResult() == Result::kValue) {
-      // is output valid?
-      result = result && (out.GetValues().IsValid());
       // is the type correct?
       result = result && (in.GetData().dataInfo.GetType() == out.GetValues().dataInfo.GetType());
       // we need to have enough space for results
       result = result && (in.GetData().info.GetSize().n == out.GetValues().info.GetSize().n);
       // output should be N 1D GetValues()
       result = result && (out.GetValues().info.GetSize().total == out.GetValues().info.GetSize().n);
+    }
+    if (s.GetResult() == Result::kLocation) {
+      const auto &p = out.GetLocations();
+      // is the type correct?
+      result = result && (data::DataType::kFloat == p.dataInfo.GetType());
+      // we need to have enough space for results
+      result = result && (in.GetData().info.GetSize().n == p.info.GetSize().n);
+      result = result && (data::Dimensionality::k1Dim == p.info.GetSize().GetDim());
+      // results are stored in the DIM numbers in the x axis
+      result = result && (in.GetData().info.GetSize().GetDimAsNumber() == p.info.GetSize().x);
     }
     return result;
   }
