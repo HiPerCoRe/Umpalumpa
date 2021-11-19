@@ -3,7 +3,7 @@
 #include <libumpalumpa/data/payload_wrapper.hpp>
 #include <libumpalumpa/data/payload.hpp>
 #include <libumpalumpa/algorithms/basic_algorithm.hpp>
-#include <libumpalumpa/algorithms/extrema_finder/search_settings.hpp>
+#include <libumpalumpa/algorithms/extrema_finder/settings.hpp>
 #include <libumpalumpa/data/logical_desriptor.hpp>
 
 namespace umpalumpa::extrema_finder {
@@ -36,7 +36,7 @@ protected:
     // is input valid?
     bool result = in.GetData().IsValid();
 
-    if (s.GetResult() == SearchResult::kValue) {
+    if (s.GetResult() == Result::kValue) {
       // is output valid?
       result = result && (out.GetValues().IsValid());
       // is the type correct?

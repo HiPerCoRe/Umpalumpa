@@ -14,8 +14,8 @@ namespace {// to avoid poluting
       const auto &in = alg.Get().GetInputRef();
       const auto &s = alg.Get().GetSettings();
       return (s.GetVersion() == 1) && (!in.GetData().info.IsPadded())
-             && (s.GetLocation() == SearchLocation::kEntire) && (s.GetType() == SearchType::kMax)
-             && (s.GetResult() == SearchResult::kValue)
+             && (s.GetLocation() == Location::kEntire) && (s.GetType() == ExtremaType::kMax)
+             && (s.GetResult() == Result::kValue)
              && (in.GetData().dataInfo.GetType() == umpalumpa::data::DataType::kFloat);
     }
 
@@ -45,8 +45,8 @@ namespace {// to avoid poluting
       const auto &in = alg.Get().GetInputRef();
       const auto &s = alg.Get().GetSettings();
       return (s.GetVersion() == 1) && (!in.GetData().info.IsPadded())
-             && (s.GetLocation() == SearchLocation::kRectCenter)
-             && (s.GetType() == SearchType::kMax) && (s.GetResult() == SearchResult::kLocation)
+             && (s.GetLocation() == Location::kRectCenter)
+             && (s.GetType() == ExtremaType::kMax) && (s.GetResult() == Result::kLocation)
              && (in.GetData().dataInfo.GetType() == umpalumpa::data::DataType::kFloat);
     }
 

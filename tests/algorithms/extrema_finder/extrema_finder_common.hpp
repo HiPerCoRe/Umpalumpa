@@ -23,7 +23,7 @@ protected:
   auto CreatePayloadValues(const Settings &settings, const Size &size)
   {
     auto ld = LogicalDescriptor(size);
-    if (SearchResult::kValue != settings.GetResult()) {
+    if (Result::kValue != settings.GetResult()) {
       return Payload(ld, Create(0, DataType::kVoid), "Default (empty) Values");
     }
     auto bytes = ld.Elems() * Sizeof(DataType::kFloat);
@@ -34,7 +34,7 @@ protected:
   auto CreatePayloadLocations(const Settings &settings, const Size &size)
   {
     auto ld = LogicalDescriptor(size);
-    if (SearchResult::kLocation != settings.GetResult()) {
+    if (Result::kLocation != settings.GetResult()) {
       return Payload(ld, Create(0, DataType::kVoid), "Default (empty) Locations");
     }
     auto bytes = ld.Elems() * Sizeof(DataType::kFloat);

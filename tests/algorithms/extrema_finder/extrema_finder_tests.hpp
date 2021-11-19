@@ -3,7 +3,7 @@
 TEST_F(NAME, 1D_batch_noPadd_max_valOnly)
 {
   auto size = Size(10, 1, 1, 3);
-  auto settings = Settings(SearchType::kMax, SearchLocation::kEntire, SearchResult::kValue);
+  auto settings = Settings(ExtremaType::kMax, Location::kEntire, Result::kValue);
 
   SetUp(settings, size);
 
@@ -40,7 +40,7 @@ TEST_F(NAME, 3D_batch_noPadd_max_valOnly)
   auto size = Size(120, 173, 150, 103);
   std::cout << "This test will need at least " << size.total * sizeof(float) / 1048576 << " MB"
             << std::endl;
-  auto settings = Settings(SearchType::kMax, SearchLocation::kEntire, SearchResult::kValue);
+  auto settings = Settings(ExtremaType::kMax, Location::kEntire, Result::kValue);
 
   SetUp(settings, size);
 
@@ -64,7 +64,7 @@ TEST_F(NAME, 2D_batch_noPadd_max_rectCenter_posOnly)
 {
   auto size = Size(120, 100, 1, 3);
 
-  auto settings = Settings(SearchType::kMax, SearchLocation::kRectCenter, SearchResult::kLocation);
+  auto settings = Settings(ExtremaType::kMax, Location::kRectCenter, Result::kLocation);
 
   SetUp(settings, size);
 
