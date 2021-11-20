@@ -57,7 +57,7 @@ bool FindSingleExtremaCPU(T *__restrict__ vals,
         dest[2] = static_cast<float>(z);
       } break;
       default:
-        locs[n] = std::numeric_limits<float>::quiet_NaN();
+        dest[n] = std::numeric_limits<float>::quiet_NaN();
       }
     }
     // save value

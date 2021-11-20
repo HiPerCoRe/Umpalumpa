@@ -68,7 +68,7 @@ TEST_F(NAME, 3D_max_entire_locOnly_singlePrecision)
 
 TEST_F(NAME, 2D_max_entire_locOnly_singlePrecision)
 {
-  auto size = Size(101, 103, 0, 5);
+  auto size = Size(101, 103, 1, 5);
   TestLocsMaxEntireSingle(size);
 }
 

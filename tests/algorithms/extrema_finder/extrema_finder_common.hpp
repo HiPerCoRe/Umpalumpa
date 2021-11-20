@@ -51,7 +51,7 @@ protected:
     pValues = std::make_unique<Payload<LogicalDescriptor>>(CreatePayloadValues(settings, sizeVals));
     Register(pValues->dataInfo);
 
-    auto sizeLocs = Size(sizeData.GetDimAsNumber(), 0, 0, sizeData.n);
+    auto sizeLocs = Size(sizeData.GetDimAsNumber(), 1, 1, sizeData.n);
     pLocations =
       std::make_unique<Payload<LogicalDescriptor>>(CreatePayloadLocations(settings, sizeLocs));
     Register(pLocations->dataInfo);
@@ -94,12 +94,12 @@ protected:
     Acquire(pLocations->dataInfo);
     const auto &sizeData = pData->info.GetSize();
     // test that we found good maximas
-    for (int n = 0; n < sizeData.n; ++n) {
+    for (size_t n = 0; n < sizeData.n; ++n) {
       auto *start = reinterpret_cast<float *>(pData->GetPtr()) + n * sizeData.single;
       auto max = start[0];
-      auto expectedX = 0;
-      auto expectedY = 0;
-      auto expectedZ = 0;
+      size_t expectedX = 0;
+      size_t expectedY = 0;
+      size_t expectedZ = 0;
       for (size_t z = 0; z < sizeData.z; ++z) {
         for (size_t y = 0; y < sizeData.y; ++y) {
           for (size_t x = 0; x < sizeData.x; ++x) {
@@ -116,8 +116,10 @@ protected:
       auto *actualLoc =
         reinterpret_cast<float *>(pLocations->GetPtr()) + n * pLocations->info.GetSize().single;
       ASSERT_EQ(expectedX, actualLoc[0]) << " for n=" << n;
-      ASSERT_EQ(expectedY, actualLoc[1]) << " for n=" << n;
-      ASSERT_EQ(expectedZ, actualLoc[2]) << " for n=" << n;
+      if (sizeData.GetDimAsNumber() > 1) {
+        ASSERT_EQ(expectedY, actualLoc[1]) << " for n=" << n;
+        if (sizeData.GetDimAsNumber() > 2) { ASSERT_EQ(expectedZ, actualLoc[2]) << " for n=" << n; }
+      }
     }
     Release(pLocations->dataInfo);
     Release(pData->dataInfo);

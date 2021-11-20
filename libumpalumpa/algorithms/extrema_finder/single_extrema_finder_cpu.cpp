@@ -13,17 +13,15 @@ namespace {// to avoid poluting
     {
       using umpalumpa::data::DataType;
       const auto &in = alg.Get().GetInputRef();
-      const auto &out = alg.Get().GetOutputRef();
       const auto &s = alg.Get().GetSettings();
       auto isValidVersion = 1 == s.GetVersion();
-      auto isValidLocationData = (s.GetResult() == Result::kLocation)
-                                 && (Precision::kSingle == s.GetPrecision())
-                                 && (DataType::kFloat == out.GetLocations().dataInfo.GetType());
-      auto isValidLocAndType =
-        (s.GetLocation() == Location::kEntire) && (s.GetType() == ExtremaType::kMax);
+      auto isValidLocs =
+        (s.GetResult() == Result::kLocation) && (Precision::kSingle == s.GetPrecision())
+        && (s.GetLocation() == Location::kEntire) && (s.GetType() == ExtremaType::kMax);
+      auto isValidVals = (s.GetResult() == Result::kValue) && (s.GetLocation() == Location::kEntire)
+                         && (s.GetType() == ExtremaType::kMax);
       auto isValidData = !in.GetData().info.IsPadded();
-      return isValidVersion && isValidLocAndType
-             && (isValidLocationData || (s.GetResult() == Result::kValue)) && isValidData;
+      return isValidVersion && isValidData && (isValidLocs || isValidVals);
     }
 
     std::string GetName() const override { return "Strategy1"; }
@@ -31,10 +29,9 @@ namespace {// to avoid poluting
     bool Execute(const AExtremaFinder::OutputData &out,
       const AExtremaFinder::InputData &in) override
     {
+      auto IsFine = [](const auto &p) { return p.IsValid() && !p.IsEmpty(); };
       const auto &s = alg.Get().GetSettings();
-      if (!in.GetData().IsValid() || in.GetData().IsEmpty()
-          || (0 == in.GetData().info.GetSize().single) || !out.GetValues().IsValid()
-          || (out.GetValues().IsEmpty() && out.GetLocations().IsEmpty()))
+      if (!IsFine(in.GetData()) || (!IsFine(out.GetValues()) && !IsFine(out.GetLocations())))
         return false;
       const bool vals = s.GetResult() == Result::kValue;
       const bool locs = s.GetResult() == Result::kLocation;

@@ -12,7 +12,7 @@ namespace {// to avoid poluting
     // Inherit constructor
     using SingleExtremaFinderCUDA::KTTStrategy::KTTStrategy;
 
-    static constexpr auto kFindMax1D = "findMax1D";
+    static constexpr auto kFindMax1D = "findMax";
 
     size_t GetHash() const override { return 0; }
     bool IsSimilarTo(const TunableStrategy &) const override
@@ -26,12 +26,18 @@ namespace {// to avoid poluting
     {
       const auto &in = alg.Get().GetInputRef();
       const auto &s = alg.Get().GetSettings();
-      bool canProcess = (s.GetVersion() == 1) && (s.GetLocation() == Location::kEntire)
-                        && (s.GetType() == ExtremaType::kMax)
-                        && (s.GetResult() == Result::kValue)
-                        && (!in.GetData().info.IsPadded())
-                        && (in.GetData().dataInfo.GetType() == umpalumpa::data::DataType::kFloat);
+      auto isValidVersion = 1 == s.GetVersion();
+      auto isValidLocs =
+        (s.GetResult() == Result::kLocation) && (Precision::kSingle == s.GetPrecision())
+        && (s.GetLocation() == Location::kEntire) && (s.GetType() == ExtremaType::kMax);
+      auto isValidVals = (s.GetResult() == Result::kValue) && (s.GetLocation() == Location::kEntire)
+                         && (s.GetType() == ExtremaType::kMax);
+      auto isValidData = !in.GetData().info.IsPadded()
+                         // we can process only float data ATM, but the change should be rather easy
+                         && (data::DataType::kFloat == in.GetData().dataInfo.GetType());
+      bool canProcess = isValidVersion && isValidData && (isValidLocs || isValidVals);
       if (!canProcess) return false;
+
 
       auto &size = in.GetData().info.GetSize();
       auto &tuner = kttHelper.GetTuner();
@@ -59,19 +65,20 @@ namespace {// to avoid poluting
     bool Execute(const AExtremaFinder::OutputData &out,
       const AExtremaFinder::InputData &in) override
     {
-      if (!in.GetData().IsValid() || in.GetData().IsEmpty() || !out.GetValues().IsValid()
-          || out.GetValues().IsEmpty())
+      auto IsFine = [](const auto &p) { return p.IsValid() && !p.IsEmpty(); };
+      if (!IsFine(in.GetData()) || (!IsFine(out.GetValues()) && !IsFine(out.GetLocations())))
         return false;
 
       // prepare input data
       auto &tuner = kttHelper.GetTuner();
       auto argIn = AddArgumentVector<float>(in.GetData(), ktt::ArgumentAccessType::ReadOnly);
-      auto argSize = tuner.AddArgumentScalar(in.GetData().info.GetSize().single);
+      auto argSize = tuner.AddArgumentScalar(in.GetData().info.GetSize());
 
       // prepare output data
       auto argVals = AddArgumentVector<float>(out.GetValues(), ktt::ArgumentAccessType::WriteOnly);
+      auto argLocs = AddArgumentVector<float>(out.GetLocations(), ktt::ArgumentAccessType::WriteOnly);
 
-      tuner.SetArguments(definitionId, { argIn, argVals, argSize });
+      tuner.SetArguments(definitionId, { argIn, argVals, argLocs, argSize });
 
       auto &size = in.GetData().info.GetSize();
       tuner.SetLauncher(kernelId, [this, &size](ktt::ComputeInterface &interface) {
@@ -118,8 +125,7 @@ namespace {// to avoid poluting
       const auto &s = alg.Get().GetSettings();
       bool canProcess = (s.GetVersion() == 1) && (s.GetLocation() == Location::kRectCenter)
                         && (s.GetType() == ExtremaType::kMax)
-                        && (s.GetResult() == Result::kLocation)
-                        && (!in.GetData().info.IsPadded())
+                        && (s.GetResult() == Result::kLocation) && (!in.GetData().info.IsPadded())
                         && (in.GetData().dataInfo.GetType() == umpalumpa::data::DataType::kFloat);
       if (!canProcess) return false;
 

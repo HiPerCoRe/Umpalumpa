@@ -5,36 +5,36 @@
 #define blockSize (blockSizeX * blockSizeY)
 #endif
 
-template<typename T, typename T2>//, typename C>
-__device__ void update(// const C &comp,
+template<typename T, typename T2, typename C>
+__device__ void update(
+  const C &comp,
   T2 &orig,
   const T *__restrict data,
   unsigned index)
 {
   T tmp = data[index];
-  //   if (comp(tmp, orig.x)) {
-  if (tmp > orig.x) {
+  if (comp(tmp, index, orig.x, orig.y)) {
     orig.x = tmp;
     orig.y = (T)index;
   }
 }
 
-template<typename T>//, typename C>
-__device__ T update(// const C &comp,
+template<typename T, typename C>
+__device__ T update(
+  const C &comp,
   T &orig,
   T &cand)
 {
-  //   if (comp(cand.x, orig.x)) {
-  if (cand.x > orig.x) {
+  if (comp(cand.x, cand.y, orig.x, orig.y)) {
     orig.x = cand.x;
     orig.y = cand.y;
   }
   return orig;
 }
 
-template<typename T>//, unsigned blockSize>//, typename C>
+template<typename T, typename C>
 __device__ void findUniversalInSharedMem(
-  // const C &comp,
+  const C &comp,
   T &ldata,
   unsigned int tid)
 {
@@ -44,9 +44,10 @@ __device__ void findUniversalInSharedMem(
   __syncthreads();// wait till all threads store their data
   // reduce
 #pragma unroll
-  for (unsigned counter = blockSize / 2; counter >= 32; counter /= 2) {
+  for (auto counter = blockSize / 2; counter >= 32; counter /= 2) {
     if (tid < counter) {
-      sdata[tid] = update(// comp,
+      sdata[tid] = update(
+        comp,
         ldata,
         sdata[tid + counter]);
     }
@@ -55,31 +56,36 @@ __device__ void findUniversalInSharedMem(
   // manually unwrap last warp for better performance
   // many of these blocks will be optimized out by compiler based on template
   if ((blockSize >= 32) && (tid < 16)) {
-    sdata[tid] = update(// comp,
+    sdata[tid] = update(
+      comp,
       ldata,
       sdata[tid + 16]);
   }
   __syncthreads();
   if ((blockSize >= 16) && (tid < 8)) {
-    sdata[tid] = update(// comp,
+    sdata[tid] = update(
+      comp,
       ldata,
       sdata[tid + 8]);
   }
   __syncthreads();
   if ((blockSize >= 8) && (tid < 4)) {
-    sdata[tid] = update(// comp,
+    sdata[tid] = update(
+      comp,
       ldata,
       sdata[tid + 4]);
   }
   __syncthreads();
   if ((blockSize >= 4) && (tid < 2)) {
-    sdata[tid] = update(// comp,
+    sdata[tid] = update(
+      comp,
       ldata,
       sdata[tid + 2]);
   }
   __syncthreads();
   if ((blockSize >= 2) && (tid < 1)) {
-    sdata[tid] = update(// comp,
+    sdata[tid] = update(
+      comp,
       ldata,
       sdata[tid + 1]);
   }
@@ -96,51 +102,70 @@ __device__ void findUniversalInSharedMem(
 //         T * __restrict__ outVal,
 //         unsigned samples)
 // {
-extern "C" __global__ void findMax1D(
+extern "C" __global__ void findMax(
   // const C &comp,
   // T startVal,
-  float *in,
-  // float * __restrict__ outPos,
-  float *outVal,
-  unsigned samples)
+  float * __restrict__ in,
+  float * __restrict__ outVal,
+  float * __restrict__ outPos,
+  umpalumpa::data::Size size)
 {
-  // auto comp = [] (float l, float r) { return l > r; };
+  // return true IFF first value is bigger than the second value, or they are the same and
+  // the positio of the first value is lower -> returns the biggers value at the lowest position
+  auto comp = [] (float l, unsigned li, float r, unsigned ri) { return l > r || (l == r && li < ri); };
   // one block processes one signal
   // map each thread to some sample of the signal
-  unsigned int tid = threadIdx.x;
-  unsigned int signal = blockIdx.x;
-
-  // if (signal ==0 && tid == 0) {
-  //   for (int i = 0; i < 30; i++) {
-  //     printf("%f ", in[i]);
-  //   }
-  // }
-
+  // blockSize == noOfThreads
+  auto tid = threadIdx.x;
+  auto signal = blockIdx.x;
+  
   // load data from global memory
+  if (tid >= size.single) return;
+  auto samples = size.single;
   const float *data = in + (signal * samples);
-  // if(tid < samples) printf("signal %d %d: %f\n", signal, tid, data[tid]);
 
   float2 ldata;
-  ldata.x = data[0];
-  ldata.y = -1;
-  for (unsigned i = tid; i < samples; i += blockSize) {
+  ldata.x = data[tid];
+  ldata.y = tid;
+  for (auto i = tid + blockSize; i < samples; i += blockSize) {
     update(
-      // comp,
+      comp,
       ldata,
       data,
       i);
   }
-  // if (threadIdx.x == 0) printf("%f\n", ldata.x);
   __syncthreads();// wait till all threads are ready
   findUniversalInSharedMem(//<float2, blockSize>(
-                           // comp,
+    comp,
     ldata,
-    threadIdx.x);
+    tid);
 
   // last thread now holds the result
   if (tid == 0) {
-    if (NULL != outVal) { outVal[signal] = ldata.x; }
-    // if (NULL != outPos) { outPos[signal] = ldata.y; }
+    if (nullptr != outVal) { outVal[signal] = ldata.x; }
+    if (nullptr != outPos) { 
+      const auto dim = size.GetDimAsNumber();
+      const unsigned location = ldata.y;
+      auto *dest = outPos + signal * dim;
+      if (1 == dim) {
+        dest[0] = static_cast<float>(location);
+      } else if (2 == dim) {
+        auto y = location / size.x;
+        auto x = location % size.x;
+        dest[0] = x;
+        dest[1] = y;
+      } else if (3 == dim) {
+        size_t z = location / (size.x * size.y);
+        size_t tmp = location % (size.x * size.y);
+        size_t y = tmp / size.x;
+        size_t x = tmp % size.x;
+        dest[0] = static_cast<float>(x);
+        dest[1] = static_cast<float>(y);
+        dest[2] = static_cast<float>(z);
+      } else {
+        dest[signal] = nanf("");
+      }
+    }
   }
 }
 
@@ -158,25 +183,29 @@ __global__ void findMaxRect(T *in,
 
   const float *data = in + (signal * inSize.single);
 
+  // return true IFF first value is bigger than the second value, or they are the same and
+  // the positio of the first value is lower -> returns the biggers value at the lowest position
+  auto comp = [] (float l, unsigned li, float r, unsigned ri) { return l > r || (l == r && li < ri); };
+
   float2 ldata;
   ldata.x = data[offsetY * inSize.x + offsetX];
   ldata.y = -1;
   for (unsigned tIdy = offsetY + threadIdx.y; tIdy < offsetY + rectHeight; tIdy += blockSizeY) {
     for (unsigned tIdx = offsetX + threadIdx.x; tIdx < offsetX + rectWidth; tIdx += blockSizeX) {
-      update(ldata, data, tIdy * inSize.x + tIdx);
+      update(comp, ldata, data, tIdy * inSize.x + tIdx);
     }
   }
 
   __syncthreads();// wait till all threads are ready
   findUniversalInSharedMem(//<float2, blockSize>(
-                           // comp,
+    comp,
     ldata,
     threadIdx.y * blockSizeX + threadIdx.x);
 
   // last thread now holds the result
   if (threadIdx.x == 0 && threadIdx.y == 0) {
-    if (NULL != outVal) { outVal[signal] = ldata.x; }
-    if (NULL != outPos) { outPos[signal] = ldata.y; }
+    if (nullptr != outVal) { outVal[signal] = ldata.x; }
+    if (nullptr != outPos) { outPos[signal] = ldata.y; }
   }
 }
 

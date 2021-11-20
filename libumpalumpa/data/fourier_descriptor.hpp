@@ -94,7 +94,7 @@ namespace data {
 
     double GetNormFactor() const { return 1.0 / static_cast<double>(paddedSize.single); }
 
-    bool IsValid() const { return paddedSize >= size; }
+    bool IsValid() const { return size.IsValid() && paddedSize >= size; }
 
     virtual FourierDescriptor
       Subset(size_t &safeCount, const size_t startN, const size_t count) const
