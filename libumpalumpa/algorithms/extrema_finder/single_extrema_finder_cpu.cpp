@@ -65,8 +65,7 @@ namespace {// to avoid poluting
         }
       }
       if ((Result::kLocation == s.GetResult()) && (Precision::k3x3 == s.GetPrecision())) {
-        FindSingleExtremaSubPixel<float, 3>(reinterpret_cast<float *>(out.GetValues().GetPtr()),
-          reinterpret_cast<float *>(out.GetLocations().GetPtr()),
+        RefineLocation<float, 3>(reinterpret_cast<float *>(out.GetLocations().GetPtr()),
           reinterpret_cast<float *>(in.GetData().GetPtr()),
           in.GetData().info.GetSize());
       }
