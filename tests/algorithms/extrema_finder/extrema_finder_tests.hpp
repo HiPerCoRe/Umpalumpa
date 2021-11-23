@@ -11,7 +11,7 @@ TEST_F(NAME, 1D_batch_noPadd_max_valOnly)
   FillNormalDist(dataOrig.get(), pData->info.Elems());
 
   Acquire(pData->dataInfo);
-  memcpy(dataOrig.get(), pData->GetPtr(), pData->dataInfo.GetBytes());
+  memcpy(pData->GetPtr(), dataOrig.get(), pData->dataInfo.GetBytes());
   // Print(*pData, pData->info.GetPaddedSize());
   Release(pData->dataInfo);
 
@@ -45,6 +45,7 @@ TEST_F(NAME, 3D_batch_noPadd_max_valOnly)
   SetUp(settings, size);
 
   Acquire(pData->dataInfo);
+  memset(pData->GetPtr(), 0, pData->dataInfo.GetBytes()); // not needed, but Valgrind doesnt like reading random bytes
   FillRandom(pData->GetPtr(), pData->dataInfo.GetBytes());
   Release(pData->dataInfo);
 
@@ -155,7 +156,7 @@ TEST_F(NAME, 1D_max_entire_locOnly_Precision3x3)
 
 TEST_F(NAME, 2D_max_entire_locOnly_Precision3x3)
 {
-  auto size = Size(9, 9, 1, 2);
+  auto size = Size(9, 9, 1, 5);
 
   auto refLocs = std::make_unique<float[]>(size.n * size.GetDimAsNumber());
 
@@ -170,52 +171,54 @@ TEST_F(NAME, 2D_max_entire_locOnly_Precision3x3)
     auto *ptr = reinterpret_cast<float *>(pData->GetPtr());
     auto GetSignal = [&size, ptr](
                        size_t n) { return reinterpret_cast<float(&)[9][9]>(ptr[n * size.single]); };
+    size_t s = 0;
     {
       // only one value
-      size_t s = 0;
       auto *sig = GetSignal(s);
       sig[3][3] = 1.f;
       refLocs[2 * s] = 3;// X
       refLocs[2 * s + 1] = 3;// Y
+      ++s;
     }
     {
       // in the range, cross + X
-      size_t s = 1;
       auto *sig = GetSignal(s);
       sig[3][3] = 1.f;
       sig[2][3] = sig[3][2] = sig[4][3] = sig[3][4] = 0.6f;// cross
       sig[2][2] = sig[4][2] = sig[2][4] = sig[4][4] = 0.1f;// X
       refLocs[2 * s] = 3;// X
       refLocs[2 * s + 1] = 3;// Y
+      ++s;
     }
     {
       // in the range, cross + X, non-unit values
-      size_t s = 1;
       auto *sig = GetSignal(s);
       sig[3][3] = 3.f;
       sig[2][3] = sig[3][2] = sig[4][3] = sig[3][4] = 1.8f;// cross
       sig[2][2] = sig[4][2] = sig[2][4] = sig[4][4] = 0.3f;// X
       refLocs[2 * s] = 3;// X
       refLocs[2 * s + 1] = 3;// Y
+      ++s;
     }
     {
       // crop top left corner
-      size_t s = 2;
       auto *sig = GetSignal(s);
       sig[2][2] = 1.f;
       sig[2][3] = sig[3][2] = 0.5f;
       refLocs[2 * s] = 2.25;// X
       refLocs[2 * s + 1] = 2.25;// Y
+      ++s;
     }
     {
       // crop bottom right corner
-      size_t s = 2;
       auto *sig = GetSignal(s);
       sig[8][8] = 1.f;
       sig[7][8] = sig[8][7] = 0.5f;
       refLocs[2 * s] = 7.75;// X
       refLocs[2 * s + 1] = 7.75;// Y
+      ++s;
     }
+    ASSERT_EQ(s, size.n);
     Release(pData->dataInfo);
   }
 

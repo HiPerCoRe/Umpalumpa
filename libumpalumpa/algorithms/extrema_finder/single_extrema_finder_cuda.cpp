@@ -13,6 +13,7 @@ namespace {// to avoid poluting
     using SingleExtremaFinderCUDA::KTTStrategy::KTTStrategy;
 
     static constexpr auto kFindMax1D = "findMax";
+    static constexpr auto kRefineLocation = "RefineLocation";
 
     size_t GetHash() const override { return 0; }
     bool IsSimilarTo(const TunableStrategy &) const override
@@ -27,17 +28,14 @@ namespace {// to avoid poluting
       const auto &in = alg.Get().GetInputRef();
       const auto &s = alg.Get().GetSettings();
       auto isValidVersion = 1 == s.GetVersion();
-      auto isValidLocs =
-        (s.GetResult() == Result::kLocation) && (Precision::kSingle == s.GetPrecision())
-        && (s.GetLocation() == Location::kEntire) && (s.GetType() == ExtremaType::kMax);
+      auto isValidLocs = (s.GetResult() == Result::kLocation)
+                         && (s.GetLocation() == Location::kEntire)
+                         && (s.GetType() == ExtremaType::kMax);
       auto isValidVals = (s.GetResult() == Result::kValue) && (s.GetLocation() == Location::kEntire)
                          && (s.GetType() == ExtremaType::kMax);
-      auto isValidData = !in.GetData().info.IsPadded()
-                         // we can process only float data ATM, but the change should be rather easy
-                         && (data::DataType::kFloat == in.GetData().dataInfo.GetType());
+      auto isValidData = !in.GetData().info.IsPadded();
       bool canProcess = isValidVersion && isValidData && (isValidLocs || isValidVals);
       if (!canProcess) return false;
-
 
       auto &size = in.GetData().info.GetSize();
       auto &tuner = kttHelper.GetTuner();
@@ -48,6 +46,21 @@ namespace {// to avoid poluting
       std::lock_guard<std::mutex> lck(kttHelper.GetMutex());
       definitionId = GetKernelDefinitionId(kFindMax1D, kKernelFile, ktt::DimensionVector{ size.n });
       kernelId = tuner.CreateSimpleKernel(kFindMax1D + std::to_string(strategyId), definitionId);
+
+      if (s.GetPrecision() != Precision::kSingle) {
+        auto window = [&s]() {
+          switch (s.GetPrecision()) {
+          case Precision::k3x3:
+            return "3";
+          default:
+            return "UNSUPPORTED PRECISION";
+          }
+        }();
+        refineDefID = GetKernelDefinitionId(
+          kRefineLocation, kKernelFile, ktt::DimensionVector{ size.n }, { "float", window });
+        refineKernelID =
+          tuner.CreateSimpleKernel(kRefineLocation + std::to_string(strategyId), refineDefID);
+      }
 
       tuner.AddParameter(kernelId, "blockSize", std::vector<uint64_t>{ 32, 64, 128, 256, 512 });
 
@@ -66,6 +79,7 @@ namespace {// to avoid poluting
       const AExtremaFinder::InputData &in) override
     {
       auto IsFine = [](const auto &p) { return p.IsValid() && !p.IsEmpty(); };
+      const auto &s = alg.Get().GetSettings();
       if (!IsFine(in.GetData()) || (!IsFine(out.GetValues()) && !IsFine(out.GetLocations())))
         return false;
 
@@ -76,7 +90,8 @@ namespace {// to avoid poluting
 
       // prepare output data
       auto argVals = AddArgumentVector<float>(out.GetValues(), ktt::ArgumentAccessType::WriteOnly);
-      auto argLocs = AddArgumentVector<float>(out.GetLocations(), ktt::ArgumentAccessType::WriteOnly);
+      auto argLocs =
+        AddArgumentVector<float>(out.GetLocations(), ktt::ArgumentAccessType::WriteOnly);
 
       tuner.SetArguments(definitionId, { argIn, argVals, argLocs, argSize });
 
@@ -87,8 +102,21 @@ namespace {// to avoid poluting
         interface.RunKernelAsync(definitionId, interface.GetAllQueues().at(0), gridDim, blockDim);
       });
 
+      const bool refine =
+        (Result::kLocation == s.GetResult()) && (Precision::k3x3 == s.GetPrecision());
+      if (refine) {
+        tuner.SetArguments(refineDefID, { argLocs, argIn, argSize });
+
+        tuner.SetLauncher(refineKernelID, [this, &size](ktt::ComputeInterface &interface) {
+          const ktt::DimensionVector blockDim(size.n);
+          const ktt::DimensionVector gridDim(1);
+          interface.RunKernelAsync(refineDefID, interface.GetAllQueues().at(0), gridDim, blockDim);
+        });
+      }
+
       if (ShouldTune()) {
         tuner.TuneIteration(kernelId, {});
+        if (refine) { tuner.TuneIteration(refineKernelID, {}); }
       } else {
         // TODO GetBestConfiguration can be used once the KTT is able to synchronize
         // the best configuration from multiple KTT instances, or loads the best
@@ -97,11 +125,18 @@ namespace {// to avoid poluting
         auto bestConfig =
           tuner.CreateConfiguration(kernelId, { { "blockSize", static_cast<uint64_t>(32) } });
         tuner.Run(kernelId, bestConfig, {});// run is blocking call
+        if (refine) {
+          tuner.Run(refineKernelID, {}, {});// run is blocking call
+        }
         // arguments shall be removed once the run is done
       }
 
       return true;
     };
+
+  private:
+    ktt::KernelDefinitionId refineDefID;
+    ktt::KernelId refineKernelID;
   };
 
   struct Strategy2 final : public SingleExtremaFinderCUDA::KTTStrategy

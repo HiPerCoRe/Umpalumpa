@@ -5,6 +5,14 @@
 #define blockSize (blockSizeX * blockSizeY)
 #endif
 
+#ifndef blockSizeX
+#define blockSizeX 1
+#endif
+
+#ifndef blockSizeY
+#define blockSizeY 1
+#endif
+
 template<typename T, typename T2, typename C>
 __device__ void update(
   const C &comp,
@@ -102,7 +110,7 @@ __device__ void findUniversalInSharedMem(
 //         T * __restrict__ outVal,
 //         unsigned samples)
 // {
-extern "C" __global__ void findMax(
+__global__ void findMax(
   // const C &comp,
   // T startVal,
   float * __restrict__ in,
@@ -166,6 +174,68 @@ extern "C" __global__ void findMax(
         dest[signal] = nanf("");
       }
     }
+  }
+}
+
+/**
+ * Find sub-pixel location or value of the extrema.
+ * Data has to contain at least one (1) value.
+ * Returned location is calculated by relative weigting in the given
+ * window using the value contribution. Should the window reach behind the boundaries, those
+ * values will be ignored. Only odd sizes of the window are valid.
+ *
+ * All checks are expected to be done by caller
+ **/
+ template<typename T, unsigned WINDOW>
+ __global__ 
+ void RefineLocation(float *__restrict__ locs,
+   T *const __restrict__ data,
+   const umpalumpa::data::Size size)
+{
+  // map one thread per signal
+  auto n = threadIdx.x;
+  if (n >= size.single) return;
+  using umpalumpa::data::Dimensionality;
+  auto half = (WINDOW - 1) / 2;
+  const auto dim = size.GetDimAsNumber();
+  if ((dim > 0) && (dim <= 3)) {
+      auto *ptrLoc = locs + n * size.GetDimAsNumber();
+      auto *ptr = data + n * size.single;
+      auto refX = static_cast<size_t>(ptrLoc[0]);
+      auto refY = (size.GetDimAsNumber() > 1) ? static_cast<size_t>(ptrLoc[1]) : 0;
+      auto refZ = (size.GetDimAsNumber() > 2) ? static_cast<size_t>(ptrLoc[2]) : 0;
+      auto refVal = data[n * size.single + refZ * size.x * size.y + refY * size.x + refX];
+      // careful with unsigned operations
+      auto startX = (half > refX) ? 0 : refX - half;
+      auto endX = min(half + refX, size.x - 1);
+      auto startY = (half > refY) ? 0 : refY - half;
+      auto endY = min(half + refY, size.y - 1);
+      auto startZ = (half > refZ) ? 0 : refZ - half;
+      auto endZ = min(half + refZ, size.z - 1);
+      float sumLocX = 0;
+      float sumLocY = 0;
+      float sumLocZ = 0;
+      float sumWeight = 0;
+      for (auto z = startZ; z <= endZ; ++z) {
+        for (auto y = startY; y <= endY; ++y) {
+          for (auto x = startX; x <= endX; ++x) {
+            auto i = z * size.x * size.y + y * size.x + x;
+            auto relVal = ptr[i] / refVal;
+            sumWeight += relVal;
+            sumLocX += static_cast<float>(x) * relVal;
+            sumLocY += static_cast<float>(y) * relVal;
+            sumLocZ += static_cast<float>(z) * relVal;
+          }
+        }
+      }
+      ptrLoc[0] = sumLocX / sumWeight;
+      if (size.GetDimAsNumber() > 1) { ptrLoc[1] = sumLocY / sumWeight; }
+      if (size.GetDimAsNumber() > 2) { ptrLoc[2] = sumLocZ / sumWeight; }
+    return;
+  }
+  // otherwise we don't know what to do, so 'report' it
+  for (size_t n = 0; n < size.n * size.GetDimAsNumber(); ++n) {
+    locs[n] = nanf("");
   }
 }
 

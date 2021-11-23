@@ -85,7 +85,6 @@ bool RefineLocation(float *__restrict__ locs,
   auto half = (WINDOW - 1) / 2;
   const auto dim = size.GetDimAsNumber();
   if ((dim > 0) && (dim <= 3)) {
-    // auto tmp = std::make_unique<T>(new LocWeight[WINDOW]);
     for (size_t n = 0; n < size.n; ++n) {
       auto *ptrLoc = locs + n * size.GetDimAsNumber();
       auto *ptr = data + n * size.single;

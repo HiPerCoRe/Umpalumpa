@@ -11,7 +11,6 @@ namespace {// to avoid poluting
 
     bool Init() override final
     {
-      using umpalumpa::data::DataType;
       const auto &in = alg.Get().GetInputRef();
       const auto &s = alg.Get().GetSettings();
       auto isValidVersion = 1 == s.GetVersion();

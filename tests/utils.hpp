@@ -10,7 +10,7 @@ namespace umpalumpa::test {
 template<typename T> void FillRandom(T *dst, size_t bytes)
 {
   int fd = open("/dev/urandom", O_RDONLY);
-  read(fd, dst, bytes);
+  assert(read(fd, dst, bytes) > 0);
   close(fd);
 }
 
