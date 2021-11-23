@@ -21,20 +21,20 @@ void AlgorithmManager::Register(TunableStrategy &strat)
   for (auto &v : strategies) {
     for (auto *s : v) {
       if (s == &strat) {
-        spdlog::warn("You are trying to register the same strategy instance multiple times.");// tmp
+        spdlog::warn("You are trying to register the same strategy instance multiple times.");
         return;
       }
     }
   }
 
-  spdlog::info("Strategy at address {0} registered", reinterpret_cast<size_t>(&strat));// tmp
+  spdlog::debug("Strategy at address {0} registered", reinterpret_cast<size_t>(&strat));
 
   // Check equality
   // FIXME probably should iterate through all the strategies?
   for (auto &stratGroup : strategies) {
     if (strat.IsEqualTo(*stratGroup[0])) {
       stratGroup.push_back(&strat);
-      spdlog::info("As equal to strategy {0}", reinterpret_cast<size_t>(stratGroup[0]));// tmp
+      spdlog::debug("As equal to strategy {0}", reinterpret_cast<size_t>(stratGroup[0]));
       // TODO set additional flags (i.e. this strategy can be used for tuning)
       return;
     }
@@ -44,7 +44,7 @@ void AlgorithmManager::Register(TunableStrategy &strat)
   for (auto &stratGroup : strategies) {
     if (strat.IsSimilarTo(*stratGroup[0])) {
       stratGroup.push_back(&strat);
-      spdlog::info("As similar to strategy {0}", reinterpret_cast<size_t>(stratGroup[0]));// tmp
+      spdlog::debug("As similar to strategy {0}", reinterpret_cast<size_t>(stratGroup[0]));
       return;
     }
   }
@@ -65,7 +65,7 @@ void AlgorithmManager::Unregister(TunableStrategy &strat)
       // Remove strategy from group
       std::iter_swap(stratIt, stratGroup.end() - 1);
       stratGroup.pop_back();
-      spdlog::info("Strategy at address {0} unregistered", reinterpret_cast<size_t>(&strat));// tmp
+      spdlog::debug("Strategy at address {0} unregistered", reinterpret_cast<size_t>(&strat));
 
       // Remove empty group
       if (stratGroup.empty()) {
@@ -76,7 +76,7 @@ void AlgorithmManager::Unregister(TunableStrategy &strat)
     }
   }
 
-  spdlog::warn("You are trying to unregister strategy which wasn't previously registered.");// tmp
+  spdlog::warn("You are trying to unregister strategy which wasn't previously registered.");
 }
 
 // ktt::KernelConfiguration AlgorithmManager::GetBestConfiguration(size_t stratHash)
