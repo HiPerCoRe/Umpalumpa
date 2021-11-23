@@ -12,6 +12,7 @@ add_subdirectory(algorithms/fourier_processing)
 add_subdirectory(algorithms/fourier_transformation)
 add_subdirectory(data/payload_wrapper)
 add_subdirectory(tuning/algorithm_manager)
+add_subdirectory(tuning/garbage_collection)
 
 file(
   COPY runAll.sh
