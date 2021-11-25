@@ -95,6 +95,15 @@ TEST(SizeTests, Single)
 
   EXPECT_EQ(Size(2, 2, 2, 1).single, 8);
   EXPECT_EQ(Size(3, 2, 3, 1).single, 18);
+
+  EXPECT_EQ(Size(1, 1, 1, 2).single, 1);
+  EXPECT_EQ(Size(2, 1, 1, 3).single, 2);
+
+  EXPECT_EQ(Size(2, 2, 1, 4).single, 4);
+  EXPECT_EQ(Size(3, 2, 1, 5).single, 6);
+
+  EXPECT_EQ(Size(2, 2, 2, 6).single, 8);
+  EXPECT_EQ(Size(3, 2, 3, 7).single, 18);
 }
 
 TEST(SizeTests, Total)
