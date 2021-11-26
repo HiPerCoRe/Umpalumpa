@@ -84,6 +84,47 @@ public:
    */
   bool ShouldTune() { return tune; }
 
+  /**
+   * Runs a tuning of the specified kernel.
+   * TODO In order to correctly evaluate the tuning, this method waits until all the currently
+   * running kernels finish.
+   *
+   * TODO Execution of this method is blocking because we need to stay in the critical section for
+   * the entire duration of tuning.
+   *
+   * TODO IMPORTANT: This method assumes that it is being called from a critical section which locks
+   * the KTT tuner.
+   */
+  void RunTuning(ktt::KernelId kernelId) const
+  {
+    auto &tuner = kttHelper.GetTuner();
+    // We need to let the rest of the kernels finish, while we won't allow anyone to start a new
+    // kernel (this is done by locking the Tuner in Execute method).
+    tuner.Synchronize();
+    // Now, there are no kernels at the GPU and we can start tuning
+    tuner.TuneIteration(kernelId, {});
+    tuner.Synchronize();// tmp solution to make the call blocking
+    // TODO run should be blocking while tuning -> need change in the KernelLauncher
+  }
+
+  /**
+   * Runs the kernel with the best known configuration.
+   * The call is non-blocking.
+   *
+   * TODO Second argument is temporary, will be removed once we can acquire the configuration via
+   * other means.
+   */
+  void RunBestConfiguration(ktt::KernelId kernelId, const ktt::KernelConfiguration &TMP = {}) const
+  {
+    auto &tuner = kttHelper.GetTuner();
+    // TODO GetBestConfiguration can be used once the KTT is able to synchronize
+    // the best configuration from multiple KTT instances, or loads the best
+    // configuration from previous runs
+    // auto bestConfig = GetBestConfiguration(kernelId);
+    auto bestConfig = TMP;
+    tuner.Run(kernelId, bestConfig, {});
+  }
+
 protected:
   /**
    * Registers this strategy to the AlgorithmManager.
