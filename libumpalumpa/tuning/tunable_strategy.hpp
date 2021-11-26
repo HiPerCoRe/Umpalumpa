@@ -167,7 +167,7 @@ private:
   std::vector<ktt::KernelId> kernelIds;
 
   // Tracker of used ids, which allows for automatic cleanup after strategy's destruction
-  std::vector<std::shared_ptr<utils::KTTHelper::KTTIdTracker>> idTrackers;
+  std::vector<std::shared_ptr<utils::KTTIdTracker>> idTrackers;
 
   size_t GetIndex(ktt::KernelDefinitionId id) const
   {

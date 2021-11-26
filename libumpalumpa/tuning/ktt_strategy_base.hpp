@@ -1,6 +1,5 @@
 #pragma once
 
-#include "libumpalumpa/data/payload.hpp"
 #include <libumpalumpa/algorithms/basic_algorithm.hpp>
 #include <libumpalumpa/tuning/ktt_base.hpp>
 #include <libumpalumpa/tuning/tunable_strategy.hpp>

@@ -8,7 +8,7 @@
 using namespace umpalumpa;
 using namespace umpalumpa::utils;
 using namespace umpalumpa::algorithm;
-using KTTIdTracker = umpalumpa::utils::KTTHelper::KTTIdTracker;
+using KTTIdTracker = umpalumpa::utils::KTTIdTracker;
 
 using namespace ::testing;
 

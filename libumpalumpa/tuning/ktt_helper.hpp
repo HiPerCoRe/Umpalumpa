@@ -4,41 +4,12 @@
 #include <libumpalumpa/system_includes/ktt.hpp>
 #include <libumpalumpa/utils/cuda.hpp>
 #include <libumpalumpa/utils/system.hpp>
+#include <libumpalumpa/tuning/ktt_id_tracker.hpp>
 
 namespace umpalumpa::utils {
 class KTTHelper
 {
-
 public:
-  /**
-   * Class for tracking KTT ids, that takes care of their proper release when the ids are no longer
-   * needed. Tracks all the ids tied to the specified ktt::KernelDefinitionId.
-   */
-  struct KTTIdTracker
-  {
-    KTTIdTracker(ktt::KernelDefinitionId defId, ktt::Tuner &t) : definitionId(defId), tuner(t) {}
-    KTTIdTracker(const KTTIdTracker &) = delete;
-    KTTIdTracker &operator=(const KTTIdTracker &) = delete;
-    KTTIdTracker(KTTIdTracker &&) = delete;
-    KTTIdTracker &operator=(KTTIdTracker &&) = delete;
-    ~KTTIdTracker()
-    {
-      // Kernels need to be removed first
-      for (auto kId : kernelIds) { tuner.RemoveKernel(kId); }
-      // KernelDefinitions need to be removed second
-      tuner.RemoveKernelDefinition(definitionId);
-      // Arguments need to be removed last
-      for (auto aId : argumentIds) { tuner.RemoveArgument(aId); }
-    }
-
-    const ktt::KernelDefinitionId definitionId;
-    std::vector<ktt::KernelId> kernelIds;
-    std::vector<ktt::ArgumentId> argumentIds;
-
-  private:
-    ktt::Tuner &tuner;
-  };
-
   KTTHelper(const CUcontext context, const std::vector<ktt::ComputeQueue> &queues)
     : tuner(ktt::ComputeApi::CUDA, ktt::ComputeApiInitializer(context, queues))
   {
