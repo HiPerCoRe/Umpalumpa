@@ -24,8 +24,9 @@ public:
   virtual ~TunableStrategy()
   {
     // FIXME Needs to be synchronized
-    if (isRegistered) {
-      AlgorithmManager::Get().Unregister(*this);
+    // kttHelper.GetTuner().Synchronize();
+    if (isRegistered) { AlgorithmManager::Get().Unregister(*this); }
+    if (!idTrackers.empty()) {
       // Needs to be locked because Cleanup routine accesses ktt::Tuner
       std::lock_guard lck(kttHelper.GetMutex());
       Cleanup();
@@ -118,7 +119,11 @@ protected:
       id =
         tuner.AddKernelDefinitionFromFile(kernelName, sourceFile, gridDimensions, {}, templateArgs);
     }
-    // TODO validity check, but it should not be needed here
+
+    if (id == ktt::InvalidKernelDefinitionId) {
+      throw std::invalid_argument("Definition id could not be created.");
+    }
+
     definitionIds.push_back(id);
     idTrackers.push_back(kttHelper.GetIdTracker(id));
   }
