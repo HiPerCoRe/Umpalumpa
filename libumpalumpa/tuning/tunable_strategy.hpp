@@ -58,7 +58,7 @@ public:
    */
   ktt::KernelConfiguration GetBestConfiguration() const
   {
-    return kttHelper.GetTuner().GetBestConfiguration(kernelId);
+    return kttHelper.GetTuner().GetBestConfiguration(_kernelId);
   }
 
   /**
@@ -67,7 +67,7 @@ public:
   void SetTuning(bool val) { tune = val; }
 
   /**
-   * Returns a flag that that controls whether this strategy shoudl be tuned or not.
+   * Returns a flag that that controls whether this strategy should be tuned or not.
    */
   bool ShouldTune() { return tune; }
 
@@ -90,35 +90,59 @@ protected:
     // FIXME TMP remove when Ids in TunableStrategy change to vectors
     std::vector<ktt::KernelId> kernelIds;
     std::vector<ktt::KernelDefinitionId> definitionIds;
-    if (kernelId != ktt::InvalidKernelId) { kernelIds.push_back(kernelId); }
-    if (definitionId != ktt::InvalidKernelDefinitionId) { definitionIds.push_back(definitionId); }
+    if (_kernelId != ktt::InvalidKernelId) { kernelIds.push_back(_kernelId); }
+    if (_definitionId != ktt::InvalidKernelDefinitionId) { definitionIds.push_back(_definitionId); }
     // ^ won't be here
-    AlgorithmManager::Get().CleanupIds(kttHelper, kernelIds, definitionIds);
+    AlgorithmManager::Get().GetGarbageCollector().CleanupIds(kttHelper, kernelIds, definitionIds);
   }
 
+  // NOTE this method purposefully no longer returns the id, so that people don't use it as a
+  // getter, which would be very inefficient and it might cause some troubles during clean up.
   /**
-   * Returns the KTT's kernel definition Id. If the specified kernel definition already exists,
-   * returns the existing Id; otherwise, creates a new one.
+   * Adds KTT's kernel definition.
+   * Id of the added kernel definition can be retrieved by using method GetDefinitionId().
    */
-  ktt::KernelDefinitionId GetKernelDefinitionId(const std::string &kernelName,
+  void AddKernelDefinition(const std::string &kernelName,
     const std::string &sourceFile,
     const ktt::DimensionVector &gridDimensions,
     const std::vector<std::string> &templateArgs = {})
   {
-    return AlgorithmManager::Get().GetKernelDefinitionId(
-      kttHelper, kernelName, sourceFile, gridDimensions, templateArgs);
+    auto &tuner = kttHelper.GetTuner();
+    auto id = tuner.GetKernelDefinitionId(kernelName, templateArgs);
+    if (id == ktt::InvalidKernelDefinitionId) {
+      id =
+        tuner.AddKernelDefinitionFromFile(kernelName, sourceFile, gridDimensions, {}, templateArgs);
+    }
+
+    // TODO check that id is valid? throw otherwise?
+    _definitionId = id;
+    AlgorithmManager::Get().GetGarbageCollector().RegisterKernelDefinitionId(id, kttHelper);
   }
 
-  // NOTE these might need change to vectors
-  ktt::KernelId kernelId = ktt::InvalidKernelId;
-  ktt::KernelDefinitionId definitionId = ktt::InvalidKernelDefinitionId;
+  /**
+   * Adds KTT's kernel.
+   * Id of the added kernel can be retrieved by using method GetKernelId().
+   */
+  void AddSimpleKernel(const std::string &name, ktt::KernelDefinitionId defId)
+  {
+    // TODO check that id is valid? throw otherwise?
+    _kernelId = kttHelper.GetTuner().CreateSimpleKernel(name + std::to_string(strategyId), defId);
+  }
+
+  ktt::KernelDefinitionId GetDefinitionId() const { return _definitionId; }
+  ktt::KernelId GetKernelId() const { return _kernelId; }
 
   utils::KTTHelper &kttHelper;
+
+private:
+  // NOTE these might need change to vectors
+  // tmp name until changes to vector
+  ktt::KernelId _kernelId = ktt::InvalidKernelId;
+  ktt::KernelDefinitionId _definitionId = ktt::InvalidKernelDefinitionId;
 
   // KTT needs different names for each kernel, this id serves as a simple unique identifier
   const size_t strategyId;
 
-private:
   bool tune;
   bool isRegistered;
 

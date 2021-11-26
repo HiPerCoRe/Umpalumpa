@@ -95,47 +95,18 @@ ktt::KernelConfiguration AlgorithmManager::GetBestConfiguration(size_t stratHash
   return {};// or throw?
 }
 
-void AlgorithmManager::Reset()
+void AlgorithmManager::Cleanup()
 {
-  // Causes deadlock because during destruction we call Unregister
+  // FIXME Causes deadlock because during destruction we call Unregister
+  // but we need to lock this; otherwise it might explode
+  // Possible solution: std::recursive_mutex
   // std::lock_guard<std::mutex> lck(mutex);
 
   // Properly calls garbageCollector and cleans up the KTT ids via ~TunableStrategy
   strategies.clear();
 }
 
-ktt::KernelDefinitionId AlgorithmManager::GetKernelDefinitionId(utils::KTTHelper &kttHelper,
-  const std::string &kernelName,
-  const std::string &sourceFile,
-  const ktt::DimensionVector &gridDimensions,
-  const std::vector<std::string> &templateArgs)
-{
-  std::lock_guard<std::mutex> lck(mutex);
-
-  auto &tuner = kttHelper.GetTuner();
-  auto id = tuner.GetKernelDefinitionId(kernelName, templateArgs);
-  if (id == ktt::InvalidKernelDefinitionId) {
-    id =
-      tuner.AddKernelDefinitionFromFile(kernelName, sourceFile, gridDimensions, {}, templateArgs);
-  }
-
-  garbageCollector.RegisterKernelDefinitionId(id, kttHelper);
-  return id;
-}
-
-void AlgorithmManager::CleanupIds(utils::KTTHelper &kttHelper,
-  const std::vector<ktt::KernelId> &kernelIds,
-  const std::vector<ktt::KernelDefinitionId> &definitionIds)
-{
-  garbageCollector.CleanupIds(kttHelper, kernelIds, definitionIds);
-}
-
-void AlgorithmManager::SetKTTArguments(utils::KTTHelper &kttHelper,
-  ktt::KernelDefinitionId definitionId,
-  const std::vector<ktt::ArgumentId> &argumentIds)
-{
-  garbageCollector.RegisterArgumentIds(definitionId, argumentIds, kttHelper);
-}
+GarbageCollector &AlgorithmManager::GetGarbageCollector() { return garbageCollector; }
 
 }// namespace umpalumpa::algorithm
 
