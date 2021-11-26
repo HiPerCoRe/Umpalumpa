@@ -32,7 +32,7 @@ struct KTTIdTracker
 
   const ktt::KernelDefinitionId definitionId;
   std::vector<ktt::KernelId> kernelIds;
-  std::vector<ktt::ArgumentId> argumentIds;
+  std::vector<ktt::ArgumentId> argumentIds;// FIXME change to unordered_set
 
 private:
   ktt::Tuner &tuner;

@@ -34,7 +34,7 @@ void AlgorithmManager::Register(TunableStrategy &strat)
     if (group.leader->IsEqualTo(strat)) {
       group.strategies.push_back(&strat);
       spdlog::debug("As equal to strategy {0}", reinterpret_cast<size_t>(group.leader.get()));
-      // TODO set additional flags (i.e. this strategy can be used for tuning)
+      strat.AllowTuningStrategyGroup();
       return;
     }
   }
@@ -50,6 +50,8 @@ void AlgorithmManager::Register(TunableStrategy &strat)
 
   // 'strat' is not equal or similar to any other registered strategy, add 'strat' to a new group
   strategyGroups.emplace_back(strat).strategies.push_back(&strat);
+  // First strategy in a new group can tune the group
+  strat.AllowTuningStrategyGroup();
 }
 
 void AlgorithmManager::Unregister(TunableStrategy &strat)

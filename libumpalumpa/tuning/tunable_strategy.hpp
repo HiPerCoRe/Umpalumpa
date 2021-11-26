@@ -1,6 +1,7 @@
 #pragma once
 #include <libumpalumpa/tuning/ktt_helper.hpp>
 #include <libumpalumpa/tuning/algorithm_manager.hpp>
+#include <libumpalumpa/tuning/tuning_approach.hpp>
 
 namespace umpalumpa::algorithm {
 
@@ -60,15 +61,37 @@ public:
   ktt::KernelConfiguration GetBestConfiguration(ktt::KernelId kernelId) const;
 
   /**
-   * Sets a flag that controls whether this strategy should be tuned or not.
+   * Sets a TuningApproach which controls how the strategy should be tuned.
    */
-  void SetTuning(bool val) { tune = val; }
+  void SetTuningApproach(TuningApproach approach) { tuningApproach = approach; }
 
   /**
-   * Returns a flag that that controls whether this strategy should be tuned or not.
+   * Sets tuning for a specified kernel.
+   * This settings has effect only when TuningApproach::kSelectedKernels is set.
    */
-  bool ShouldTune() { return tune; }
+  void SetTuningFor(ktt::KernelId kernelId, bool val)
+  {
+    kernelIds.at(GetKernelIndex(kernelId)).tune = val;
+  }
 
+  // FIXME find better name
+  /**
+   * Allows tuning of the strategy group the strategy is in.
+   */
+  void AllowTuningStrategyGroup() { canTuneStrategyGroup = true; }
+
+  /**
+   * Decides, based on the TuningApproach, whether the provided kernel should be tuned or not.
+   */
+  bool ShouldBeTuned(ktt::KernelId kernelId) const;
+
+protected:
+  /**
+   * Executes the specified kernel. Internally decides whether the strategy will be tuned or not.
+   */
+  void ExecuteKernel(ktt::KernelId kernelId, const ktt::KernelConfiguration &TMP = {}) const;
+
+  // Can be moved to private
   /**
    * Runs a tuning of the specified kernel.
    * TODO In order to correctly evaluate the tuning, this method waits until all the currently
@@ -82,6 +105,7 @@ public:
    */
   void RunTuning(ktt::KernelId kernelId) const;
 
+  // Can be moved to private
   /**
    * Runs the kernel with the best known configuration.
    * The call is non-blocking.
@@ -91,7 +115,6 @@ public:
    */
   void RunBestConfiguration(ktt::KernelId kernelId, const ktt::KernelConfiguration &TMP = {}) const;
 
-protected:
   /**
    * Registers this strategy to the AlgorithmManager.
    * This method is called automatically when the successor class successfully initializes.
@@ -124,7 +147,7 @@ protected:
    * At the same time registers the ids into an automatic clean up routine. The ids are removed from
    * KTT when they are no longer needed.
    */
-  void SetArguments(ktt::KernelDefinitionId id, const std::vector<ktt::ArgumentId> argumentIds);
+  void SetArguments(ktt::KernelDefinitionId id, const std::vector<ktt::ArgumentId> &argumentIds);
 
   /**
    * Returns ktt::KernelDefinitionId added by calling method AddKernelDefinition in the order of
@@ -136,34 +159,49 @@ protected:
    * Returns ktt::KernelId added by calling method AddKernel in the order of
    * their addition.
    */
-  ktt::KernelId GetKernelId(size_t idx = 0) const { return kernelIds.at(idx); }
-
-  utils::KTTHelper &kttHelper;
+  ktt::KernelId GetKernelId(size_t idx = 0) const { return kernelIds.at(idx).id; }
 
 private:
-  std::vector<ktt::KernelDefinitionId> definitionIds;
-  std::vector<ktt::KernelId> kernelIds;
-
-  // Tracker of used ids, which allows for automatic cleanup after strategy's destruction
-  std::vector<std::shared_ptr<utils::KTTIdTracker>> idTrackers;
-
   /**
    * Returns an internal index of the specified ktt::KernelDefinitionId.
    */
-  size_t GetIndex(ktt::KernelDefinitionId id) const;
+  size_t GetDefinitionIndex(ktt::KernelDefinitionId id) const;
 
-  // FIXME maybe needs to be new before every InitImpl
-  // KTT needs different names for each kernel, this id serves as a simple unique identifier
-  const size_t strategyId;
-
-  bool tune;
-  bool isRegistered;
+  /**
+   * Returns an internal index of the specified ktt::KernelId.
+   */
+  size_t GetKernelIndex(ktt::KernelId id) const;
 
   /**
    * Generates new internal id that allows KTT to distinguish different instances of the same
    * strategy.
    */
   static size_t GetNewStrategyId();
+
+protected:
+  utils::KTTHelper &kttHelper;
+
+private:
+  struct KernelInfo
+  {
+    ktt::KernelId id = ktt::InvalidKernelId;
+    bool tune = false;
+  };
+
+  std::vector<ktt::KernelDefinitionId> definitionIds;
+  std::vector<KernelInfo> kernelIds;
+  // Tracker of used ids, which allows for automatic cleanup after strategy's destruction
+  std::vector<std::shared_ptr<utils::KTTIdTracker>> idTrackers;
+
+  TuningApproach tuningApproach;
+  // the strategy is equal to a Leader of a StrategyGroup and therefore is allowed to be tuned
+  bool canTuneStrategyGroup;
+
+  bool isRegistered;
+
+  // FIXME maybe needs to be new before every InitImpl
+  // KTT needs different names for each kernel, this id serves as a simple unique identifier
+  const size_t strategyId;
 };
 
 }// namespace umpalumpa::algorithm

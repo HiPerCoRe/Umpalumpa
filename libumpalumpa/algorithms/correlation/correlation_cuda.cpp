@@ -142,7 +142,7 @@ namespace {// to avoid poluting
       auto definitionId = GetDefinitionId();
       auto kernelId = GetKernelId();
 
-      tuner.SetArguments(definitionId, { argOut, argIn1, inSize, argIn2, in2N, isWithin });
+      SetArguments(definitionId, { argOut, argIn1, inSize, argIn2, in2N, isWithin });
 
       const auto &size = out.GetCorrelations().info.GetPaddedSize();
       tuner.SetLauncher(kernelId, [definitionId, &size](ktt::ComputeInterface &interface) {
@@ -153,20 +153,12 @@ namespace {// to avoid poluting
         interface.RunKernelAsync(definitionId, interface.GetAllQueues().at(0), gridDim, blockDim);
       });
 
-      if (ShouldTune()) {
-        tuner.TuneIteration(kernelId, {});
-      } else {
-        // TODO GetBestConfiguration can be used once the KTT is able to synchronize
-        // the best configuration from multiple KTT instances, or loads the best
-        // configuration from previous runs
-        // auto bestConfig = tuner.GetBestConfiguration(kernelId);
-        auto bestConfig = tuner.CreateConfiguration(kernelId,
-          { { "blockSizeX", static_cast<uint64_t>(32) },
-            { "blockSizeY", static_cast<uint64_t>(32) },
-            { "TILE", static_cast<uint64_t>(8) } });
-        tuner.Run(kernelId, bestConfig, {});// run is blocking call
-        // arguments shall be removed once the run is done
-      }
+      auto tmpBestConfig = tuner.CreateConfiguration(kernelId,
+        { { "blockSizeX", static_cast<uint64_t>(32) },
+          { "blockSizeY", static_cast<uint64_t>(32) },
+          { "TILE", static_cast<uint64_t>(8) } });
+      ExecuteKernel(kernelId, tmpBestConfig);
+
       return true;
     };
   };
