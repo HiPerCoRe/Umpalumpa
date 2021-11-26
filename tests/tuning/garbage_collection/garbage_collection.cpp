@@ -65,6 +65,10 @@ public:
   }
 
   size_t GetHash() const override { return 0; }
+  std::unique_ptr<TunableStrategy> CreateLeader() const override
+  {
+    return std::unique_ptr<TunableStrategy>();
+  }
   bool IsSimilarTo(const TunableStrategy &) const override { return false; }
 
   std::vector<ktt::KernelDefinitionId> testDefinitionIds;

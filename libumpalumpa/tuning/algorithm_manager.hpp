@@ -7,6 +7,7 @@ namespace umpalumpa::algorithm {
 
 // Forward declarations
 class TunableStrategy;
+struct StrategyGroup;
 
 /**
  * This class groups similar strategies into coherent groups in which the strategies can cooperate
@@ -21,9 +22,7 @@ class TunableStrategy;
  */
 class AlgorithmManager
 {
-  using StrategyGroup = std::vector<TunableStrategy *>;
-
-  std::vector<StrategyGroup> strategies;
+  std::vector<StrategyGroup> strategyGroups;
   std::mutex mutex;
 
   AlgorithmManager() = default;
@@ -61,13 +60,13 @@ public:
    *
    * Ideally should be removed in the future.
    */
-  const auto &GetRegisteredStrategies() const { return strategies; }
+  const auto &GetRegisteredStrategies() const { return strategyGroups; }
 
   /**
    * Resets the AlgorithmManager, clearing all the saved data (registered strategies, garbage
    * collection metadata).
    */
-  void Cleanup() { strategies.clear(); }
+  void Cleanup();
 };
 
 }// namespace umpalumpa::algorithm

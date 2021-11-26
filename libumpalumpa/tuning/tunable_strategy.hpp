@@ -34,6 +34,15 @@ public:
   }
 
   /**
+   * Creates a Leader strategy out of this strategy.
+   * In order to get the correct type of the strategy, this method needs to be overriden by the
+   * successor classes it the following way:
+   *
+   * return algorithm::StrategyGroup::CreateLeader(*this, alg);
+   */
+  virtual std::unique_ptr<TunableStrategy> CreateLeader() const = 0;
+
+  /**
    * Returns hash of this strategy. This method needs to be overriden by successor strategy because
    * the hash is computed using algorithm specific data and settings.
    */
@@ -101,6 +110,7 @@ protected:
     definitionIds.clear();
     kernelIds.clear();
     tune = false;
+    // FIXME needs to unregister aswell!!!
     isRegistered = false;
   }
 

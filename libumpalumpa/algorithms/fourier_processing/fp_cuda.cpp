@@ -1,5 +1,6 @@
 #include <libumpalumpa/algorithms/fourier_processing/fp_cuda.hpp>
 #include <libumpalumpa/tuning/tunable_strategy.hpp>
+#include <libumpalumpa/tuning/strategy_group.hpp>
 
 namespace umpalumpa::fourier_processing {
 
@@ -7,7 +8,7 @@ namespace {// to avoid poluting
   inline static const auto kKernelFile =
     utils::GetSourceFilePath("libumpalumpa/algorithms/fourier_processing/fp_cuda_kernels.cu");
 
-  struct Strategy1 final : public FPCUDA::KTTStrategy
+  struct Strategy1 : public FPCUDA::KTTStrategy
   {
     // Inherit constructor
     using FPCUDA::KTTStrategy::KTTStrategy;
@@ -20,6 +21,10 @@ namespace {// to avoid poluting
     // FIXME  this should be tuned by the KTT
 
     size_t GetHash() const override { return 0; }
+    std::unique_ptr<TunableStrategy> CreateLeader() const override
+    {
+      return algorithm::StrategyGroup::CreateLeader(*this, alg);
+    }
     bool IsSimilarTo(const TunableStrategy &) const override
     {
       // auto &o = dynamic_cast<const Strategy1 &>(other);

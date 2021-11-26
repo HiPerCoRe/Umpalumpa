@@ -9,6 +9,7 @@
 #include "libumpalumpa/data/logical_desriptor.hpp"
 #include "libumpalumpa/tuning/ktt_strategy_base.hpp"
 #include "libumpalumpa/tuning/tunable_strategy.hpp"
+#include <libumpalumpa/tuning/strategy_group.hpp>
 
 using namespace ::testing;
 using namespace umpalumpa;
@@ -44,6 +45,16 @@ public:
   {
     using KTTStrategy::KTTStrategy;
     std::string GetName() const override { return "MockStrategy"; }
+    std::unique_ptr<TunableStrategy> CreateLeader() const override
+    {
+      auto *ptr = new StrategyGroup::Leader<MockStrategy>(*this, alg);
+      EXPECT_CALL(*ptr, GetHash()).WillRepeatedly(Return(mockHash));
+      EXPECT_CALL(*ptr, IsSimilarTo).WillRepeatedly(Return(mockSimilar));
+      return std::unique_ptr<StrategyGroup::Leader<MockStrategy>>(ptr);
+    }
+    // Needed because of creation of a Leader strategy from the MockStrategy
+    size_t mockHash = 0;
+    bool mockSimilar = false;
 
     MOCK_METHOD(bool, InitImpl, (), (override));
     MOCK_METHOD(bool, Execute, (const OutputData &, const InputData &), (override));
@@ -71,9 +82,8 @@ public:
 
 // ACTUAL TESTS ARE STARTING HERE
 
-// NOTE some tests are using knowledge of AlgorithmManager's internal structure
-// (that it stores strategies in nested vectors), would be good to somehow fix it
-// so that the tests are not implementation dependent
+// NOTE some tests are using knowledge of AlgorithmManager's internal structure, would be good to
+// somehow fix it so that the tests are not implementation dependent
 
 class AlgorithmManagerTests : public Test
 {
@@ -113,7 +123,7 @@ TEST_F(AlgorithmManagerTests, strategy_registered_automatically_when_init_succee
   ASSERT_TRUE(AlgorithmManager::Get().GetRegisteredStrategies().empty());
   ASSERT_TRUE(algo.Init(out, in, settings));
   ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().size(), 1u);
-  ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().at(0).size(), 1u);
+  ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().at(0).strategies.size(), 1u);
 }
 
 TEST_F(AlgorithmManagerTests, strategy_not_registered_when_init_failed)
@@ -135,10 +145,11 @@ TEST_F(AlgorithmManagerTests, strategy_unregistered_automatically_when_destroyed
     ASSERT_TRUE(AlgorithmManager::Get().GetRegisteredStrategies().empty());
     ASSERT_TRUE(algo.Init(out, in, settings));
     ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().size(), 1u);
-    ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().at(0).size(), 1u);
+    ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().at(0).strategies.size(), 1u);
   }// the algorithm and the strategy are destroyed
 
-  ASSERT_TRUE(AlgorithmManager::Get().GetRegisteredStrategies().empty());
+  ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().size(), 1u);
+  ASSERT_TRUE(AlgorithmManager::Get().GetRegisteredStrategies().at(0).strategies.empty());
 }
 
 TEST_F(AlgorithmManagerTests, strategy_already_registered_cant_register_again)
@@ -154,7 +165,7 @@ TEST_F(AlgorithmManagerTests, strategy_already_registered_cant_register_again)
   AlgorithmManager::Get().Register(*algo.mockStratPtr);// Try to add the same strategy again
   // Nothing should change
   ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().size(), 1u);
-  ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().at(0).size(), 1u);
+  ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().at(0).strategies.size(), 1u);
 }
 
 TEST_F(AlgorithmManagerTests, not_registered_strategy_cant_be_unregistered)
@@ -181,11 +192,12 @@ TEST_F(AlgorithmManagerTests,
   EXPECT_CALL(*algo.mockStratPtr, InitImpl()).WillOnce(Return(true));
   EXPECT_CALL(*algo.mockStratPtr, Execute).WillOnce(Return(true));
   EXPECT_CALL(*algo.mockStratPtr, GetHash()).WillRepeatedly(Return(42));
+  algo.mockStratPtr->mockHash = 42;
 
   ASSERT_TRUE(AlgorithmManager::Get().GetRegisteredStrategies().empty());
   ASSERT_TRUE(algo.Init(out, in, settings));
   ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().size(), 1u);
-  ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().at(0).size(), 1u);
+  ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().at(0).strategies.size(), 1u);
   // We need to execute the algorithm, so that KTT can generate some config
   // TODO either properly define TestAlgorithm_CUDA to use KTT or generate the config in some other
   // way
@@ -214,13 +226,16 @@ TEST_F(AlgorithmManagerTests, multiple_equivalent_strategies_registered_at_once)
   EXPECT_CALL(*algo1.mockStratPtr, GetHash()).WillRepeatedly(Return(42));
   EXPECT_CALL(*algo2.mockStratPtr, GetHash()).WillRepeatedly(Return(42));
   EXPECT_CALL(*algo3.mockStratPtr, GetHash()).WillRepeatedly(Return(42));
+  algo1.mockStratPtr->mockHash = 42;
+  algo2.mockStratPtr->mockHash = 42;
+  algo3.mockStratPtr->mockHash = 42;
 
   ASSERT_TRUE(AlgorithmManager::Get().GetRegisteredStrategies().empty());
   ASSERT_TRUE(algo1.Init(out, in, settings));
   ASSERT_TRUE(algo2.Init(out, in, settings));
   ASSERT_TRUE(algo3.Init(out, in, settings));
   ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().size(), 1u);
-  ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().at(0).size(), 3u);
+  ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().at(0).strategies.size(), 3u);
 }
 
 TEST_F(AlgorithmManagerTests, multiple_similar_strategies_registered_at_once)
@@ -236,18 +251,24 @@ TEST_F(AlgorithmManagerTests, multiple_similar_strategies_registered_at_once)
   EXPECT_CALL(*algo1.mockStratPtr, GetHash()).WillRepeatedly(Return(123));
   EXPECT_CALL(*algo2.mockStratPtr, GetHash()).WillRepeatedly(Return(456));
   EXPECT_CALL(*algo3.mockStratPtr, GetHash()).WillRepeatedly(Return(789));
+  algo1.mockStratPtr->mockHash = 123;
+  algo2.mockStratPtr->mockHash = 456;
+  algo3.mockStratPtr->mockHash = 789;
 
   // But they are similar
   EXPECT_CALL(*algo1.mockStratPtr, IsSimilarTo).WillRepeatedly(Return(true));
   EXPECT_CALL(*algo2.mockStratPtr, IsSimilarTo).WillRepeatedly(Return(true));
   EXPECT_CALL(*algo3.mockStratPtr, IsSimilarTo).WillRepeatedly(Return(true));
+  algo1.mockStratPtr->mockSimilar = true;
+  algo2.mockStratPtr->mockSimilar = true;
+  algo3.mockStratPtr->mockSimilar = true;
 
   ASSERT_TRUE(AlgorithmManager::Get().GetRegisteredStrategies().empty());
   ASSERT_TRUE(algo1.Init(out, in, settings));
   ASSERT_TRUE(algo2.Init(out, in, settings));
   ASSERT_TRUE(algo3.Init(out, in, settings));
   ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().size(), 1u);
-  ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().at(0).size(), 3u);
+  ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().at(0).strategies.size(), 3u);
 }
 
 TEST_F(AlgorithmManagerTests, multiple_different_strategies_registered_at_once)
@@ -263,20 +284,26 @@ TEST_F(AlgorithmManagerTests, multiple_different_strategies_registered_at_once)
   EXPECT_CALL(*algo1.mockStratPtr, GetHash()).WillRepeatedly(Return(123));
   EXPECT_CALL(*algo2.mockStratPtr, GetHash()).WillRepeatedly(Return(456));
   EXPECT_CALL(*algo3.mockStratPtr, GetHash()).WillRepeatedly(Return(789));
+  algo1.mockStratPtr->mockHash = 123;
+  algo2.mockStratPtr->mockHash = 456;
+  algo3.mockStratPtr->mockHash = 789;
 
   // They are not similar
   EXPECT_CALL(*algo1.mockStratPtr, IsSimilarTo).WillRepeatedly(Return(false));
   EXPECT_CALL(*algo2.mockStratPtr, IsSimilarTo).WillRepeatedly(Return(false));
   EXPECT_CALL(*algo3.mockStratPtr, IsSimilarTo).WillRepeatedly(Return(false));
+  algo1.mockStratPtr->mockSimilar = false;
+  algo2.mockStratPtr->mockSimilar = false;
+  algo3.mockStratPtr->mockSimilar = false;
 
   ASSERT_TRUE(AlgorithmManager::Get().GetRegisteredStrategies().empty());
   ASSERT_TRUE(algo1.Init(out, in, settings));
   ASSERT_TRUE(algo2.Init(out, in, settings));
   ASSERT_TRUE(algo3.Init(out, in, settings));
   ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().size(), 3u);
-  ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().at(0).size(), 1u);
-  ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().at(1).size(), 1u);
-  ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().at(2).size(), 1u);
+  ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().at(0).strategies.size(), 1u);
+  ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().at(1).strategies.size(), 1u);
+  ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().at(2).strategies.size(), 1u);
 }
 
 TEST_F(AlgorithmManagerTests, multiple_similar_strategies_unregistered_correctly)
@@ -296,26 +323,33 @@ TEST_F(AlgorithmManagerTests, multiple_similar_strategies_unregistered_correctly
         EXPECT_CALL(*algo1.mockStratPtr, GetHash()).WillRepeatedly(Return(123));
         EXPECT_CALL(*algo2.mockStratPtr, GetHash()).WillRepeatedly(Return(456));
         EXPECT_CALL(*algo3.mockStratPtr, GetHash()).WillRepeatedly(Return(789));
+        algo1.mockStratPtr->mockHash = 123;
+        algo2.mockStratPtr->mockHash = 456;
+        algo3.mockStratPtr->mockHash = 789;
 
         // But they are similar
         EXPECT_CALL(*algo1.mockStratPtr, IsSimilarTo).WillRepeatedly(Return(true));
         EXPECT_CALL(*algo2.mockStratPtr, IsSimilarTo).WillRepeatedly(Return(true));
         EXPECT_CALL(*algo3.mockStratPtr, IsSimilarTo).WillRepeatedly(Return(true));
+        algo1.mockStratPtr->mockSimilar = true;
+        algo2.mockStratPtr->mockSimilar = true;
+        algo3.mockStratPtr->mockSimilar = true;
 
         ASSERT_TRUE(AlgorithmManager::Get().GetRegisteredStrategies().empty());
         ASSERT_TRUE(algo1.Init(out, in, settings));
         ASSERT_TRUE(algo2.Init(out, in, settings));
         ASSERT_TRUE(algo3.Init(out, in, settings));
         ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().size(), 1u);
-        ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().at(0).size(), 3u);
+        ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().at(0).strategies.size(), 3u);
       }// algo3 is destroyed, therefore its strategy is unregistered
       ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().size(), 1u);
-      ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().at(0).size(), 2u);
+      ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().at(0).strategies.size(), 2u);
     }// algo2 is destroyed, therefore its strategy is unregistered
     ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().size(), 1u);
-    ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().at(0).size(), 1u);
+    ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().at(0).strategies.size(), 1u);
   }// algo1 is destroyed, therefore its strategy is unregistered
-  ASSERT_TRUE(AlgorithmManager::Get().GetRegisteredStrategies().empty());
+  ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().size(), 1u);
+  ASSERT_TRUE(AlgorithmManager::Get().GetRegisteredStrategies().at(0).strategies.empty());
 }
 
 TEST_F(AlgorithmManagerTests, multiple_different_strategies_unregistered_correctly)
@@ -335,27 +369,39 @@ TEST_F(AlgorithmManagerTests, multiple_different_strategies_unregistered_correct
         EXPECT_CALL(*algo1.mockStratPtr, GetHash()).WillRepeatedly(Return(123));
         EXPECT_CALL(*algo2.mockStratPtr, GetHash()).WillRepeatedly(Return(456));
         EXPECT_CALL(*algo3.mockStratPtr, GetHash()).WillRepeatedly(Return(789));
+        algo1.mockStratPtr->mockHash = 123;
+        algo2.mockStratPtr->mockHash = 456;
+        algo3.mockStratPtr->mockHash = 789;
 
         // They are not similar
         EXPECT_CALL(*algo1.mockStratPtr, IsSimilarTo).WillRepeatedly(Return(false));
         EXPECT_CALL(*algo2.mockStratPtr, IsSimilarTo).WillRepeatedly(Return(false));
         EXPECT_CALL(*algo3.mockStratPtr, IsSimilarTo).WillRepeatedly(Return(false));
+        algo1.mockStratPtr->mockSimilar = false;
+        algo2.mockStratPtr->mockSimilar = false;
+        algo3.mockStratPtr->mockSimilar = false;
 
         ASSERT_TRUE(AlgorithmManager::Get().GetRegisteredStrategies().empty());
         ASSERT_TRUE(algo1.Init(out, in, settings));
         ASSERT_TRUE(algo2.Init(out, in, settings));
         ASSERT_TRUE(algo3.Init(out, in, settings));
         ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().size(), 3u);
-        ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().at(0).size(), 1u);
-        ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().at(1).size(), 1u);
-        ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().at(2).size(), 1u);
+        ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().at(0).strategies.size(), 1u);
+        ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().at(1).strategies.size(), 1u);
+        ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().at(2).strategies.size(), 1u);
       }// algo3 is destroyed, therefore its strategy is unregistered
-      ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().size(), 2u);
-      ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().at(0).size(), 1u);
-      ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().at(1).size(), 1u);
+      ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().size(), 3u);
+      ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().at(0).strategies.size(), 1u);
+      ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().at(1).strategies.size(), 1u);
+      ASSERT_TRUE(AlgorithmManager::Get().GetRegisteredStrategies().at(2).strategies.empty());
     }// algo2 is destroyed, therefore its strategy is unregistered
-    ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().size(), 1u);
-    ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().at(0).size(), 1u);
+    ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().size(), 3u);
+    ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().at(0).strategies.size(), 1u);
+    ASSERT_TRUE(AlgorithmManager::Get().GetRegisteredStrategies().at(1).strategies.empty());
+    ASSERT_TRUE(AlgorithmManager::Get().GetRegisteredStrategies().at(2).strategies.empty());
   }// algo1 is destroyed, therefore its strategy is unregistered
-  ASSERT_TRUE(AlgorithmManager::Get().GetRegisteredStrategies().empty());
+  ASSERT_EQ(AlgorithmManager::Get().GetRegisteredStrategies().size(), 3u);
+  ASSERT_TRUE(AlgorithmManager::Get().GetRegisteredStrategies().at(0).strategies.empty());
+  ASSERT_TRUE(AlgorithmManager::Get().GetRegisteredStrategies().at(1).strategies.empty());
+  ASSERT_TRUE(AlgorithmManager::Get().GetRegisteredStrategies().at(2).strategies.empty());
 }

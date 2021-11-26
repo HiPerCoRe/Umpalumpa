@@ -1,7 +1,7 @@
-#include <algorithm>
 #include <libumpalumpa/tuning/algorithm_manager.hpp>
 #include <libumpalumpa/tuning/tunable_strategy.hpp>
 #include <libumpalumpa/system_includes/spdlog.hpp>
+#include <libumpalumpa/tuning/strategy_group.hpp>
 
 namespace umpalumpa::algorithm {
 
@@ -13,13 +13,13 @@ AlgorithmManager &AlgorithmManager::Get()
 
 void AlgorithmManager::Register(TunableStrategy &strat)
 {
-  std::lock_guard<std::mutex> lck(mutex);
+  std::lock_guard lck(mutex);
 
   // FIXME refactor
   // too many loops in one function
 
-  for (auto &v : strategies) {
-    for (auto *s : v) {
+  for (auto &group : strategyGroups) {
+    for (auto *s : group.strategies) {
       if (s == &strat) {
         spdlog::warn("You are trying to register the same strategy instance multiple times.");
         return;
@@ -30,48 +30,45 @@ void AlgorithmManager::Register(TunableStrategy &strat)
   spdlog::debug("Strategy at address {0} registered", reinterpret_cast<size_t>(&strat));
 
   // Check equality
-  // FIXME probably should iterate through all the strategies?
-  for (auto &stratGroup : strategies) {
-    if (strat.IsEqualTo(*stratGroup[0])) {
-      stratGroup.push_back(&strat);
-      spdlog::debug("As equal to strategy {0}", reinterpret_cast<size_t>(stratGroup[0]));
+  for (auto &group : strategyGroups) {
+    if (group.leader->IsEqualTo(strat)) {
+      group.strategies.push_back(&strat);
+      spdlog::debug("As equal to strategy {0}", reinterpret_cast<size_t>(group.leader.get()));
       // TODO set additional flags (i.e. this strategy can be used for tuning)
       return;
     }
   }
 
   // Check similarity
-  for (auto &stratGroup : strategies) {
-    if (strat.IsSimilarTo(*stratGroup[0])) {
-      stratGroup.push_back(&strat);
-      spdlog::debug("As similar to strategy {0}", reinterpret_cast<size_t>(stratGroup[0]));
+  for (auto &group : strategyGroups) {
+    if (group.leader->IsSimilarTo(strat)) {
+      group.strategies.push_back(&strat);
+      spdlog::debug("As similar to strategy {0}", reinterpret_cast<size_t>(group.leader.get()));
       return;
     }
   }
 
-  // 'strat' is not equal or similar to any other registered strategy, add 'strat' to a new vector
-  strategies.emplace_back().push_back(&strat);
+  // 'strat' is not equal or similar to any other registered strategy, add 'strat' to a new group
+  strategyGroups.emplace_back(strat).strategies.push_back(&strat);
 }
 
 void AlgorithmManager::Unregister(TunableStrategy &strat)
 {
-  std::lock_guard<std::mutex> lck(mutex);
+  std::lock_guard lck(mutex);
   // TODO save best configuration
 
-  for (auto &stratGroup : strategies) {
-    auto stratIt = std::find(stratGroup.begin(), stratGroup.end(), &strat);
+  for (auto &group : strategyGroups) {
+    auto stratIt = std::find(group.strategies.begin(), group.strategies.end(), &strat);
 
-    if (stratIt != stratGroup.end()) {
+    if (stratIt != group.strategies.end()) {
       // Remove strategy from group
-      std::iter_swap(stratIt, stratGroup.end() - 1);
-      stratGroup.pop_back();
+      std::iter_swap(stratIt, group.strategies.end() - 1);
+      group.strategies.pop_back();
       spdlog::debug("Strategy at address {0} unregistered", reinterpret_cast<size_t>(&strat));
 
-      // Remove empty group
-      if (stratGroup.empty()) {
-        std::iter_swap(&stratGroup, strategies.end() - 1);
-        strategies.pop_back();
-      }
+      // We don't want to remove empty groups... later some strategy may be added there.
+      // The group can store best configurations (loaded from db, acquired from KTT, ...), etc...
+
       return;
     }
   }
@@ -79,9 +76,15 @@ void AlgorithmManager::Unregister(TunableStrategy &strat)
   spdlog::warn("You are trying to unregister strategy which wasn't previously registered.");
 }
 
+void AlgorithmManager::Cleanup()
+{
+  std::lock_guard lck(mutex);
+  strategyGroups.clear();
+}
+
 // ktt::KernelConfiguration AlgorithmManager::GetBestConfiguration(size_t stratHash)
 // {
-//   std::lock_guard<std::mutex> lck(mutex);
+//   std::lock_guard lck(mutex);
 //
 //   // FIXME refactor
 //   for (auto &stratGroup : strategies) {

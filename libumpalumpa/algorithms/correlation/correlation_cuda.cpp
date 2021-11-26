@@ -1,5 +1,6 @@
 #include <libumpalumpa/algorithms/correlation/correlation_cuda.hpp>
 #include <libumpalumpa/tuning/tunable_strategy.hpp>
+#include <libumpalumpa/tuning/strategy_group.hpp>
 
 namespace umpalumpa::correlation {
 
@@ -7,7 +8,7 @@ namespace {// to avoid poluting
   inline static const auto kKernelFile =
     utils::GetSourceFilePath("libumpalumpa/algorithms/correlation/correlation_cuda_kernels.cu");
 
-  struct Strategy1 final : public Correlation_CUDA::KTTStrategy
+  struct Strategy1 : public Correlation_CUDA::KTTStrategy
   {
     // Inherit constructor
     using Correlation_CUDA::KTTStrategy::KTTStrategy;
@@ -19,18 +20,21 @@ namespace {// to avoid poluting
     // Z dimension, ie. create more threads, each thread processing fewer images.
 
     size_t GetHash() const override { return 0; }
+    std::unique_ptr<TunableStrategy> CreateLeader() const override
+    {
+      return algorithm::StrategyGroup::CreateLeader(*this, alg);
+    }
     bool IsSimilarTo(const TunableStrategy &ref) const override
     {
       bool similar = false;
       // TODO move try-catch somewhere else
       try {
         // FIXME refactor
-        auto &refAlg = dynamic_cast<const Strategy1 &>(ref).alg.Get();
-        auto &thisAlg = this->alg.Get();
-        auto refSize1 = refAlg.GetInputRef().GetData1().info.GetSize();
-        auto thisSize1 = thisAlg.GetInputRef().GetData1().info.GetSize();
-        auto refSize2 = refAlg.GetInputRef().GetData2().info.GetSize();
-        auto thisSize2 = thisAlg.GetInputRef().GetData2().info.GetSize();
+        auto &refStrat = dynamic_cast<const Strategy1 &>(ref);
+        auto refSize1 = refStrat.GetInputRef().GetData1().info.GetSize();
+        auto thisSize1 = GetInputRef().GetData1().info.GetSize();
+        auto refSize2 = refStrat.GetInputRef().GetData2().info.GetSize();
+        auto thisSize2 = GetInputRef().GetData2().info.GetSize();
         // NOTE for testing size equivalence means similarity
         similar = thisSize1.IsEquivalentTo(refSize1) && thisSize2.IsEquivalentTo(refSize2);
         // TODO real similarity check

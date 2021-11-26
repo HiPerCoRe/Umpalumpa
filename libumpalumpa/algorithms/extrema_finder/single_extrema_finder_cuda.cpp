@@ -1,5 +1,6 @@
 #include <libumpalumpa/algorithms/extrema_finder/single_extrema_finder_cuda.hpp>
 #include <libumpalumpa/tuning/tunable_strategy.hpp>
+#include <libumpalumpa/tuning/strategy_group.hpp>
 
 namespace umpalumpa::extrema_finder {
 
@@ -7,7 +8,7 @@ namespace {// to avoid poluting
   inline static const auto kKernelFile = utils::GetSourceFilePath(
     "libumpalumpa/algorithms/extrema_finder/single_extrema_finder_cuda_kernels.cu");
 
-  struct Strategy1 final : public SingleExtremaFinderCUDA::KTTStrategy
+  struct Strategy1 : public SingleExtremaFinderCUDA::KTTStrategy
   {
     // Inherit constructor
     using SingleExtremaFinderCUDA::KTTStrategy::KTTStrategy;
@@ -16,6 +17,10 @@ namespace {// to avoid poluting
     static constexpr auto kRefineLocation = "RefineLocation";
 
     size_t GetHash() const override { return 0; }
+    std::unique_ptr<TunableStrategy> CreateLeader() const override
+    {
+      return algorithm::StrategyGroup::CreateLeader(*this, alg);
+    }
     bool IsSimilarTo(const TunableStrategy &) const override
     {
       // auto &o = dynamic_cast<const Strategy1 &>(other);
@@ -136,7 +141,7 @@ namespace {// to avoid poluting
     };
   };
 
-  struct Strategy2 final : public SingleExtremaFinderCUDA::KTTStrategy
+  struct Strategy2 : public SingleExtremaFinderCUDA::KTTStrategy
   {
     // Inherit constructor
     using SingleExtremaFinderCUDA::KTTStrategy::KTTStrategy;
@@ -144,6 +149,10 @@ namespace {// to avoid poluting
     static constexpr auto kFindMaxRect = "findMaxRect";
 
     size_t GetHash() const override { return 0; }
+    std::unique_ptr<TunableStrategy> CreateLeader() const override
+    {
+      return algorithm::StrategyGroup::CreateLeader(*this, alg);
+    }
     bool IsSimilarTo(const TunableStrategy &) const override
     {
       // auto &o = dynamic_cast<const Strategy2 &>(other);

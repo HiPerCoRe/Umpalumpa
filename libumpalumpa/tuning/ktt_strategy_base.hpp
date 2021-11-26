@@ -21,6 +21,10 @@ class KTTStrategyBase
   , public algorithm::TunableStrategy
 {
 public:
+  using StrategyOutput = O;
+  using StrategyInput = I;
+  using StrategySettings = S;
+
   // FIXME catch std::bad_cast at a reasonable place and react accordingly
   // Hypothetically, dynamic_cast should always succeed, because all the algorithms that use KTT
   // have to inherit from KTT_Base, and only such algorithms are passed into this constructor
@@ -28,11 +32,6 @@ public:
     : BasicAlgorithm<O, I, S>::Strategy(algorithm),
       TunableStrategy(dynamic_cast<const KTT_Base &>(algorithm).GetHelper())
   {}
-
-  /**
-   * Strategy specific initialization function. Usually used to initialize the KTT tuner.
-   */
-  virtual bool InitImpl() = 0;
 
   /**
    * Initialization method automatically called by the BasicAlgorithm class. This overriden version
@@ -50,6 +49,36 @@ public:
     return initSuccessful;
   }
 
+  /**
+   * Strategy specific initialization function. Usually used to initialize the KTT tuner.
+   */
+  virtual bool InitImpl() = 0;
+
+  /**
+   * Getter for algorithm's OutputData.
+   */
+  virtual const StrategyOutput &GetOutputRef() const
+  {
+    return BasicAlgorithm<O, I, S>::Strategy::alg.GetOutputRef();
+  }
+
+  /**
+   * Getter for algorithm's InputData.
+   */
+  virtual const StrategyInput &GetInputRef() const
+  {
+    return BasicAlgorithm<O, I, S>::Strategy::alg.GetInputRef();
+  }
+
+  /**
+   * Getter for algorithm's Settings.
+   */
+  virtual const StrategySettings &GetSettings() const
+  {
+    return BasicAlgorithm<O, I, S>::Strategy::alg.GetSettings();
+  }
+
+protected:
   /**
    * Creates a KTT argument of type Vector from the content of the Payload.
    * If the Payload is empty, NULL argument will be returned.
