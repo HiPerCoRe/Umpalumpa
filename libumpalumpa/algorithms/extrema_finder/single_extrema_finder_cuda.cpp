@@ -12,7 +12,8 @@ namespace {// to avoid poluting
     // Inherit constructor
     using SingleExtremaFinderCUDA::KTTStrategy::KTTStrategy;
 
-    static constexpr auto kFindMax1D = "findMax1D";
+    static constexpr auto kFindMax = "findMax";
+    static constexpr auto kRefineLocation = "RefineLocation";
 
     size_t GetHash() const override { return 0; }
     bool IsSimilarTo(const TunableStrategy &) const override
@@ -26,11 +27,14 @@ namespace {// to avoid poluting
     {
       const auto &in = alg.Get().GetInputRef();
       const auto &s = alg.Get().GetSettings();
-      bool canProcess = (s.GetVersion() == 1) && (s.GetLocation() == SearchLocation::kEntire)
-                        && (s.GetType() == SearchType::kMax)
-                        && (s.GetResult() == SearchResult::kValue)
-                        && (!in.GetData().info.IsPadded())
-                        && (in.GetData().dataInfo.GetType() == umpalumpa::data::DataType::kFloat);
+      auto isValidVersion = 1 == s.GetVersion();
+      auto isValidLocs = (s.GetResult() == Result::kLocation)
+                         && (s.GetLocation() == Location::kEntire)
+                         && (s.GetType() == ExtremaType::kMax);
+      auto isValidVals = (s.GetResult() == Result::kValue) && (s.GetLocation() == Location::kEntire)
+                         && (s.GetType() == ExtremaType::kMax);
+      auto isValidData = !in.GetData().info.IsPadded();
+      bool canProcess = isValidVersion && isValidData && (isValidLocs || isValidVals);
       if (!canProcess) return false;
 
       auto &size = in.GetData().info.GetSize();
@@ -40,11 +44,24 @@ namespace {// to avoid poluting
       // this has to be done in critical section, as multiple instances of this algorithm
       // might run on the same worker
       std::lock_guard<std::mutex> lck(kttHelper.GetMutex());
-      AddKernelDefinition(kFindMax1D, kKernelFile, ktt::DimensionVector{ size.n });
+      AddKernelDefinition(kFindMax, kKernelFile, ktt::DimensionVector{ size.n });
       auto definitionId = GetDefinitionId();
 
-      AddKernel(kFindMax1D, definitionId);
+      AddKernel(kFindMax, definitionId);
       auto kernelId = GetKernelId();
+
+      if (s.GetPrecision() != Precision::kSingle) {
+        auto window = [&s]() {
+          switch (s.GetPrecision()) {
+          case Precision::k3x3:
+            return "3";
+          default:
+            return "UNSUPPORTED PRECISION";
+          }
+        }();
+        AddKernelDefinition(kRefineLocation, kKernelFile, ktt::DimensionVector{ size.n }, { "float", window });
+        AddKernel(kRefineLocation, GetDefinitionId(1));
+      }
 
       tuner.AddParameter(kernelId, "blockSize", std::vector<uint64_t>{ 32, 64, 128, 256, 512 });
 
@@ -62,40 +79,56 @@ namespace {// to avoid poluting
     bool Execute(const AExtremaFinder::OutputData &out,
       const AExtremaFinder::InputData &in) override
     {
-      if (!in.GetData().IsValid() || in.GetData().IsEmpty() || !out.GetValues().IsValid()
-          || out.GetValues().IsEmpty())
+      auto IsFine = [](const auto &p) { return p.IsValid() && !p.IsEmpty(); };
+      const auto &s = alg.Get().GetSettings();
+      if (!IsFine(in.GetData()) || (!IsFine(out.GetValues()) && !IsFine(out.GetLocations())))
         return false;
 
       // prepare input data
       auto &tuner = kttHelper.GetTuner();
       auto argIn = AddArgumentVector<float>(in.GetData(), ktt::ArgumentAccessType::ReadOnly);
-      auto argSize = tuner.AddArgumentScalar(in.GetData().info.GetSize().single);
+      auto argSize = tuner.AddArgumentScalar(in.GetData().info.GetSize());
 
       // prepare output data
       auto argVals = AddArgumentVector<float>(out.GetValues(), ktt::ArgumentAccessType::WriteOnly);
+      auto argLocs =
+        AddArgumentVector<float>(out.GetLocations(), ktt::ArgumentAccessType::WriteOnly);
 
-      auto definitionId = GetDefinitionId();
-      auto kernelId = GetKernelId();
-
-      tuner.SetArguments(definitionId, { argIn, argVals, argSize });
+      tuner.SetArguments(GetDefinitionId(), { argIn, argVals, argLocs, argSize });
 
       auto &size = in.GetData().info.GetSize();
-      tuner.SetLauncher(kernelId, [definitionId, &size](ktt::ComputeInterface &interface) {
-        auto blockDim = interface.GetCurrentLocalSize(definitionId);
+      tuner.SetLauncher(GetKernelId(), [this, &size](ktt::ComputeInterface &interface) {
+        auto blockDim = interface.GetCurrentLocalSize(GetKernelId());
         const ktt::DimensionVector gridDim(size.n);
-        interface.RunKernelAsync(definitionId, interface.GetAllQueues().at(0), gridDim, blockDim);
+        interface.RunKernelAsync(GetKernelId(), interface.GetAllQueues().at(0), gridDim, blockDim);
       });
 
+      const bool refine =
+        (Result::kLocation == s.GetResult()) && (Precision::k3x3 == s.GetPrecision());
+      if (refine) {
+        tuner.SetArguments(GetDefinitionId(1), { argLocs, argIn, argSize });
+
+        tuner.SetLauncher(GetKernelId(1), [this, &size](ktt::ComputeInterface &interface) {
+          const ktt::DimensionVector blockDim(size.n);
+          const ktt::DimensionVector gridDim(1);
+          interface.RunKernelAsync(GetKernelId(1), interface.GetAllQueues().at(0), gridDim, blockDim);
+        });
+      }
+
       if (ShouldTune()) {
-        tuner.TuneIteration(kernelId, {});
+        tuner.TuneIteration(GetKernelId(), {});
+        if (refine) { tuner.TuneIteration(GetKernelId(1), {}); }
       } else {
         // TODO GetBestConfiguration can be used once the KTT is able to synchronize
         // the best configuration from multiple KTT instances, or loads the best
         // configuration from previous runs
         // auto bestConfig = tuner.GetBestConfiguration(kernelId);
         auto bestConfig =
-          tuner.CreateConfiguration(kernelId, { { "blockSize", static_cast<uint64_t>(32) } });
-        tuner.Run(kernelId, bestConfig, {});// run is blocking call
+          tuner.CreateConfiguration(GetKernelId(), { { "blockSize", static_cast<uint64_t>(32) } });
+        tuner.Run(GetKernelId(), bestConfig, {});// run is blocking call
+        if (refine) {
+          tuner.Run(GetKernelId(1), {}, {});// run is blocking call
+        }
         // arguments shall be removed once the run is done
       }
 
@@ -122,10 +155,9 @@ namespace {// to avoid poluting
     {
       const auto &in = alg.Get().GetInputRef();
       const auto &s = alg.Get().GetSettings();
-      bool canProcess = (s.GetVersion() == 1) && (s.GetLocation() == SearchLocation::kRectCenter)
-                        && (s.GetType() == SearchType::kMax)
-                        && (s.GetResult() == SearchResult::kLocation)
-                        && (!in.GetData().info.IsPadded())
+      bool canProcess = (s.GetVersion() == 1) && (s.GetLocation() == Location::kRectCenter)
+                        && (s.GetType() == ExtremaType::kMax)
+                        && (s.GetResult() == Result::kLocation) && (!in.GetData().info.IsPadded())
                         && (in.GetData().dataInfo.GetType() == umpalumpa::data::DataType::kFloat);
       if (!canProcess) return false;
 

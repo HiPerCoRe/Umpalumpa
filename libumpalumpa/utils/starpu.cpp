@@ -21,15 +21,15 @@ std::vector<unsigned> StarPUUtils::GetCPUWorkerIDs(unsigned n)
 
 void StarPUUtils::Register(const data::PhysicalDescriptor &pd)
 {
-  auto nx = (0 == pd.GetBytes()) ? 0 : static_cast<uint32_t>(pd.GetBytes() / Sizeof(pd.GetType()));
   spdlog::debug("[StarPU] Registering {} bytes at {} with handle {}",
     pd.GetBytes(),
     fmt::ptr(pd.GetPtr()),
     fmt::ptr(pd.GetHandle()));
-  starpu_vector_data_register(reinterpret_cast<starpu_data_handle_t *>(pd.GetHandle()),
+  if (0 == pd.GetBytes()) { return starpu_void_data_register(GetHandle(pd)); }
+  starpu_vector_data_register(GetHandle(pd),
     STARPU_MAIN_RAM,
     reinterpret_cast<uintptr_t>(pd.GetPtr()),
-    nx,
+    static_cast<uint32_t>(pd.GetBytes() / Sizeof(pd.GetType())),
     Sizeof(pd.GetType()));
 }
 

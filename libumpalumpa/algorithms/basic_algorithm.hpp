@@ -59,7 +59,7 @@ public:
   [[nodiscard]] bool Execute(const OutputData &out, const InputData &in)
   {
     bool canExecute = this->IsInitialized() && out.IsEquivalentTo(this->GetOutputRef())
-                      && in.IsEquivalentTo(this->GetInputRef()) && out.IsValid() && in.IsValid();
+                      && in.IsEquivalentTo(this->GetInputRef());
     if (canExecute) { return this->ExecuteImpl(out, in); }
     return false;
   }

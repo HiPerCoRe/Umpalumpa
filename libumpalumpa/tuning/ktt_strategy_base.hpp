@@ -50,9 +50,14 @@ public:
     return initSuccessful;
   }
 
+  /**
+   * Creates a KTT argument of type Vector from the content of the Payload.
+   * If the Payload is empty, NULL argument will be returned.
+   **/
   template<typename T, typename P>
   auto AddArgumentVector(const data::Payload<P> &p, ktt::ArgumentAccessType at)
   {
+    if (p.IsEmpty()) { return kttHelper.GetTuner().AddArgumentScalar(NULL); }
     return kttHelper.GetTuner().AddArgumentVector<T>(
       p.GetPtr(), p.info.GetSize().total, at, utils::KTTUtils::GetMemoryNode(p.dataInfo));
   }

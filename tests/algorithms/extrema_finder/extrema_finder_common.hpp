@@ -23,7 +23,7 @@ protected:
   auto CreatePayloadValues(const Settings &settings, const Size &size)
   {
     auto ld = LogicalDescriptor(size);
-    if (SearchResult::kValue != settings.GetResult()) {
+    if (Result::kValue != settings.GetResult()) {
       return Payload(ld, Create(0, DataType::kVoid), "Default (empty) Values");
     }
     auto bytes = ld.Elems() * Sizeof(DataType::kFloat);
@@ -34,7 +34,7 @@ protected:
   auto CreatePayloadLocations(const Settings &settings, const Size &size)
   {
     auto ld = LogicalDescriptor(size);
-    if (SearchResult::kLocation != settings.GetResult()) {
+    if (Result::kLocation != settings.GetResult()) {
       return Payload(ld, Create(0, DataType::kVoid), "Default (empty) Locations");
     }
     auto bytes = ld.Elems() * Sizeof(DataType::kFloat);
@@ -47,12 +47,13 @@ protected:
     pData = std::make_unique<Payload<LogicalDescriptor>>(CreatePayloadData(sizeData));
     Register(pData->dataInfo);
 
-    auto sizeRes = Size(1, 1, 1, sizeData.n);
-    pValues = std::make_unique<Payload<LogicalDescriptor>>(CreatePayloadValues(settings, sizeRes));
+    auto sizeVals = Size(1, 1, 1, sizeData.n);
+    pValues = std::make_unique<Payload<LogicalDescriptor>>(CreatePayloadValues(settings, sizeVals));
     Register(pValues->dataInfo);
 
+    auto sizeLocs = Size(sizeData.GetDimAsNumber(), 1, 1, sizeData.n);
     pLocations =
-      std::make_unique<Payload<LogicalDescriptor>>(CreatePayloadLocations(settings, sizeRes));
+      std::make_unique<Payload<LogicalDescriptor>>(CreatePayloadLocations(settings, sizeLocs));
     Register(pLocations->dataInfo);
   }
 
@@ -85,6 +86,67 @@ protected:
     }
     Release(pValues->dataInfo);
     Release(pData->dataInfo);
+  }
+
+  void CheckLocationsSinglePrecision()
+  {
+    Acquire(pData->dataInfo);
+    Acquire(pLocations->dataInfo);
+    const auto &sizeData = pData->info.GetSize();
+    // test that we found good maximas
+    for (size_t n = 0; n < sizeData.n; ++n) {
+      auto *start = reinterpret_cast<float *>(pData->GetPtr()) + n * sizeData.single;
+      auto max = start[0];
+      size_t expectedX = 0;
+      size_t expectedY = 0;
+      size_t expectedZ = 0;
+      for (size_t z = 0; z < sizeData.z; ++z) {
+        for (size_t y = 0; y < sizeData.y; ++y) {
+          for (size_t x = 0; x < sizeData.x; ++x) {
+            auto v = start[z * sizeData.y * sizeData.x + y * sizeData.x + x];
+            if (v > max) {
+              max = v;
+              expectedX = x;
+              expectedY = y;
+              expectedZ = z;
+            }
+          }
+        }
+      }
+      auto *actualLoc =
+        reinterpret_cast<float *>(pLocations->GetPtr()) + n * pLocations->info.GetSize().single;
+      ASSERT_EQ(expectedX, actualLoc[0]) << " for n=" << n;
+      if (sizeData.GetDimAsNumber() > 1) {
+        ASSERT_EQ(expectedY, actualLoc[1]) << " for n=" << n;
+        if (sizeData.GetDimAsNumber() > 2) { ASSERT_EQ(expectedZ, actualLoc[2]) << " for n=" << n; }
+      }
+    }
+    Release(pLocations->dataInfo);
+    Release(pData->dataInfo);
+  }
+
+  void TestLocsMaxEntireSingle(const Size &size)
+  {
+    auto settings =
+      Settings(ExtremaType::kMax, Location::kEntire, Result::kLocation, Precision::kSingle);
+
+    SetUp(settings, size);
+
+    Acquire(pData->dataInfo);
+    FillNormalDist(reinterpret_cast<float *>(pData->GetPtr()), pData->info.GetSize().total);
+    Release(pData->dataInfo);
+
+    auto out = AExtremaFinder::OutputData(*pValues, *pLocations);
+    auto in = AExtremaFinder::InputData(*pData);
+
+    auto &alg = GetAlg();
+    ASSERT_TRUE(alg.Init(out, in, settings));
+    ASSERT_TRUE(alg.Execute(out, in));
+    // wait till the work is done
+    alg.Synchronize();
+
+    // check results
+    CheckLocationsSinglePrecision();
   }
 
   std::unique_ptr<Payload<LogicalDescriptor>> pValues;
