@@ -22,7 +22,7 @@ namespace data {
 
     virtual ~LogicalDescriptor() {}
 
-    bool IsValid() const { return paddedSize >= size; }
+    bool IsValid() const { return size.IsValid() && paddedSize >= size; }
 
     virtual LogicalDescriptor
       Subset(size_t &safeCount, const size_t startN, const size_t count) const

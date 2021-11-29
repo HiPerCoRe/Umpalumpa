@@ -10,8 +10,9 @@ add_subdirectory(algorithms/correlation)
 add_subdirectory(algorithms/extrema_finder)
 add_subdirectory(algorithms/fourier_processing)
 add_subdirectory(algorithms/fourier_transformation)
-add_subdirectory(data/payload_wrapper)
+add_subdirectory(data)
 add_subdirectory(tuning/algorithm_manager)
+add_subdirectory(tuning/garbage_collection)
 
 file(
   COPY runAll.sh

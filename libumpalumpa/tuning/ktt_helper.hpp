@@ -4,42 +4,59 @@
 #include <libumpalumpa/system_includes/ktt.hpp>
 #include <libumpalumpa/utils/cuda.hpp>
 #include <libumpalumpa/utils/system.hpp>
+#include <libumpalumpa/tuning/ktt_id_tracker.hpp>
 
-namespace umpalumpa {
-namespace utils {
-  class KTTHelper
+namespace umpalumpa::utils {
+class KTTHelper
+{
+public:
+  KTTHelper(const CUcontext context, const std::vector<ktt::ComputeQueue> &queues)
+    : tuner(ktt::ComputeApi::CUDA, ktt::ComputeApiInitializer(context, queues))
   {
+    tuner.SetCompilerOptions("-I" + kProjectRoot + " --std=c++14 -default-device");
+  }
 
-  public:
-    KTTHelper(const CUcontext context, const std::vector<ktt::ComputeQueue> &queues)
-      : tuner(ktt::ComputeApi::CUDA, ktt::ComputeApiInitializer(context, queues))
-    {
-      tuner.SetCompilerOptions("-I" + kProjectRoot + " --std=c++14 -default-device");
+  std::mutex &GetMutex() { return mutex; }
+
+  ktt::Tuner &GetTuner() { return tuner; }
+
+  void AddQueue(const ktt::ComputeQueue)
+  {
+    // FIXME implement once KTT supports it
+    // ensure that you don't register twice the same queue
+  }
+
+  void RemoveQueue(const ktt::ComputeQueue)
+  {
+    // FIXME implment once KTT supports it
+    // be careful not to remove queue used by another algorithm
+  }
+
+  // FIXME add method to access correct stream (and remove interface.GetAllQueues().at(0) from
+  // strategy calls)
+
+  std::shared_ptr<KTTIdTracker> GetIdTracker(ktt::KernelDefinitionId definitionId)
+  {
+    if (auto it = tunerIds.find(definitionId); it != tunerIds.end()) { return it->second.lock(); }
+    auto sPtr = std::make_shared<KTTIdTracker>(definitionId, tuner);
+    tunerIds[definitionId] = sPtr;
+    return sPtr;
+  }
+
+  void CleanupIdTracker(ktt::KernelDefinitionId id)
+  {
+    if (auto it = tunerIds.find(id); it != tunerIds.end()) {
+      if (it->second.expired()) { tunerIds.erase(it); }// erase from map is efficient
+    } else {
+      // TODO log error, because it HAVE to be present otherwise something is severely wrong
+      // we have just a small memory leak, no need to immediately stop execution
     }
+  }
 
-    std::mutex &GetMutex() { return mutex; }
+private:
+  ktt::Tuner tuner;
+  std::map<ktt::KernelDefinitionId, std::weak_ptr<KTTIdTracker>> tunerIds;
+  std::mutex mutex;
+};
 
-    ktt::Tuner &GetTuner() { return tuner; }
-
-    void AddQueue(const ktt::ComputeQueue)
-    {
-      // FIXME implement once KTT supports it
-      // ensure that you don't register twice the same queue
-    }
-
-    void RemoveQueue(const ktt::ComputeQueue)
-    {
-      // FIXME implment once KTT supports it
-      // be careful not to remove queue used by another algorithm
-    }
-
-    // FIXME add method to access correct stream (and remove interface.GetAllQueues().at(0) from
-    // strategy calls)
-
-  private:
-    ktt::Tuner tuner;
-    std::mutex mutex;
-  };
-
-}// namespace utils
-}// namespace umpalumpa
+}// namespace umpalumpa::utils

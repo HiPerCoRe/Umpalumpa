@@ -121,7 +121,7 @@ typename FlexAlign<T>::Shift
     auto out = AExtremaFinder::OutputData(empty, res);
     if (!alg.IsInitialized()) {
       // FIXME search around center
-      auto settings = Settings(SearchType::kMax, SearchLocation::kEntire, SearchResult::kLocation);
+      auto settings = Settings(ExtremaType::kMax, Location::kEntire, Result::kLocation);
       assert(alg.Init(out, in, settings));
     }
     // std::cout << "Finding maxima in correlation " << i << " and " << j << "\n";

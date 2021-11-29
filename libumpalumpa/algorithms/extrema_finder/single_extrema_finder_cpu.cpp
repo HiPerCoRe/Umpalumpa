@@ -13,10 +13,14 @@ namespace {// to avoid poluting
     {
       const auto &in = alg.Get().GetInputRef();
       const auto &s = alg.Get().GetSettings();
-      return (s.GetVersion() == 1) && (!in.GetData().info.IsPadded())
-             && (s.GetLocation() == SearchLocation::kEntire) && (s.GetType() == SearchType::kMax)
-             && (s.GetResult() == SearchResult::kValue)
-             && (in.GetData().dataInfo.GetType() == umpalumpa::data::DataType::kFloat);
+      auto isValidVersion = 1 == s.GetVersion();
+      auto isValidLocs = (s.GetResult() == Result::kLocation)
+                         && (s.GetLocation() == Location::kEntire)
+                         && (s.GetType() == ExtremaType::kMax);
+      auto isValidVals = (s.GetResult() == Result::kValue) && (s.GetLocation() == Location::kEntire)
+                         && (s.GetType() == ExtremaType::kMax);
+      auto isValidData = !in.GetData().info.IsPadded();
+      return isValidVersion && isValidData && (isValidLocs || isValidVals);
     }
 
     std::string GetName() const override { return "Strategy1"; }
@@ -24,13 +28,40 @@ namespace {// to avoid poluting
     bool Execute(const AExtremaFinder::OutputData &out,
       const AExtremaFinder::InputData &in) override
     {
-      if (!in.GetData().IsValid() || in.GetData().IsEmpty() || !out.GetValues().IsValid()
-          || out.GetValues().IsEmpty())
+      auto IsFine = [](const auto &p) { return p.IsValid() && !p.IsEmpty(); };
+      const auto &s = alg.Get().GetSettings();
+      if (!IsFine(in.GetData()) || (!IsFine(out.GetValues()) && !IsFine(out.GetLocations())))
         return false;
-      FindSingleExtremaValXDCPU(reinterpret_cast<float *>(out.GetValues().GetPtr()),
-        reinterpret_cast<float *>(in.GetData().GetPtr()),
-        in.GetData().info.GetSize(),
-        std::greater<float>());
+      switch (s.GetResult()) {
+      case Result::kValue:
+        FindSingleExtremaCPU<true, false>(reinterpret_cast<float *>(out.GetValues().GetPtr()),
+          nullptr,
+          reinterpret_cast<float *>(in.GetData().GetPtr()),
+          in.GetData().info.GetSize(),
+          std::greater<float>());
+        break;
+      case Result::kLocation:
+        FindSingleExtremaCPU<false, true, float>(nullptr,
+          reinterpret_cast<float *>(out.GetLocations().GetPtr()),
+          reinterpret_cast<float *>(in.GetData().GetPtr()),
+          in.GetData().info.GetSize(),
+          std::greater<float>());
+        break;
+      case Result::kBoth:
+        FindSingleExtremaCPU<true, true>(reinterpret_cast<float *>(out.GetValues().GetPtr()),
+          reinterpret_cast<float *>(out.GetLocations().GetPtr()),
+          reinterpret_cast<float *>(in.GetData().GetPtr()),
+          in.GetData().info.GetSize(),
+          std::greater<float>());
+        break;
+      default:
+        return false;
+      }
+      if ((Result::kLocation == s.GetResult()) && (Precision::k3x3 == s.GetPrecision())) {
+        RefineLocation<float, 3>(reinterpret_cast<float *>(out.GetLocations().GetPtr()),
+          reinterpret_cast<float *>(in.GetData().GetPtr()),
+          in.GetData().info.GetSize());
+      }
       return true;
     }
   };
@@ -45,8 +76,8 @@ namespace {// to avoid poluting
       const auto &in = alg.Get().GetInputRef();
       const auto &s = alg.Get().GetSettings();
       return (s.GetVersion() == 1) && (!in.GetData().info.IsPadded())
-             && (s.GetLocation() == SearchLocation::kEntire)
-             && (s.GetType() == SearchType::kMax) && (s.GetResult() == SearchResult::kLocation)
+             && (s.GetLocation() == Location::kRectCenter) && (s.GetType() == ExtremaType::kMax)
+             && (s.GetResult() == Result::kLocation)
              && (in.GetData().dataInfo.GetType() == umpalumpa::data::DataType::kFloat);
     }
 
@@ -62,8 +93,8 @@ namespace {// to avoid poluting
       // FIXME these values should be read from settings
       // FIXME offset + rectDim cant be > inSize, add check
       // Compute the area to search in
-      size_t searchRectWidth = in.GetData().info.GetSize().x;
-      size_t searchRectHeight = in.GetData().info.GetSize().y;
+      size_t searchRectWidth = 28;
+      size_t searchRectHeight = 17;
       size_t searchRectOffsetX = (in.GetData().info.GetPaddedSize().x - searchRectWidth) / 2;
       size_t searchRectOffsetY = (in.GetData().info.GetPaddedSize().y - searchRectHeight) / 2;
 
