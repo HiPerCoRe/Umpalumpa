@@ -14,6 +14,8 @@ template<typename T> void FlexAlign<T>::Execute(const umpalumpa::data::Size &siz
   auto sizeSingle = sizeAll.CopyFor(1);
   auto sizeSingleCrop = Size(sizeSingle.x / 2, sizeSingle.y / 2, sizeSingle.z, 1);
   auto sizeCross = Size(3, 3, 1, 1);
+  auto scaleX = static_cast<float>(sizeSingle.x) / static_cast<float>(sizeSingleCrop.x);
+  auto scaleY = static_cast<float>(sizeSingle.y) / static_cast<float>(sizeSingleCrop.y);
 
   auto filter = CreatePayloadFilter(sizeSingleCrop);
 
@@ -32,12 +34,14 @@ template<typename T> void FlexAlign<T>::Execute(const umpalumpa::data::Size &siz
     for (size_t i = 0; i < j; ++i) {
       auto correlation = Correlate(i, j, ffts.at(i), ffts.at(j));
       auto shift = FindMax(i, j, correlation);
-      // reported shift is position in the 2D image, where center of that image 
+      // reported shift is position in the 2D image, where center of that image
       // has position [0, 0];
       // To get the right shift, we need to shift by half of the cropped image
-      auto normShift = Shift{shift.x - sizeSingleCrop.x / 2, shift.y - sizeSingleCrop.y / 2};
-      std::cout << "Shift of img " << i << " and " << j << " is [" << normShift.x << ", " << normShift.y
-                << "]\n";
+      // Since we cropped the image in the Fourier domain and performed IFFT, we performed
+      // downscaling To get the rigth shift, we have to adjust the scale.
+      auto normShift = Transform(shift, scaleX, scaleY, sizeSingleCrop.x / 2, sizeSingleCrop.y / 2);
+      std::cout << "Shift of img " << i << " and " << j << " is [" << normShift.x << ", "
+                << normShift.y << "]\n";
     }
   }
   // Release allocated data
@@ -121,7 +125,8 @@ typename FlexAlign<T>::Shift
     auto out = AExtremaFinder::OutputData(empty, res);
     if (!alg.IsInitialized()) {
       // FIXME search around center
-      auto settings = Settings(ExtremaType::kMax, Location::kEntire, Result::kLocation);
+      auto settings =
+        Settings(ExtremaType::kMax, Location::kEntire, Result::kLocation, Precision::k3x3);
       assert(alg.Init(out, in, settings));
     }
     // std::cout << "Finding maxima in correlation " << i << " and " << j << "\n";
@@ -129,10 +134,8 @@ typename FlexAlign<T>::Shift
   }
 
   Acquire(res);
-  // convert index to position
-  size_t index = static_cast<size_t>(reinterpret_cast<float *>(res.GetPtr())[0]);
-  auto y = index / pIn.info.GetSize().x;
-  auto x = index % pIn.info.GetSize().x;
+  auto x = reinterpret_cast<float *>(res.GetPtr())[0];
+  auto y = reinterpret_cast<float *>(res.GetPtr())[1];
   // std::cout << "FindMax correlation " << x << " and " << y << "\n";
   Release(res);
   Remove(res.dataInfo);
@@ -168,7 +171,7 @@ Payload<LogicalDescriptor> FlexAlign<T>::CreatePayloadLocMax(size_t i,
   // std::cout << "Creating Payload for Location of maxima " << i << "-" << j << "\n";
   auto name = "Location of Max " + std::to_string(i) + "-" + std::to_string(j);
   auto type = DataType::kFloat;
-  auto size = Size(1, 1, 1, correlation.info.GetSize().n);
+  auto size = Size(2, 1, 1, correlation.info.GetSize().n);
   auto ld = LogicalDescriptor(size);
   auto bytes = ld.Elems() * Sizeof(type);
   return Payload(ld, Create(bytes, type, false), name);

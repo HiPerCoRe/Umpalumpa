@@ -55,8 +55,8 @@ protected:
   Payload<FourierDescriptor> CreatePayloadOutFFT(size_t index,
     const Payload<FourierDescriptor> &inFFT);
 
-      Payload<FourierDescriptor> CreatePayloadOutInverseFFT(size_t i, size_t j,
-    const Payload<FourierDescriptor> &inFFT);
+  Payload<FourierDescriptor>
+    CreatePayloadOutInverseFFT(size_t i, size_t j, const Payload<FourierDescriptor> &inFFT);
 
   Payload<FourierDescriptor> CreatePayloadInCroppedFFT(size_t index,
     const Payload<FourierDescriptor> &inFFT);
@@ -67,9 +67,8 @@ protected:
 
   Payload<LogicalDescriptor>
     CreatePayloadLocMax(size_t i, size_t j, const Payload<FourierDescriptor> &correlation);
-Payload<LogicalDescriptor> CreatePayloadMaxIn(size_t i,
-  size_t j,
-  const Payload<FourierDescriptor> &correlation);
+  Payload<LogicalDescriptor>
+    CreatePayloadMaxIn(size_t i, size_t j, const Payload<FourierDescriptor> &correlation);
 
   Payload<FourierDescriptor> Correlate(size_t i,
     size_t j,
@@ -146,4 +145,14 @@ private:
     const Size &armSize,
     size_t posX,
     size_t posY);
+
+  /**
+   * Move Shift values by specified offset and scale by the specified factor
+   **/
+  Shift Transform(const Shift &s, float scaleX, float scaleY, float shiftX, float shiftY)
+  {
+    auto x = (s.x - shiftX) * scaleX;
+    auto y = (s.y - shiftY) * scaleY;
+    return { x, y };
+  }
 };
