@@ -23,6 +23,7 @@ namespace {// to avoid poluting
     using umpalumpa::utils::StarPUUtils;
     auto *args = reinterpret_cast<Args *>(func_arg);
 
+    // FIXME if handle points to the void interface, we access illegal memory
     auto pVals =
       StarPUUtils::Assemble(args->out.GetValues(), StarPUUtils::ReceivePDPtr(buffers[0]));
     auto pLocs =

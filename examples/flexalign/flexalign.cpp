@@ -34,6 +34,7 @@ template<typename T> void FlexAlign<T>::Execute(const umpalumpa::data::Size &siz
     for (size_t i = 0; i < j; ++i) {
       auto correlation = Correlate(i, j, ffts.at(i), ffts.at(j));
       auto shift = FindMax(i, j, correlation);
+      Remove(correlation.dataInfo);
       // reported shift is position in the 2D image, where center of that image
       // has position [0, 0];
       // To get the right shift, we need to shift by half of the cropped image
@@ -139,6 +140,8 @@ typename FlexAlign<T>::Shift
   // std::cout << "FindMax correlation " << x << " and " << y << "\n";
   Release(res);
   Remove(res.dataInfo);
+  Remove(outCorrelation.dataInfo);
+  Remove(empty.dataInfo);
   return { x, y };
 };
 
