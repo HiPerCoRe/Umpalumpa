@@ -7,6 +7,14 @@
 
 namespace umpalumpa::algorithm {
 
+/**
+ * Base class for every strategy that utilizes KTT for tuning.
+ *
+ * This class is a joining point of the two base classes (BasicAlgorithm::Strategy, TunableStrategy)
+ * and it allows their cooperation.
+ *
+ * Having this class as a predecessor automates many tasks tied to the tuning process.
+ */
 template<typename O, typename I, typename S>
 class KTTStrategyBase
   : public BasicAlgorithm<O, I, S>::Strategy
@@ -21,10 +29,19 @@ public:
       TunableStrategy(dynamic_cast<const KTT_Base &>(algorithm).GetHelper())
   {}
 
+  /**
+   * Strategy specific initialization function. Usually used to initialize the KTT tuner.
+   */
   virtual bool InitImpl() = 0;
 
+  /**
+   * Initialization method automatically called by the BasicAlgorithm class. This overriden version
+   * allows to automate some tasks tied to the tuning process.
+   */
   bool Init() override final
   {
+    TunableStrategy::Cleanup();
+
     bool initSuccessful = InitImpl();
 
     if (initSuccessful) { Register(); }
