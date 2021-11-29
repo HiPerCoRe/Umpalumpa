@@ -7,17 +7,27 @@
 #endif
 #include <libumpalumpa/data/dimensionality.hpp>
 
-namespace umpalumpa {
+namespace umpalumpa {// must be two namespaces for compatiblity with CUDA
 namespace data {
 
+  /**
+   * Class representing size of some object in up to 3 dimensions [x, y, z], including number of
+   * of those objects [n].
+   * 'Unused' dimensions have size 1. As such, this class cannot represent 2D and 3D sizes with
+   * collapsed dimensions. In other words,
+   * valid 1D size has Z==1 and Y==1 and X>=1,
+   * valid 2D size has Z==1 and Y>=2 and X>=2,
+   * valid 3D size has Z>=2 and Y>=2 and X>=2.
+   **/
   class Size
   {
   public:
-    static inline Dimensionality GetDim(__attribute__((unused)) size_t x, size_t y, size_t z)
+    static inline Dimensionality GetDim(size_t x, size_t y, size_t z)
     {
-      if ((z >= 2) && (y >= 2)) { return Dimensionality::k3Dim; }
-      if ((z == 1) && (y >= 2)) { return Dimensionality::k2Dim; }
-      return Dimensionality::k1Dim;
+      if ((z >= 2) && (y >= 2) && (x >= 2)) { return Dimensionality::k3Dim; }
+      if ((z == 1) && (y >= 2) && (x >= 2)) { return Dimensionality::k2Dim; }
+      if ((z == 1) && (y == 1) && (x >= 1)) { return Dimensionality::k1Dim; }
+      return Dimensionality::kInvalid;
     }
 
     // FIXME ensure that nobody creates size like x=1 y=2 ... (either exception here or check in
@@ -27,7 +37,7 @@ namespace data {
         single(xSize * ySize * zSize), total(xSize * ySize * zSize * nSize)
     {}
 
-    bool IsValid() const { return (0 != x) && (0 != y) && (0 != z) && (0 != n); }
+    bool IsValid() const { return (1 <= n) && (Dimensionality::kInvalid != dim); }
 
     Size CopyFor(size_t newN) const { return Size(x, y, z, newN); }
 
