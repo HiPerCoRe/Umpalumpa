@@ -12,7 +12,7 @@ namespace {// to avoid poluting
     // Inherit constructor
     using SingleExtremaFinderCUDA::KTTStrategy::KTTStrategy;
 
-    static constexpr auto kFindMax1D = "findMax";
+    static constexpr auto kFindMax = "findMax";
     static constexpr auto kRefineLocation = "RefineLocation";
 
     size_t GetHash() const override { return 0; }
@@ -44,8 +44,11 @@ namespace {// to avoid poluting
       // this has to be done in critical section, as multiple instances of this algorithm
       // might run on the same worker
       std::lock_guard<std::mutex> lck(kttHelper.GetMutex());
-      definitionId = GetKernelDefinitionId(kFindMax1D, kKernelFile, ktt::DimensionVector{ size.n });
-      kernelId = tuner.CreateSimpleKernel(kFindMax1D + std::to_string(strategyId), definitionId);
+      AddKernelDefinition(kFindMax, kKernelFile, ktt::DimensionVector{ size.n });
+      auto definitionId = GetDefinitionId();
+
+      AddKernel(kFindMax, definitionId);
+      auto kernelId = GetKernelId();
 
       if (s.GetPrecision() != Precision::kSingle) {
         auto window = [&s]() {
@@ -56,10 +59,8 @@ namespace {// to avoid poluting
             return "UNSUPPORTED PRECISION";
           }
         }();
-        refineDefID = GetKernelDefinitionId(
-          kRefineLocation, kKernelFile, ktt::DimensionVector{ size.n }, { "float", window });
-        refineKernelID =
-          tuner.CreateSimpleKernel(kRefineLocation + std::to_string(strategyId), refineDefID);
+        AddKernelDefinition(kRefineLocation, kKernelFile, ktt::DimensionVector{ size.n }, { "float", window });
+        AddKernel(kRefineLocation, GetDefinitionId(1));
       }
 
       tuner.AddParameter(kernelId, "blockSize", std::vector<uint64_t>{ 32, 64, 128, 256, 512 });
@@ -93,50 +94,46 @@ namespace {// to avoid poluting
       auto argLocs =
         AddArgumentVector<float>(out.GetLocations(), ktt::ArgumentAccessType::WriteOnly);
 
-      tuner.SetArguments(definitionId, { argIn, argVals, argLocs, argSize });
+      tuner.SetArguments(GetDefinitionId(), { argIn, argVals, argLocs, argSize });
 
       auto &size = in.GetData().info.GetSize();
-      tuner.SetLauncher(kernelId, [this, &size](ktt::ComputeInterface &interface) {
-        auto blockDim = interface.GetCurrentLocalSize(definitionId);
+      tuner.SetLauncher(GetKernelId(), [this, &size](ktt::ComputeInterface &interface) {
+        auto blockDim = interface.GetCurrentLocalSize(GetKernelId());
         const ktt::DimensionVector gridDim(size.n);
-        interface.RunKernelAsync(definitionId, interface.GetAllQueues().at(0), gridDim, blockDim);
+        interface.RunKernelAsync(GetKernelId(), interface.GetAllQueues().at(0), gridDim, blockDim);
       });
 
       const bool refine =
         (Result::kLocation == s.GetResult()) && (Precision::k3x3 == s.GetPrecision());
       if (refine) {
-        tuner.SetArguments(refineDefID, { argLocs, argIn, argSize });
+        tuner.SetArguments(GetDefinitionId(1), { argLocs, argIn, argSize });
 
-        tuner.SetLauncher(refineKernelID, [this, &size](ktt::ComputeInterface &interface) {
+        tuner.SetLauncher(GetKernelId(1), [this, &size](ktt::ComputeInterface &interface) {
           const ktt::DimensionVector blockDim(size.n);
           const ktt::DimensionVector gridDim(1);
-          interface.RunKernelAsync(refineDefID, interface.GetAllQueues().at(0), gridDim, blockDim);
+          interface.RunKernelAsync(GetKernelId(1), interface.GetAllQueues().at(0), gridDim, blockDim);
         });
       }
 
       if (ShouldTune()) {
-        tuner.TuneIteration(kernelId, {});
-        if (refine) { tuner.TuneIteration(refineKernelID, {}); }
+        tuner.TuneIteration(GetKernelId(), {});
+        if (refine) { tuner.TuneIteration(GetKernelId(1), {}); }
       } else {
         // TODO GetBestConfiguration can be used once the KTT is able to synchronize
         // the best configuration from multiple KTT instances, or loads the best
         // configuration from previous runs
         // auto bestConfig = tuner.GetBestConfiguration(kernelId);
         auto bestConfig =
-          tuner.CreateConfiguration(kernelId, { { "blockSize", static_cast<uint64_t>(32) } });
-        tuner.Run(kernelId, bestConfig, {});// run is blocking call
+          tuner.CreateConfiguration(GetKernelId(), { { "blockSize", static_cast<uint64_t>(32) } });
+        tuner.Run(GetKernelId(), bestConfig, {});// run is blocking call
         if (refine) {
-          tuner.Run(refineKernelID, {}, {});// run is blocking call
+          tuner.Run(GetKernelId(1), {}, {});// run is blocking call
         }
         // arguments shall be removed once the run is done
       }
 
       return true;
     };
-
-  private:
-    ktt::KernelDefinitionId refineDefID;
-    ktt::KernelId refineKernelID;
   };
 
   struct Strategy2 final : public SingleExtremaFinderCUDA::KTTStrategy
@@ -171,9 +168,11 @@ namespace {// to avoid poluting
       // this has to be done in critical section, as multiple instances of this algorithm
       // might run on the same worker
       std::lock_guard<std::mutex> lck(kttHelper.GetMutex());
-      definitionId = GetKernelDefinitionId(
-        kFindMaxRect, kKernelFile, ktt::DimensionVector{ size.n }, { "float" });
-      kernelId = tuner.CreateSimpleKernel(kFindMaxRect + std::to_string(strategyId), definitionId);
+      AddKernelDefinition(kFindMaxRect, kKernelFile, ktt::DimensionVector{ size.n }, { "float" });
+      auto definitionId = GetDefinitionId();
+
+      AddKernel(kFindMaxRect, definitionId);
+      auto kernelId = GetKernelId();
 
       tuner.AddParameter(kernelId, "blockSizeX", std::vector<uint64_t>{ 4, 8, 16, 32, 64, 128 });
       tuner.AddParameter(kernelId, "blockSizeY", std::vector<uint64_t>{ 1, 2, 4, 8, 16, 32, 64 });
@@ -233,11 +232,14 @@ namespace {// to avoid poluting
       auto argRectWidth = tuner.AddArgumentScalar(searchRectWidth);
       auto argRectHeight = tuner.AddArgumentScalar(searchRectHeight);
 
+      auto definitionId = GetDefinitionId();
+      auto kernelId = GetKernelId();
+
       tuner.SetArguments(definitionId,
         { argIn, argInSize, argVals, argLocs, argOffX, argOffY, argRectWidth, argRectHeight });
 
       auto &size = in.GetData().info.GetSize();
-      tuner.SetLauncher(kernelId, [this, &size](ktt::ComputeInterface &interface) {
+      tuner.SetLauncher(kernelId, [definitionId, &size](ktt::ComputeInterface &interface) {
         auto blockDim = interface.GetCurrentLocalSize(definitionId);
         ktt::DimensionVector gridDim(size.n);
         interface.RunKernelAsync(definitionId, interface.GetAllQueues().at(0), gridDim, blockDim);

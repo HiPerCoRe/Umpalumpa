@@ -42,13 +42,16 @@ namespace {// to avoid poluting
       // might run on the same worker
       const auto &s = alg.Get().GetSettings();
       std::lock_guard<std::mutex> lck(kttHelper.GetMutex());
-      definitionId = GetKernelDefinitionId(kTMP,
+      AddKernelDefinition(kTMP,
         kKernelFile,
         ktt::DimensionVector{ size.x, size.y, size.z },
         { std::to_string(s.GetApplyFilter()),
           std::to_string(s.GetNormalize()),
           std::to_string(s.GetCenter()) });
-      kernelId = tuner.CreateSimpleKernel(kTMP + std::to_string(strategyId), definitionId);
+      auto definitionId = GetDefinitionId();
+
+      AddKernel(kTMP, definitionId);
+      auto kernelId = GetKernelId();
 
       tuner.AddParameter(
         kernelId, "blockSizeX", std::vector<uint64_t>{ 1, 2, 4, 8, 16, 32, 64, 128 });
@@ -120,10 +123,13 @@ namespace {// to avoid poluting
       auto normFactor =
         tuner.AddArgumentScalar(static_cast<float>(in.GetData().info.GetNormFactor()));
 
+      auto definitionId = GetDefinitionId();
+      auto kernelId = GetKernelId();
+
       tuner.SetArguments(definitionId, { argIn, argOut, inSize, outSize, filter, normFactor });
 
       auto &size = out.GetData().info.GetPaddedSize();
-      tuner.SetLauncher(kernelId, [this, &size](ktt::ComputeInterface &interface) {
+      tuner.SetLauncher(kernelId, [definitionId, &size](ktt::ComputeInterface &interface) {
         auto blockDim = interface.GetCurrentLocalSize(definitionId);
         ktt::DimensionVector gridDim(size.x, size.y, size.z);
         gridDim.RoundUp(blockDim);
