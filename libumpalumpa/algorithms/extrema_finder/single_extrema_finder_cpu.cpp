@@ -32,36 +32,30 @@ namespace {// to avoid poluting
       const auto &s = alg.Get().GetSettings();
       if (!IsFine(in.GetData()) || (!IsFine(out.GetValues()) && !IsFine(out.GetLocations())))
         return false;
-      const bool vals = s.GetResult() == Result::kValue;
-      const bool locs = s.GetResult() == Result::kLocation;
-      if (locs) {
-        if (vals) {
-          FindSingleExtremaCPU<true, true>(reinterpret_cast<float *>(out.GetValues().GetPtr()),
-            reinterpret_cast<float *>(out.GetLocations().GetPtr()),
-            reinterpret_cast<float *>(in.GetData().GetPtr()),
-            in.GetData().info.GetSize(),
-            std::greater<float>());
-        } else {
-          FindSingleExtremaCPU<false, true, float>(nullptr,
-            reinterpret_cast<float *>(out.GetLocations().GetPtr()),
-            reinterpret_cast<float *>(in.GetData().GetPtr()),
-            in.GetData().info.GetSize(),
-            std::greater<float>());
-        }
-      } else {
-        if (vals) {
-          FindSingleExtremaCPU<true, false>(reinterpret_cast<float *>(out.GetValues().GetPtr()),
-            nullptr,
-            reinterpret_cast<float *>(in.GetData().GetPtr()),
-            in.GetData().info.GetSize(),
-            std::greater<float>());
-        } else {
-          FindSingleExtremaCPU<false, false, float>(nullptr,
-            nullptr,
-            reinterpret_cast<float *>(in.GetData().GetPtr()),
-            in.GetData().info.GetSize(),
-            std::greater<float>());
-        }
+      switch (s.GetResult()) {
+      case Result::kValue:
+        FindSingleExtremaCPU<true, false>(reinterpret_cast<float *>(out.GetValues().GetPtr()),
+          nullptr,
+          reinterpret_cast<float *>(in.GetData().GetPtr()),
+          in.GetData().info.GetSize(),
+          std::greater<float>());
+        break;
+      case Result::kLocation:
+        FindSingleExtremaCPU<false, true, float>(nullptr,
+          reinterpret_cast<float *>(out.GetLocations().GetPtr()),
+          reinterpret_cast<float *>(in.GetData().GetPtr()),
+          in.GetData().info.GetSize(),
+          std::greater<float>());
+        break;
+      case Result::kBoth:
+        FindSingleExtremaCPU<true, true>(reinterpret_cast<float *>(out.GetValues().GetPtr()),
+          reinterpret_cast<float *>(out.GetLocations().GetPtr()),
+          reinterpret_cast<float *>(in.GetData().GetPtr()),
+          in.GetData().info.GetSize(),
+          std::greater<float>());
+        break;
+      default:
+        return false;
       }
       if ((Result::kLocation == s.GetResult()) && (Precision::k3x3 == s.GetPrecision())) {
         RefineLocation<float, 3>(reinterpret_cast<float *>(out.GetLocations().GetPtr()),

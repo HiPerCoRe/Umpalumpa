@@ -1,16 +1,16 @@
 #pragma once
 #include <libumpalumpa/data/size.hpp>
 
-#ifndef blockSize
-#define blockSize (blockSizeX * blockSizeY)
-#endif
-
 #ifndef blockSizeX
 #define blockSizeX 1
 #endif
 
 #ifndef blockSizeY
 #define blockSizeY 1
+#endif
+
+#ifndef blockSize
+#define blockSize (blockSizeX * blockSizeY)
 #endif
 
 template<typename T, typename T2, typename C>
