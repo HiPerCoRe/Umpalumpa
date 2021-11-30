@@ -139,7 +139,7 @@ void TunableStrategy::SetArguments(ktt::KernelDefinitionId id,
 {
   kttHelper.GetTuner().SetArguments(id, argumentIds);
   auto &tmp = idTrackers.at(GetDefinitionIndex(id))->argumentIds;
-  tmp.insert(tmp.end(), argumentIds.begin(), argumentIds.end());// FIXME after changed to set
+  tmp.insert(tmp.end(), argumentIds.begin(), argumentIds.end());
 }
 
 size_t TunableStrategy::GetDefinitionIndex(ktt::KernelDefinitionId id) const
