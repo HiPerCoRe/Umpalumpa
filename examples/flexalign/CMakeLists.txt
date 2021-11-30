@@ -14,4 +14,4 @@ endif()
 
 target_sources(flexalign PRIVATE ${sources})
 
-target_link_libraries(flexalign PRIVATE project_options umpalumpa cufft)
+target_link_libraries(flexalign PRIVATE project_options umpalumpa cufft spdlog)

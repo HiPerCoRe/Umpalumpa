@@ -4,6 +4,7 @@
 #include <vector>
 #include <type_traits>
 #include <libumpalumpa/utils/payload.hpp>
+#include <libumpalumpa/system_includes/spdlog.hpp>
 
 template<typename T> void FlexAlign<T>::Execute(const umpalumpa::data::Size &sizeAll)
 {
@@ -66,10 +67,12 @@ Payload<FourierDescriptor> FlexAlign<T>::ConvertToFFTAndCrop(size_t index,
     auto out = AFFT::OutputData(outFFT);
     if (!alg.IsInitialized()) {
       auto settings = Settings(Locality::kOutOfPlace, Direction::kForward);
-      assert(alg.Init(out, in, settings));
+      if (!alg.Init(out, in, settings)) {
+        spdlog::error("Initialization of the FFT algorithm failed");
+      }
     }
     // std::cout << "Executing FFT on image " << index << "\n";
-    assert(alg.Execute(out, in));
+    if (!alg.Execute(out, in)) { spdlog::error("Execution of the FFT algorithm failed"); }
   }
   // Perform crop
   auto inCrop = CreatePayloadInCroppedFFT(index, outFFT);
@@ -84,10 +87,12 @@ Payload<FourierDescriptor> FlexAlign<T>::ConvertToFFTAndCrop(size_t index,
       auto settings = Settings(Locality::kOutOfPlace);
       settings.SetApplyFilter(true);
       settings.SetNormalize(true);
-      assert(alg.Init(out, in, settings));
+      if (!alg.Init(out, in, settings)) {
+        spdlog::error("Initialization of the Crop algorithm failed");
+      }
     }
     // std::cout << "Executing Crop on image " << index << "\n";
-    assert(alg.Execute(out, in));
+    if (!alg.Execute(out, in)) { spdlog::error("Execution of the Crop algorithm failed"); }
   }
   // NOTE up to here OK for sure, assuming normalization works correctly
 
@@ -109,10 +114,12 @@ typename FlexAlign<T>::Shift
     auto out = AFFT::OutputData(outCorrelation);
     if (!alg.IsInitialized()) {
       auto settings = Settings(Locality::kOutOfPlace, Direction::kInverse);
-      assert(alg.Init(out, in, settings));
+      if (!alg.Init(out, in, settings)) {
+        spdlog::error("Initialization of the FFT algorithm failed");
+      }
     }
     // std::cout << "Executing inverse FFT on correlation " << i << " and " << j << "\n";
-    assert(alg.Execute(out, in));
+    if (!alg.Execute(out, in)) { spdlog::error("Execution of the FFT algorithm failed"); }
   }
   // find maxima
   auto pIn = CreatePayloadMaxIn(i, j, outCorrelation);
@@ -128,10 +135,14 @@ typename FlexAlign<T>::Shift
       // FIXME search around center
       auto settings =
         Settings(ExtremaType::kMax, Location::kEntire, Result::kLocation, Precision::k3x3);
-      assert(alg.Init(out, in, settings));
+      if (!alg.Init(out, in, settings)) {
+        spdlog::error("Initialization of the Extrema Finder algorithm failed");
+      }
     }
     // std::cout << "Finding maxima in correlation " << i << " and " << j << "\n";
-    assert(alg.Execute(out, in));
+    if (!alg.Execute(out, in)) {
+      spdlog::error("Execution of the Extrema Finder algorithm failed");
+    }
   }
 
   Acquire(res);
@@ -160,9 +171,11 @@ Payload<FourierDescriptor> FlexAlign<T>::Correlate(size_t i,
   auto out = ACorrelation::OutputData(pOut);
   if (!alg.IsInitialized()) {
     auto settings = Settings(CorrelationType::kOneToN);
-    assert(alg.Init(out, in, settings));
+    if (!alg.Init(out, in, settings)) {
+      spdlog::error("Initialization of the Correlation algorithm failed");
+    }
   }
-  assert(alg.Execute(out, in));
+  if (!alg.Execute(out, in)) { spdlog::error("Execution of the Correlation algorithm failed"); }
   return pOut;
 }
 
