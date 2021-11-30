@@ -39,11 +39,16 @@ public:
   static void *ReceivePDPtr(void *buffer);
 
   /**
+   * Possible type of data unregistering
+   */
+  enum class UnregisterType { kBlockingCopyToHomeNode, kBlockingNoCopy, kSubmitNoCopy };
+
+  /**
    * Unregister content of the Physical Descriptor from StarPU.
    * Notice that this does not release the data hold by the descriptor.
    **/
   // FIXME this should register the entire Physical Descriptor
-  static void Unregister(const data::PhysicalDescriptor &pd);
+  static void Unregister(const data::PhysicalDescriptor &pd, UnregisterType type);
 
   /**
    * Receive StarPU handle from the Physical Descriptor

@@ -39,10 +39,20 @@ void *StarPUUtils::ReceivePDPtr(void *buffer)
   return reinterpret_cast<void *>(STARPU_VECTOR_GET_PTR(buffer));
 }
 
-void StarPUUtils::Unregister(const data::PhysicalDescriptor &pd)
+void StarPUUtils::Unregister(const data::PhysicalDescriptor &pd, UnregisterType type)
 {
   spdlog::debug("[StarPU] Unregistering handle {}", fmt::ptr(pd.GetHandle()));
-  starpu_data_unregister(*reinterpret_cast<starpu_data_handle_t *>(pd.GetHandle()));
+  switch (type) {
+  case UnregisterType::kBlockingCopyToHomeNode:
+    return starpu_data_unregister(*reinterpret_cast<starpu_data_handle_t *>(pd.GetHandle()));
+  case UnregisterType::kBlockingNoCopy:
+    return starpu_data_unregister_no_coherency(
+      *reinterpret_cast<starpu_data_handle_t *>(pd.GetHandle()));
+  case UnregisterType::kSubmitNoCopy:
+    return starpu_data_unregister_submit(*reinterpret_cast<starpu_data_handle_t *>(pd.GetHandle()));
+  default:
+    spdlog::error("Unsupported Unregister type");
+  }
 }
 
 }// namespace umpalumpa::utils

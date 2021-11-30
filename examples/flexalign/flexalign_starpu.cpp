@@ -36,7 +36,7 @@ PhysicalDescriptor FlexAlignStarPU<T>::Create(size_t bytes, DataType type, bool 
 
 template<typename T> void FlexAlignStarPU<T>::Remove(const PhysicalDescriptor &pd) const
 {
-  StarPUUtils::Unregister(pd);
+  StarPUUtils::Unregister(pd, StarPUUtils::UnregisterType::kBlockingCopyToHomeNode);
   delete StarPUUtils::GetHandle(pd);
   starpu_free(pd.GetPtr());
 }
