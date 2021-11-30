@@ -48,12 +48,10 @@ public:
    */
   void Unregister(TunableStrategy &strat);
 
-  // FIXME needs to be changed because strategy can have more kernels, therefore there is no single
-  // best configuration
   /**
    * Returns the best known configuration of a strategy with the specified hash.
    */
-  // ktt::KernelConfiguration GetBestConfiguration(size_t stratHash);
+  const std::vector<ktt::KernelConfiguration> &GetBestConfigurations(size_t stratHash);
 
   /**
    * Returns the underlying strategy container.

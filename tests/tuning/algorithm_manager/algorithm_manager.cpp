@@ -45,12 +45,17 @@ public:
   {
     using KTTStrategy::KTTStrategy;
     std::string GetName() const override { return "MockStrategy"; }
-    std::unique_ptr<TunableStrategy> CreateLeader() const override
+    std::vector<ktt::KernelConfiguration> GetDefaultConfigurations() const override
     {
-      auto *ptr = new StrategyGroup::Leader<MockStrategy>(*this, alg);
-      EXPECT_CALL(*ptr, GetHash()).WillRepeatedly(Return(mockHash));
-      EXPECT_CALL(*ptr, IsSimilarTo).WillRepeatedly(Return(mockSimilar));
-      return std::unique_ptr<StrategyGroup::Leader<MockStrategy>>(ptr);
+      return { {} };
+    }
+    std::unique_ptr<Leader> CreateLeader() const override
+    {
+      // auto *ptr = new Leader<MockStrategy>(*this, alg);
+      // EXPECT_CALL(*ptr, GetHash()).WillRepeatedly(Return(mockHash));
+      // EXPECT_CALL(*ptr, IsSimilarTo).WillRepeatedly(Return(mockSimilar));
+      // return std::unique_ptr<StrategyGroup::InternalLeader<MockStrategy>>(ptr);
+      return StrategyGroup::CreateLeader(*this, alg);
     }
     // Needed because of creation of a Leader strategy from the MockStrategy
     size_t mockHash = 0;

@@ -17,10 +17,19 @@ namespace {// to avoid poluting
     static constexpr auto kRefineLocation = "RefineLocation";
 
     size_t GetHash() const override { return 0; }
-    std::unique_ptr<TunableStrategy> CreateLeader() const override
+
+    std::unique_ptr<algorithm::Leader> CreateLeader() const override
     {
       return algorithm::StrategyGroup::CreateLeader(*this, alg);
     }
+
+    std::vector<ktt::KernelConfiguration> GetDefaultConfigurations() const override
+    {
+      return { kttHelper.GetTuner().CreateConfiguration(
+                 GetKernelId(), { { "blockSize", static_cast<uint64_t>(32) } }),
+        {} };
+    }
+
     bool IsSimilarTo(const TunableStrategy &) const override
     {
       // auto &o = dynamic_cast<const Strategy1 &>(other);
@@ -125,9 +134,7 @@ namespace {// to avoid poluting
         });
       }
 
-      auto tmpBestConfig =
-        tuner.CreateConfiguration(kernelId, { { "blockSize", static_cast<uint64_t>(32) } });
-      ExecuteKernel(kernelId, tmpBestConfig);
+      ExecuteKernel(kernelId);
       if (refine) { ExecuteKernel(GetKernelId(1)); }
 
       return true;
@@ -142,10 +149,19 @@ namespace {// to avoid poluting
     static constexpr auto kFindMaxRect = "findMaxRect";
 
     size_t GetHash() const override { return 0; }
-    std::unique_ptr<TunableStrategy> CreateLeader() const override
+
+    std::unique_ptr<algorithm::Leader> CreateLeader() const override
     {
       return algorithm::StrategyGroup::CreateLeader(*this, alg);
     }
+
+    std::vector<ktt::KernelConfiguration> GetDefaultConfigurations() const override
+    {
+      return { kttHelper.GetTuner().CreateConfiguration(GetKernelId(),
+        { { "blockSizeX", static_cast<uint64_t>(64) },
+          { "blockSizeY", static_cast<uint64_t>(2) } }) };
+    }
+
     bool IsSimilarTo(const TunableStrategy &) const override
     {
       // auto &o = dynamic_cast<const Strategy2 &>(other);
@@ -247,10 +263,7 @@ namespace {// to avoid poluting
         interface.RunKernelAsync(definitionId, interface.GetAllQueues().at(0), gridDim, blockDim);
       });
 
-      auto tmpBestConfig = tuner.CreateConfiguration(kernelId,
-        { { "blockSizeX", static_cast<uint64_t>(64) },
-          { "blockSizeY", static_cast<uint64_t>(2) } });
-      ExecuteKernel(kernelId, tmpBestConfig);
+      ExecuteKernel(kernelId);
 
       return true;
     };

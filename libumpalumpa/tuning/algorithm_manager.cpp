@@ -35,6 +35,7 @@ void AlgorithmManager::Register(TunableStrategy &strat)
       group.strategies.push_back(&strat);
       spdlog::debug("As equal to strategy {0}", reinterpret_cast<size_t>(group.leader.get()));
       strat.AllowTuningStrategyGroup();
+      strat.groupLeader = group.leader.get();
       return;
     }
   }
@@ -44,6 +45,7 @@ void AlgorithmManager::Register(TunableStrategy &strat)
     if (group.leader->IsSimilarTo(strat)) {
       group.strategies.push_back(&strat);
       spdlog::debug("As similar to strategy {0}", reinterpret_cast<size_t>(group.leader.get()));
+      strat.groupLeader = group.leader.get();
       return;
     }
   }
@@ -52,6 +54,9 @@ void AlgorithmManager::Register(TunableStrategy &strat)
   strategyGroups.emplace_back(strat).strategies.push_back(&strat);
   // First strategy in a new group can tune the group
   strat.AllowTuningStrategyGroup();
+  auto &group = strategyGroups.back();
+  strat.groupLeader = group.leader.get();
+  group.leader->SetBestConfigurations(strat.GetDefaultConfigurations());
 }
 
 void AlgorithmManager::Unregister(TunableStrategy &strat)
@@ -84,21 +89,23 @@ void AlgorithmManager::Cleanup()
   strategyGroups.clear();
 }
 
-// ktt::KernelConfiguration AlgorithmManager::GetBestConfiguration(size_t stratHash)
-// {
-//   std::lock_guard lck(mutex);
-//
-//   // FIXME refactor
-//   for (auto &stratGroup : strategies) {
-//     for (auto s : stratGroup) {
-//       if (s->GetHash() == stratHash) { return s->GetBestConfiguration(); }
-//     }
-//   }
-//
-//   // TODO Access DB
-//
-//   return {};// or throw?
-// }
+const std::vector<ktt::KernelConfiguration> &AlgorithmManager::GetBestConfigurations(
+  size_t stratHash)
+{
+  std::lock_guard lck(mutex);
+
+  // Assuming that only Strategy that is currently registered in the AlgorithmManager can ask for
+  // the best configuration
+  for (auto &group : strategyGroups) {
+    for (auto s : group.strategies) {
+      if (s->GetHash() == stratHash) { return group.leader->GetBestConfigurations(); }
+    }
+  }
+
+  spdlog::warn("There is no configuration for a strategy with the hash {0}", stratHash);
+  throw std::invalid_argument("");
+  // return {};
+}
 
 }// namespace umpalumpa::algorithm
 

@@ -3,6 +3,7 @@
 #include <libumpalumpa/tuning/ktt_helper.hpp>
 #include <libumpalumpa/tuning/ktt_base.hpp>
 #include <libumpalumpa/tuning/tunable_strategy.hpp>
+#include <libumpalumpa/tuning/strategy_group.hpp>
 #include <thread>
 
 using namespace umpalumpa;
@@ -65,10 +66,8 @@ public:
   }
 
   size_t GetHash() const override { return 0; }
-  std::unique_ptr<TunableStrategy> CreateLeader() const override
-  {
-    return std::unique_ptr<TunableStrategy>();
-  }
+  std::vector<ktt::KernelConfiguration> GetDefaultConfigurations() const override { return { {} }; }
+  std::unique_ptr<Leader> CreateLeader() const override { return std::unique_ptr<Leader>(nullptr); }
   bool IsSimilarTo(const TunableStrategy &) const override { return false; }
 
   std::vector<ktt::KernelDefinitionId> testDefinitionIds;

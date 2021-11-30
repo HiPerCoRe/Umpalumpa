@@ -21,10 +21,19 @@ namespace {// to avoid poluting
     // FIXME  this should be tuned by the KTT
 
     size_t GetHash() const override { return 0; }
-    std::unique_ptr<TunableStrategy> CreateLeader() const override
+
+    std::unique_ptr<algorithm::Leader> CreateLeader() const override
     {
       return algorithm::StrategyGroup::CreateLeader(*this, alg);
     }
+
+    std::vector<ktt::KernelConfiguration> GetDefaultConfigurations() const override
+    {
+      return { kttHelper.GetTuner().CreateConfiguration(GetKernelId(),
+        { { "blockSizeX", static_cast<uint64_t>(32) },
+          { "blockSizeY", static_cast<uint64_t>(8) } }) };
+    }
+
     bool IsSimilarTo(const TunableStrategy &) const override
     {
       // auto &o = dynamic_cast<const Strategy1 &>(other);
@@ -142,10 +151,8 @@ namespace {// to avoid poluting
         interface.RunKernelAsync(definitionId, interface.GetAllQueues().at(0), gridDim, blockDim);
       });
 
-      auto tmpBestConfig = tuner.CreateConfiguration(kernelId,
-        { { "blockSizeX", static_cast<uint64_t>(32) },
-          { "blockSizeY", static_cast<uint64_t>(8) } });
-      ExecuteKernel(kernelId, tmpBestConfig);
+      ExecuteKernel(kernelId);
+
       return true;
     };
   };

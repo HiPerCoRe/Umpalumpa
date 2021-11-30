@@ -1,4 +1,6 @@
 #include <libumpalumpa/tuning/tunable_strategy.hpp>
+#include <libumpalumpa/tuning/strategy_group.hpp>
+#include <libumpalumpa/system_includes/spdlog.hpp>
 
 namespace umpalumpa::algorithm {
 
@@ -28,7 +30,15 @@ std::string TunableStrategy::GetFullName() const { return typeid(*this).name(); 
 
 ktt::KernelConfiguration TunableStrategy::GetBestConfiguration(ktt::KernelId kernelId) const
 {
-  return kttHelper.GetTuner().GetBestConfiguration(kernelId);
+  return GetBestConfigurations().at(GetKernelIndex(kernelId));
+}
+
+const std::vector<ktt::KernelConfiguration> &TunableStrategy::GetBestConfigurations() const
+{
+  if (groupLeader != nullptr) { return groupLeader->GetBestConfigurations(); }
+  throw std::logic_error(
+    "You are trying to access StrategyGroup Leader from a strategy that does not belong to any "
+    "StrategyGroup!");
 }
 
 bool TunableStrategy::ShouldBeTuned(ktt::KernelId kernelId) const
@@ -45,13 +55,12 @@ bool TunableStrategy::ShouldBeTuned(ktt::KernelId kernelId) const
   }
 }
 
-void TunableStrategy::ExecuteKernel(ktt::KernelId kernelId,
-  const ktt::KernelConfiguration &TMP) const
+void TunableStrategy::ExecuteKernel(ktt::KernelId kernelId) const
 {
   if (canTuneStrategyGroup && ShouldBeTuned(kernelId)) {
     RunTuning(kernelId);
   } else {
-    RunBestConfiguration(kernelId, TMP);
+    RunBestConfiguration(kernelId);
   }
 }
 
@@ -68,16 +77,9 @@ void TunableStrategy::RunTuning(ktt::KernelId kernelId) const
   // TODO run should be blocking while tuning -> need change in the KernelLauncher
 }
 
-void TunableStrategy::RunBestConfiguration(ktt::KernelId kernelId,
-  const ktt::KernelConfiguration &TMP) const
+void TunableStrategy::RunBestConfiguration(ktt::KernelId kernelId) const
 {
-  auto &tuner = kttHelper.GetTuner();
-  // TODO GetBestConfiguration can be used once the KTT is able to synchronize
-  // the best configuration from multiple KTT instances, or loads the best
-  // configuration from previous runs
-  // auto bestConfig = GetBestConfiguration(kernelId);
-  const auto &bestConfig = TMP;
-  tuner.Run(kernelId, bestConfig, {});
+  kttHelper.GetTuner().Run(kernelId, GetBestConfiguration(kernelId), {});
 }
 
 void TunableStrategy::Register()
