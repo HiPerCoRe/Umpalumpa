@@ -333,7 +333,7 @@ void FlexAlign<T>::GenerateClockArms(size_t index,
   }
 }
 
-template<typename T> DataType FlexAlign<T>::GetDataType() const
+template<typename T> constexpr DataType FlexAlign<T>::GetDataType() const
 {
   if (std::is_same<T, float>::value) {
     return DataType::kFloat;
@@ -343,7 +343,7 @@ template<typename T> DataType FlexAlign<T>::GetDataType() const
   return DataType::kVoid;// unsupported
 }
 
-template<typename T> DataType FlexAlign<T>::GetComplexDataType() const
+template<typename T> constexpr DataType FlexAlign<T>::GetComplexDataType() const
 {
   if (std::is_same<T, float>::value) {
     return DataType::kComplexFloat;
