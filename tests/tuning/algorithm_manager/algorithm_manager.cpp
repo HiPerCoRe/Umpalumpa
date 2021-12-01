@@ -51,11 +51,11 @@ public:
     }
     std::unique_ptr<Leader> CreateLeader() const override
     {
-      // auto *ptr = new Leader<MockStrategy>(*this, alg);
-      // EXPECT_CALL(*ptr, GetHash()).WillRepeatedly(Return(mockHash));
-      // EXPECT_CALL(*ptr, IsSimilarTo).WillRepeatedly(Return(mockSimilar));
-      // return std::unique_ptr<StrategyGroup::InternalLeader<MockStrategy>>(ptr);
-      return StrategyGroup::CreateLeader(*this, alg);
+      auto uPtr = StrategyGroup::CreateLeader(*this, alg);
+      auto *ptr = dynamic_cast<MockStrategy *>(uPtr.get());// this can't fail
+      EXPECT_CALL(*ptr, GetHash()).WillRepeatedly(Return(mockHash));
+      EXPECT_CALL(*ptr, IsSimilarTo).WillRepeatedly(Return(mockSimilar));
+      return uPtr;
     }
     // Needed because of creation of a Leader strategy from the MockStrategy
     size_t mockHash = 0;
