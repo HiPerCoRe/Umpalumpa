@@ -17,18 +17,25 @@ namespace {// to avoid poluting
     std::vector<AFFT *> &algs;
   };
 
+  struct CodeletArgs
+  {
+    data::Payload<data::FourierDescriptor> out;
+    data::Payload<data::FourierDescriptor> in;
+    std::vector<AFFT *> *algs;
+  };
+
   void Codelet(void *buffers[], void *func_arg)
   {
     using umpalumpa::utils::StarPUUtils;
-    auto *args = reinterpret_cast<Args *>(func_arg);
+    auto *args = reinterpret_cast<CodeletArgs *>(func_arg);
 
-    auto pOut = StarPUUtils::Assemble(args->out.GetData(), StarPUUtils::ReceivePDPtr(buffers[0]));
+    auto pOut = StarPUUtils::Assemble(args->out, StarPUUtils::ReceivePDPtr(buffers[0]));
     auto out = AFFT::OutputData(pOut);
 
-    auto pIn = StarPUUtils::Assemble(args->in.GetData(), StarPUUtils::ReceivePDPtr(buffers[1]));
+    auto pIn = StarPUUtils::Assemble(args->in, StarPUUtils::ReceivePDPtr(buffers[1]));
     auto in = AFFT::InputData(pIn);
 
-    auto &alg = args->algs.at(static_cast<size_t>(starpu_worker_get_id()));
+    auto &alg = args->algs->at(static_cast<size_t>(starpu_worker_get_id()));
     std::ignore = alg->Execute(out, in);// we have no way of comunicate the result
     alg->Synchronize();// this codelet is run asynchronously, but we have to wait till it's done
                        // to be able to use starpu task synchronization properly
@@ -137,13 +144,22 @@ bool FFTStarPU::ExecuteImpl(const OutputData &out, const InputData &in)
   // we need at least one initialized worker, otherwise mask would be 0 and all workers
   // would be used
   if (noOfInitWorkers < 1) return false;
-  taskQueue.emplace(starpu_task_create());
-  auto *task = taskQueue.back();
+
+  auto CreateArgs = [this, &out, &in]() {
+    auto *a = reinterpret_cast<CodeletArgs *>(malloc(sizeof(CodeletArgs)));
+    a->algs = &this->algs;
+    memcpy(reinterpret_cast<void*>(&a->out), &out.GetData(), sizeof(a->out));
+    memcpy(reinterpret_cast<void*>(&a->in), &in.GetData(), sizeof(a->in));
+    return a;
+  };
+
+  auto *task = taskQueue.emplace(starpu_task_create());
   task->handles[0] = *StarPUUtils::GetHandle(out.GetData().dataInfo);
   task->handles[1] = *StarPUUtils::GetHandle(in.GetData().dataInfo);
   task->workerids = utils::StarPUUtils::CreateWorkerMask(task->workerids_len, algs);
-  task->cl_arg = new Args{ out, in, this->GetSettings(), algs };// FIXME memory leak
-  task->cl_arg_size = sizeof(Args);
+  task->cl_arg = CreateArgs();
+  task->cl_arg_size = sizeof(CodeletArgs);
+  task->cl_arg_free = 1;
   // make sure we free the mask
   task->callback_func = [](void *) { /* empty on purpose */ };
   task->callback_arg = task->workerids;
