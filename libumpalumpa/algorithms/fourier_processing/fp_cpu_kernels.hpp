@@ -23,7 +23,6 @@ void scaleFFT2DCPU(const T2 *__restrict__ in,
         size_t oIndex = n * outSize.single + y * outSize.x + x;
         out[oIndex] = in[iIndex];
         if (applyFilter) { out[oIndex] *= filter[y * outSize.x + x]; }
-        if (x == 0 || y == 0) { out[oIndex] = { 0, 0 }; }
         if (normalize) { out[oIndex] *= normFactor; }
         if (center) {
           out[oIndex] *= static_cast<T>(1 - 2 * ((static_cast<int>(x) + static_cast<int>(y)) & 1));

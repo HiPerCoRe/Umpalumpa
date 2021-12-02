@@ -29,14 +29,14 @@ public:
   {
     // get rid of any previous state
     this->Cleanup();
-    // test that input is not complete garbage
-    if (!this->IsValid(out, in, s)) { return false; };
-    // store information about init
+    // create reference payloads without data
     this->emptyOutputPayloads = std::make_unique<OPC>(out.CopyWithoutData());
     this->outputRef = std::make_unique<OutputData>(*emptyOutputPayloads);
     this->emptyInputPayloads = std::make_unique<IPC>(in.CopyWithoutData());
     this->inputRef = std::make_unique<InputData>(*emptyInputPayloads);
     this->settings = std::make_unique<Settings>(s);
+    // test that input is not complete garbage
+    if (!this->IsValid(*outputRef, *inputRef, s)) { return false; };
     // check if we have working implementation
     if (this->InitImpl()) {
       this->isInitialized = true;
@@ -48,12 +48,13 @@ public:
   }
 
   /**
-   * Execute this algorithm.
+   * Execute this Algorithm.
    * Execution can happen only if:
-   *  - the algorithm has been already successfuly initialized
+   *  - the Algorithm has been already successfuly initialized
    *  - the output and input data are similar, except for the N
    *  - the output and input data are valid
    *  - the output and input data do not break additional requirements
+   * Notice that Algorithm itself decides if the input / output data are valid
    * Derived classes can override ExecuteImpl if they require different behavior.
    **/
   [[nodiscard]] bool Execute(const OutputData &out, const InputData &in)

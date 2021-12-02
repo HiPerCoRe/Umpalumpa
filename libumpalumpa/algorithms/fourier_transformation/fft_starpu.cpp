@@ -8,9 +8,12 @@ namespace umpalumpa::fourier_transformation {
 namespace {// to avoid poluting
   struct Args
   {
-    const AFFT::OutputData &out;
-    const AFFT::InputData &in;
-    const Settings &settings;
+    // we need to store local copies of the wrappers
+    // as references might not be valid by the time the codelet is executed
+    // FIXME this has to be refactored properly to work with MPI
+    const AFFT::OutputData out;
+    const AFFT::InputData in;
+    const Settings settings;
     std::vector<AFFT *> &algs;
   };
 

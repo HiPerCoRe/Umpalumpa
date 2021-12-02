@@ -9,9 +9,12 @@ namespace {// to avoid poluting
 
   struct Args
   {
-    const AFP::OutputData &out;
-    const AFP::InputData &in;
-    const Settings &settings;
+    // we need to store local copies of the wrappers
+    // as references might not be valid by the time the codelet is executed
+    // FIXME this has to be refactored properly to work with MPI
+    const AFP::OutputData out;
+    const AFP::InputData in;
+    const Settings settings;
     std::vector<std::unique_ptr<AFP>> &algs;
   };
 
@@ -67,8 +70,7 @@ bool FPStarPU::InitImpl()
   algs.resize(starpu_worker_get_count());
   Args args = { out, in, s, algs };
   starpu_execute_on_each_worker(CpuInit, &args, STARPU_CPU);
-  starpu_execute_on_each_worker(
-    CudaInit, &args, STARPU_CUDA);
+  starpu_execute_on_each_worker(CudaInit, &args, STARPU_CUDA);
   noOfInitWorkers =
     std::count_if(algs.begin(), algs.end(), [](const auto &i) { return i != nullptr; });
   auto level = (0 == noOfInitWorkers) ? spdlog::level::warn : spdlog::level::info;
@@ -86,9 +88,8 @@ bool FPStarPU::ExecuteImpl(const OutputData &out, const InputData &in)
   task->handles[0] = *StarPUUtils::GetHandle(out.GetData().dataInfo);
   task->handles[1] = *StarPUUtils::GetHandle(in.GetData().dataInfo);
   task->handles[2] = *StarPUUtils::GetHandle(in.GetFilter().dataInfo);
-  task->workerids = utils::StarPUUtils::CreateWorkerMask(task->workerids_len,
-    algs);
-  task->cl_arg = new Args{ out, in, this->GetSettings(), algs }; // FIXME memory leak
+  task->workerids = utils::StarPUUtils::CreateWorkerMask(task->workerids_len, algs);
+  task->cl_arg = new Args{ out, in, this->GetSettings(), algs };// FIXME memory leak
   task->cl_arg_size = sizeof(Args);
   // make sure we free the mask
   task->callback_func = [](void *) { /* empty on purpose */ };

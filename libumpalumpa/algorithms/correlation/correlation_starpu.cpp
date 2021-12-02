@@ -8,9 +8,12 @@ namespace umpalumpa::correlation {
 namespace {// to avoid poluting
   struct Args
   {
-    const ACorrelation::OutputData &out;
-    const ACorrelation::InputData &in;
-    const Settings &settings;
+    // we need to store local copies of the wrappers
+    // as references might not be valid by the time the codelet is executed
+    // FIXME this has to be refactored properly to work with MPI
+    const ACorrelation::OutputData out;
+    const ACorrelation::InputData in;
+    const Settings settings;
     std::vector<ACorrelation *> &algs;
   };
 
