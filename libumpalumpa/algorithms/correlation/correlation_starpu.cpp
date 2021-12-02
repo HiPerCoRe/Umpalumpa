@@ -17,20 +17,28 @@ namespace {// to avoid poluting
     std::vector<ACorrelation *> &algs;
   };
 
+    struct CodeletArgs
+  {
+    data::Payload<data::FourierDescriptor> out;
+    data::Payload<data::FourierDescriptor> in1;
+    data::Payload<data::FourierDescriptor> in2;
+    std::vector<ACorrelation *> *algs;
+  };
+
   void Codelet(void *buffers[], void *func_arg)
   {
     using umpalumpa::utils::StarPUUtils;
-    auto *args = reinterpret_cast<Args *>(func_arg);
+    auto *args = reinterpret_cast<CodeletArgs *>(func_arg);
 
     auto pOut =
-      StarPUUtils::Assemble(args->out.GetCorrelations(), StarPUUtils::ReceivePDPtr(buffers[0]));
+      StarPUUtils::Assemble(args->out, StarPUUtils::ReceivePDPtr(buffers[0]));
     auto out = ACorrelation::OutputData(pOut);
 
-    auto pData1 = StarPUUtils::Assemble(args->in.GetData1(), StarPUUtils::ReceivePDPtr(buffers[1]));
-    auto pData2 = StarPUUtils::Assemble(args->in.GetData2(), StarPUUtils::ReceivePDPtr(buffers[2]));
+    auto pData1 = StarPUUtils::Assemble(args->in1, StarPUUtils::ReceivePDPtr(buffers[1]));
+    auto pData2 = StarPUUtils::Assemble(args->in2, StarPUUtils::ReceivePDPtr(buffers[2]));
     auto in = ACorrelation::InputData(pData1, pData2);
 
-    auto &alg = args->algs.at(static_cast<size_t>(starpu_worker_get_id()));
+    auto &alg = args->algs->at(static_cast<size_t>(starpu_worker_get_id()));
     std::ignore = alg->Execute(out, in);// we have no way of comunicate the result
     alg->Synchronize();// this codelet is run asynchronously, but we have to wait till it's done
                        // to be able to use starpu task synchronization properly
@@ -134,14 +142,24 @@ bool Correlation_StarPU::ExecuteImpl(const OutputData &out, const InputData &in)
   // we need at least one initialized worker, otherwise mask would be 0 and all workers
   // would be used
   if (noOfInitWorkers < 1) return false;
-  taskQueue.emplace(starpu_task_create());
-  auto *task = taskQueue.back();
+
+  auto CreateArgs = [this, &out, &in]() {
+    auto *a = reinterpret_cast<CodeletArgs *>(malloc(sizeof(CodeletArgs)));
+    a->algs = &this->algs;
+    memcpy(reinterpret_cast<void*>(&a->out), &out.GetCorrelations(), sizeof(a->out));
+    memcpy(reinterpret_cast<void*>(&a->in1), &in.GetData1(), sizeof(a->in1));
+    memcpy(reinterpret_cast<void*>(&a->in2), &in.GetData2(), sizeof(a->in2));
+    return a;
+  };
+
+  auto *task = taskQueue.emplace(starpu_task_create());
   task->handles[0] = *StarPUUtils::GetHandle(out.GetCorrelations().dataInfo);
   task->handles[1] = *StarPUUtils::GetHandle(in.GetData1().dataInfo);
   task->handles[2] = *StarPUUtils::GetHandle(in.GetData2().dataInfo);
   task->workerids = utils::StarPUUtils::CreateWorkerMask(task->workerids_len, algs);
-  task->cl_arg = new Args{ out, in, this->GetSettings(), algs };// FIXME memory leak
-  task->cl_arg_size = sizeof(Args);
+  task->cl_arg = CreateArgs();
+  task->cl_arg_size = sizeof(CodeletArgs);
+  task->cl_arg_free = 1;
   // make sure we free the mask
   task->callback_func = [](void *) { /* empty on purpose */ };
   task->callback_arg = task->workerids;
