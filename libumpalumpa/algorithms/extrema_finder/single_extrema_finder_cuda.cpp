@@ -17,6 +17,20 @@ namespace {// to avoid poluting
     static constexpr auto kRefineLocation = "RefineLocation";
 
     size_t GetHash() const override { return 0; }
+    bool IsEqualTo(const TunableStrategy &ref) const override
+    {
+      bool equal = true;
+      // TODO move try-catch somewhere else
+      try {
+        auto &refStrat = dynamic_cast<const Strategy1 &>(ref);
+        equal = equal && GetOutputRef().IsEquivalentTo(refStrat.GetOutputRef());
+        equal = equal && GetInputRef().IsEquivalentTo(refStrat.GetInputRef());
+        equal = equal && GetSettings().IsEquivalentTo(refStrat.GetSettings());
+      } catch (std::bad_cast &) {
+        equal = false;
+      }
+      return equal;
+    }
 
     std::unique_ptr<algorithm::Leader> CreateLeader() const override
     {
@@ -149,6 +163,20 @@ namespace {// to avoid poluting
     static constexpr auto kFindMaxRect = "findMaxRect";
 
     size_t GetHash() const override { return 0; }
+    bool IsEqualTo(const TunableStrategy &ref) const override
+    {
+      bool equal = true;
+      // TODO move try-catch somewhere else
+      try {
+        auto &refStrat = dynamic_cast<const Strategy2 &>(ref);
+        equal = equal && GetOutputRef().IsEquivalentTo(refStrat.GetOutputRef());
+        equal = equal && GetInputRef().IsEquivalentTo(refStrat.GetInputRef());
+        equal = equal && GetSettings().IsEquivalentTo(refStrat.GetSettings());
+      } catch (std::bad_cast &) {
+        equal = false;
+      }
+      return equal;
+    }
 
     std::unique_ptr<algorithm::Leader> CreateLeader() const override
     {

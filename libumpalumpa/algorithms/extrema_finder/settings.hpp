@@ -18,6 +18,12 @@ public:
     : type(t), location(l), result(r), precision(p)
   {}
 
+  bool IsEquivalentTo(const Settings &ref) const
+  {
+    return type == ref.type && location == ref.location && result == ref.result
+           && precision == ref.precision;
+  }
+
   auto GetType() const { return type; }
 
   auto GetLocation() const { return location; }

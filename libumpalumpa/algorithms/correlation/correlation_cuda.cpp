@@ -34,6 +34,21 @@ namespace {// to avoid poluting
           { "TILE", static_cast<uint64_t>(8) } }) };
     }
 
+    bool IsEqualTo(const TunableStrategy &ref) const override
+    {
+      bool equal = true;
+      // TODO move try-catch somewhere else
+      try {
+        auto &refStrat = dynamic_cast<const Strategy1 &>(ref);
+        equal = equal && GetOutputRef().IsEquivalentTo(refStrat.GetOutputRef());
+        equal = equal && GetInputRef().IsEquivalentTo(refStrat.GetInputRef());
+        equal = equal && GetSettings().IsEquivalentTo(refStrat.GetSettings());
+      } catch (std::bad_cast &) {
+        equal = false;
+      }
+      return equal;
+    }
+
     bool IsSimilarTo(const TunableStrategy &ref) const override
     {
       bool similar = false;

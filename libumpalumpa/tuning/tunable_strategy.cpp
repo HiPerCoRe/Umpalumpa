@@ -21,6 +21,7 @@ TunableStrategy::~TunableStrategy()
   }
 }
 
+// This version is currently unused, might be removed later
 bool TunableStrategy::IsEqualTo(const TunableStrategy &ref) const
 {
   return GetHash() == ref.GetHash();
