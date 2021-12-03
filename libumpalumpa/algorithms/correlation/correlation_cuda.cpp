@@ -37,12 +37,18 @@ namespace {// to avoid poluting
     bool IsEqualTo(const TunableStrategy &ref) const override
     {
       bool equal = true;
-      // TODO move try-catch somewhere else
       try {
         auto &refStrat = dynamic_cast<const Strategy1 &>(ref);
         equal = equal && GetOutputRef().IsEquivalentTo(refStrat.GetOutputRef());
         equal = equal && GetInputRef().IsEquivalentTo(refStrat.GetInputRef());
         equal = equal && GetSettings().IsEquivalentTo(refStrat.GetSettings());
+        // Size.n has to be also equal for true equality
+        equal = equal
+                && GetInputRef().GetData1().info.GetSize().n
+                     == refStrat.GetInputRef().GetData1().info.GetSize().n;
+        equal = equal
+                && GetInputRef().GetData2().info.GetSize().n
+                     == refStrat.GetInputRef().GetData2().info.GetSize().n;
       } catch (std::bad_cast &) {
         equal = false;
       }
@@ -51,17 +57,13 @@ namespace {// to avoid poluting
 
     bool IsSimilarTo(const TunableStrategy &ref) const override
     {
-      bool similar = false;
-      // TODO move try-catch somewhere else
+      bool similar = true;
       try {
-        // FIXME refactor
         auto &refStrat = dynamic_cast<const Strategy1 &>(ref);
-        auto refSize1 = refStrat.GetInputRef().GetData1().info.GetSize();
-        auto thisSize1 = GetInputRef().GetData1().info.GetSize();
-        auto refSize2 = refStrat.GetInputRef().GetData2().info.GetSize();
-        auto thisSize2 = GetInputRef().GetData2().info.GetSize();
-        // NOTE for testing size equivalence means similarity
-        similar = thisSize1.IsEquivalentTo(refSize1) && thisSize2.IsEquivalentTo(refSize2);
+        similar = similar && GetOutputRef().IsEquivalentTo(refStrat.GetOutputRef());
+        similar = similar && GetInputRef().IsEquivalentTo(refStrat.GetInputRef());
+        similar = similar && GetSettings().IsEquivalentTo(refStrat.GetSettings());
+        // Using naive similarity: same as equality except for ignoring Size.n
         // TODO real similarity check
       } catch (std::bad_cast &) {
         similar = false;

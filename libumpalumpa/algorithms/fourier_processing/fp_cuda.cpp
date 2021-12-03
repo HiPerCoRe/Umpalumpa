@@ -37,23 +37,35 @@ namespace {// to avoid poluting
     bool IsEqualTo(const TunableStrategy &ref) const override
     {
       bool equal = true;
-      // TODO move try-catch somewhere else
       try {
         auto &refStrat = dynamic_cast<const Strategy1 &>(ref);
         equal = equal && GetOutputRef().IsEquivalentTo(refStrat.GetOutputRef());
         equal = equal && GetInputRef().IsEquivalentTo(refStrat.GetInputRef());
         equal = equal && GetSettings().IsEquivalentTo(refStrat.GetSettings());
+        // Size.n has to be also equal for true equality
+        equal = equal
+                && GetInputRef().GetData().info.GetSize().n
+                     == refStrat.GetInputRef().GetData().info.GetSize().n;
       } catch (std::bad_cast &) {
         equal = false;
       }
       return equal;
     }
 
-    bool IsSimilarTo(const TunableStrategy &) const override
+    bool IsSimilarTo(const TunableStrategy &ref) const override
     {
-      // auto &o = dynamic_cast<const Strategy1 &>(other);
-      // TODO real similarity check
-      return false;
+      bool similar = true;
+      try {
+        auto &refStrat = dynamic_cast<const Strategy1 &>(ref);
+        similar = similar && GetOutputRef().IsEquivalentTo(refStrat.GetOutputRef());
+        similar = similar && GetInputRef().IsEquivalentTo(refStrat.GetInputRef());
+        similar = similar && GetSettings().IsEquivalentTo(refStrat.GetSettings());
+        // Using naive similarity: same as equality except for ignoring Size.n
+        // TODO real similarity check
+      } catch (std::bad_cast &) {
+        similar = false;
+      }
+      return similar;
     }
 
     bool InitImpl() override
