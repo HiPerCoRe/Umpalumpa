@@ -26,6 +26,10 @@ namespace {// to avoid poluting
       return algorithm::StrategyGroup::CreateLeader(*this, alg);
     }
 
+    // FIXME this design might cause serious issues, while retrieving the correct configurations,
+    // when there is more than 1 optional kernel, the same goes to GetBestConfig of Leader. Works
+    // for now with all the current algorithms, but some changes or new algorithms might cause
+    // issues.
     std::vector<ktt::KernelConfiguration> GetDefaultConfigurations() const override
     {
       return { kttHelper.GetTuner().CreateConfiguration(GetKernelId(),

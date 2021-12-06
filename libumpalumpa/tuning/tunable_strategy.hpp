@@ -92,7 +92,7 @@ public:
   const std::vector<ktt::KernelConfiguration> &GetBestConfigurations() const override;
 
   // TODO move to private + Setter
-  const Leader *groupLeader = nullptr;
+  Leader *groupLeader = nullptr;
 
   /**
    * Sets a TuningApproach which controls how the strategy should be tuned.
@@ -123,7 +123,7 @@ protected:
   /**
    * Executes the specified kernel. Internally decides whether the strategy will be tuned or not.
    */
-  void ExecuteKernel(ktt::KernelId kernelId) const;
+  void ExecuteKernel(ktt::KernelId kernelId);
 
   // Can be moved to private
   /**
@@ -137,7 +137,7 @@ protected:
    * TODO IMPORTANT: This method assumes that it is being called from a critical section which locks
    * the KTT tuner.
    */
-  void RunTuning(ktt::KernelId kernelId) const;
+  ktt::KernelResult RunTuning(ktt::KernelId kernelId) const;
 
   // Can be moved to private
   /**
@@ -145,6 +145,12 @@ protected:
    * The call is non-blocking.
    */
   void RunBestConfiguration(ktt::KernelId kernelId) const;
+
+  /**
+   * If the tuning results are better, it saves them as the new best configuration of the specified
+   * kernel.
+   */
+  void SaveTuningToLeader(ktt::KernelId kernelId, const ktt::KernelResult &tuningResults);
 
   /**
    * Registers this strategy to the AlgorithmManager.

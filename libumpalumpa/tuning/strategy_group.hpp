@@ -1,6 +1,7 @@
 #pragma once
 #include <memory>
 #include <vector>
+#include <limits>
 #include <libumpalumpa/algorithms/basic_algorithm.hpp>
 #include <libumpalumpa/tuning/tunable_strategy.hpp>
 #include <libumpalumpa/tuning/ktt_strategy_base.hpp>
@@ -18,11 +19,31 @@ struct Leader : virtual public detail::TunableStrategyInterface
   virtual void SetBestConfigurations(const std::vector<ktt::KernelConfiguration> &configs)
   {
     bestConfigs = configs;
+    bestConfigTimes.resize(
+      bestConfigs.size(), std::numeric_limits<ktt::Nanoseconds>::max());// FIXME tmp
+  }
+
+  virtual void SetBestConfiguration(size_t kernelIndex, const ktt::KernelConfiguration &conf)
+  {
+    bestConfigs.at(kernelIndex) = conf;
+  }
+
+  // FIXME tmp
+  virtual void SetBestConfigTime(size_t kernelIndex, ktt::Nanoseconds time)
+  {
+    bestConfigTimes.at(kernelIndex) = time;
+  }
+
+  // FIXME tmp
+  virtual ktt::Nanoseconds GetBestConfigTime(size_t kernelIndex) const
+  {
+    return bestConfigTimes.at(kernelIndex);
   }
   // TODO add methods needed by the Leader class
 
 protected:
   std::vector<ktt::KernelConfiguration> bestConfigs;
+  std::vector<ktt::Nanoseconds> bestConfigTimes;// FIXME tmp
 };
 
 /**
