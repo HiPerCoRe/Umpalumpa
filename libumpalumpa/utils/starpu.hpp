@@ -14,8 +14,9 @@ namespace umpalumpa::utils {
 class StarPUUtils
 {
 public:
-  template<typename T> static data::Payload<T> Assemble(const data::Payload<T> &p, void *ptr)
+  template<typename T> static data::Payload<T> Assemble(const data::Payload<T> &p, void *buffer)
   {
+    auto *ptr = (p.dataInfo.GetBytes() == 0) ? nullptr : ReceivePDPtr(buffer);
     auto pd = data::PhysicalDescriptor(ptr,
       p.dataInfo.GetBytes(),
       p.dataInfo.GetType(),

@@ -17,7 +17,7 @@ namespace {// to avoid poluting
     std::vector<ACorrelation *> &algs;
   };
 
-    struct CodeletArgs
+  struct CodeletArgs
   {
     data::Payload<data::FourierDescriptor> out;
     data::Payload<data::FourierDescriptor> in1;
@@ -30,12 +30,11 @@ namespace {// to avoid poluting
     using umpalumpa::utils::StarPUUtils;
     auto *args = reinterpret_cast<CodeletArgs *>(func_arg);
 
-    auto pOut =
-      StarPUUtils::Assemble(args->out, StarPUUtils::ReceivePDPtr(buffers[0]));
+    auto pOut = StarPUUtils::Assemble(args->out, buffers[0]);
     auto out = ACorrelation::OutputData(pOut);
 
-    auto pData1 = StarPUUtils::Assemble(args->in1, StarPUUtils::ReceivePDPtr(buffers[1]));
-    auto pData2 = StarPUUtils::Assemble(args->in2, StarPUUtils::ReceivePDPtr(buffers[2]));
+    auto pData1 = StarPUUtils::Assemble(args->in1, buffers[1]);
+    auto pData2 = StarPUUtils::Assemble(args->in2, buffers[2]);
     auto in = ACorrelation::InputData(pData1, pData2);
 
     auto &alg = args->algs->at(static_cast<size_t>(starpu_worker_get_id()));
@@ -146,9 +145,9 @@ bool Correlation_StarPU::ExecuteImpl(const OutputData &out, const InputData &in)
   auto CreateArgs = [this, &out, &in]() {
     auto *a = reinterpret_cast<CodeletArgs *>(malloc(sizeof(CodeletArgs)));
     a->algs = &this->algs;
-    memcpy(reinterpret_cast<void*>(&a->out), &out.GetCorrelations(), sizeof(a->out));
-    memcpy(reinterpret_cast<void*>(&a->in1), &in.GetData1(), sizeof(a->in1));
-    memcpy(reinterpret_cast<void*>(&a->in2), &in.GetData2(), sizeof(a->in2));
+    memcpy(reinterpret_cast<void *>(&a->out), &out.GetCorrelations(), sizeof(a->out));
+    memcpy(reinterpret_cast<void *>(&a->in1), &in.GetData1(), sizeof(a->in1));
+    memcpy(reinterpret_cast<void *>(&a->in2), &in.GetData2(), sizeof(a->in2));
     return a;
   };
 

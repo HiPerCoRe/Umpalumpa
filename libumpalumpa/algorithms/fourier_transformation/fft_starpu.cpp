@@ -29,10 +29,10 @@ namespace {// to avoid poluting
     using umpalumpa::utils::StarPUUtils;
     auto *args = reinterpret_cast<CodeletArgs *>(func_arg);
 
-    auto pOut = StarPUUtils::Assemble(args->out, StarPUUtils::ReceivePDPtr(buffers[0]));
+    auto pOut = StarPUUtils::Assemble(args->out, buffers[0]);
     auto out = AFFT::OutputData(pOut);
 
-    auto pIn = StarPUUtils::Assemble(args->in, StarPUUtils::ReceivePDPtr(buffers[1]));
+    auto pIn = StarPUUtils::Assemble(args->in, buffers[1]);
     auto in = AFFT::InputData(pIn);
 
     auto &alg = args->algs->at(static_cast<size_t>(starpu_worker_get_id()));

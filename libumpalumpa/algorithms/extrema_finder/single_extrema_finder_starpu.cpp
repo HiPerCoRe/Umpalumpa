@@ -32,11 +32,11 @@ namespace {// to avoid poluting
     auto *args = reinterpret_cast<CodeletArgs *>(func_arg);
 
     // FIXME if handle points to the void interface, we access illegal memory
-    auto pVals = StarPUUtils::Assemble(args->vals, StarPUUtils::ReceivePDPtr(buffers[0]));
-    auto pLocs = StarPUUtils::Assemble(args->locs, StarPUUtils::ReceivePDPtr(buffers[1]));
+    auto pVals = StarPUUtils::Assemble(args->vals, buffers[0]);
+    auto pLocs = StarPUUtils::Assemble(args->locs, buffers[1]);
     auto out = AExtremaFinder::OutputData(pVals, pLocs);
 
-    auto pIn = StarPUUtils::Assemble(args->in, StarPUUtils::ReceivePDPtr(buffers[2]));
+    auto pIn = StarPUUtils::Assemble(args->in, buffers[2]);
     auto in = AExtremaFinder::InputData(pIn);
 
     auto &alg = args->algs->at(static_cast<size_t>(starpu_worker_get_id()));
