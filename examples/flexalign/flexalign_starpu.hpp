@@ -16,8 +16,10 @@ protected:
   //   const Size &cropSize) override;
 
   PhysicalDescriptor Create(size_t bytes, DataType type, bool tmp) const override;
+  PhysicalDescriptor CreatePD(size_t bytes, DataType type, bool copyInRAM) override;
 
   void Remove(const PhysicalDescriptor &pd) const override;
+  void RemovePD(const PhysicalDescriptor &pd) const override;
 
   AFFT &GetForwardFFTAlg() const override { return *forwardFFTAlg; }
 
@@ -27,11 +29,13 @@ protected:
 
   ACorrelation &GetCorrelationAlg() const override { return *corrAlg; }
 
-  AExtremaFinder &GetFindMaxAlg() const override { return *extremaFinderAlg;}
+  AExtremaFinder &GetFindMaxAlg() const override { return *extremaFinderAlg; }
 
   void Acquire(const PhysicalDescriptor &p) const override;
 
   void Release(const PhysicalDescriptor &p) const override;
+
+  void Synchronize() override;
 
 
 private:

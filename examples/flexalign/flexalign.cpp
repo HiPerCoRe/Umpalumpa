@@ -20,18 +20,19 @@ template<typename T> void FlexAlign<T>::Execute(const umpalumpa::data::Size &siz
 
   auto filter = CreatePayloadFilter(sizeSingleCrop);
 
-  auto images = std::vector<Payload<LogicalDescriptor>>();
-  images.reserve(sizeAll.n);
+  auto imgs = std::vector<Payload<LogicalDescriptor>>();
+  imgs.reserve(sizeAll.n);
+
   auto ffts = std::vector<Payload<FourierDescriptor>>();
   ffts.reserve(sizeAll.n);
 
-  auto imgCenter = Size(sizeSingle.x / 2, sizeSingle.y / 2, 1, 1);
-
   for (size_t j = 0; j < sizeAll.n; ++j) {
-    images.emplace_back(CreatePayloadImage(j, sizeSingle));
-    auto &img = images.at(j);
+    auto name = std::to_string(j);
+    auto &img = imgs.emplace_back(CreatePayloadImage(sizeSingle, name));
     GenerateClockArms(j, img, sizeCross, j, j);
-    ffts.emplace_back(ConvertToFFTAndCrop(j, img, filter));
+    auto fft = ConvertToFFT(img, name);
+    ffts.emplace_back(Crop(fft, filter, name));
+    RemovePD(fft.dataInfo);
     for (size_t i = 0; i < j; ++i) {
       auto correlation = Correlate(i, j, ffts.at(i), ffts.at(j));
       auto shift = FindMax(i, j, correlation);
@@ -42,62 +43,103 @@ template<typename T> void FlexAlign<T>::Execute(const umpalumpa::data::Size &siz
       // Since we cropped the image in the Fourier domain and performed IFFT, we performed
       // downscaling To get the rigth shift, we have to adjust the scale.
       auto normShift = Transform(shift, scaleX, scaleY, sizeSingleCrop.x / 2, sizeSingleCrop.y / 2);
-      std::cout << "Shift of img " << i << " and " << j << " is [" << normShift.x << ", "
-                << normShift.y << "]\n";
+      LogResult(i, j, normShift);
     }
   }
-  // Release allocated data
-  for (const auto &p : ffts) { Remove(p.dataInfo); }
-  for (const auto &p : images) { Remove(p.dataInfo); }
-  Remove(filter.dataInfo);
+  Synchronize();
+  // Release allocated data. Payloads themselves don't need any extra handling
+  for (const auto &p : ffts) { RemovePD(p.dataInfo); }
+  for (const auto &p : imgs) { RemovePD(p.dataInfo); }
+  RemovePD(filter.dataInfo);
+}
+
+template<typename T> void FlexAlign<T>::LogResult(size_t i, size_t j, const Shift &shift)
+{
+  const auto expectedShift = static_cast<float>(j - i);
+  const auto maxDelta =
+    std::max(std::abs(shift.x - expectedShift), std::abs(shift.y - expectedShift));
+  const auto level = [maxDelta]() {
+    constexpr auto delta1 = 0.1f;
+    constexpr auto delta2 = 0.5f;
+    if (maxDelta < delta1) return spdlog::level::info;
+    if (maxDelta < delta2) return spdlog::level::warn;
+    return spdlog::level::err;
+  }();
+  spdlog::log(level,
+    "Shift of img {} and {} is [{}, {}] (expected [{}, {}])",
+    i,
+    j,
+    shift.x,
+    shift.y,
+    expectedShift,
+    expectedShift);
 }
 
 template<typename T>
-Payload<FourierDescriptor> FlexAlign<T>::ConvertToFFTAndCrop(size_t index,
-  Payload<LogicalDescriptor> &img,
-  Payload<LogicalDescriptor> &filter)
+Payload<FourierDescriptor> FlexAlign<T>::ConvertToFFT(const Payload<LogicalDescriptor> &img,
+  const std::string &name)
 {
   // Perform Fourier Transform
-  auto inFFT = CreatePayloadInFFT(index, img);
-  auto outFFT = CreatePayloadOutFFT(index, inFFT);
-  {
-    using namespace umpalumpa::fourier_transformation;
-    auto &alg = this->GetForwardFFTAlg();
-    auto in = AFFT::InputData(inFFT);
-    auto out = AFFT::OutputData(outFFT);
-    if (!alg.IsInitialized()) {
-      auto settings = Settings(Locality::kOutOfPlace, Direction::kForward);
-      if (!alg.Init(out, in, settings)) {
-        spdlog::error("Initialization of the FFT algorithm failed");
-      }
+  auto inFFT = [&img, &name]() {
+    auto ld = FourierDescriptor(img.info.GetSize(), img.info.GetPadding());
+    return Payload(ld, img.dataInfo.CopyWithPtr(img.GetPtr()), "FFT (in) " + name);
+  }();
+  auto outFFT = [&inFFT, &name, this]() {
+    auto ld = FourierDescriptor(inFFT.info.GetSize(),
+      inFFT.info.GetPadding(),
+      umpalumpa::data::FourierDescriptor::FourierSpaceDescriptor());
+    auto type = GetComplexDataType();
+    auto bytes = ld.Elems() * Sizeof(type);
+    // result of the FFT is only intermediary
+    return Payload(ld, CreatePD(bytes, type, false), "FFT (out) " + name);
+  }();
+  using namespace umpalumpa::fourier_transformation;
+  auto &alg = this->GetForwardFFTAlg();
+  auto in = AFFT::InputData(inFFT);
+  auto out = AFFT::OutputData(outFFT);
+  if (!alg.IsInitialized()) {
+    auto settings = Settings(Locality::kOutOfPlace, Direction::kForward);
+    if (!alg.Init(out, in, settings)) {
+      spdlog::error("Initialization of the FFT algorithm failed");
     }
-    // std::cout << "Executing FFT on image " << index << "\n";
-    if (!alg.Execute(out, in)) { spdlog::error("Execution of the FFT algorithm failed"); }
   }
-  // Perform crop
-  auto inCrop = CreatePayloadInCroppedFFT(index, outFFT);
-  auto outCrop = CreatePayloadOutCroppedFFT(index, filter.info.GetSize());
-  {
-    using namespace umpalumpa::fourier_processing;
-    using umpalumpa::fourier_transformation::Locality;
-    auto &alg = this->GetCropAlg();
-    auto in = AFP::InputData(inCrop, filter);
-    auto out = AFP::OutputData(outCrop);
-    if (!alg.IsInitialized()) {
-      auto settings = Settings(Locality::kOutOfPlace);
-      settings.SetApplyFilter(true);
-      settings.SetNormalize(true);
-      if (!alg.Init(out, in, settings)) {
-        spdlog::error("Initialization of the Crop algorithm failed");
-      }
-    }
-    // std::cout << "Executing Crop on image " << index << "\n";
-    if (!alg.Execute(out, in)) { spdlog::error("Execution of the Crop algorithm failed"); }
-  }
-  // NOTE up to here OK for sure, assuming normalization works correctly
+  if (!alg.Execute(out, in)) { spdlog::error("Execution of the FFT algorithm failed"); }
+  return outFFT;
+}
 
-  // Release temp data. Input FFT is just reused Payload and we need output Payload for later
-  Remove(outFFT.dataInfo);
+
+template<typename T>
+Payload<FourierDescriptor> FlexAlign<T>::Crop(const Payload<FourierDescriptor> &fft,
+  Payload<LogicalDescriptor> &filter,
+  const std::string &name)
+{
+  auto inCrop = [&fft, &name]() {
+    return Payload(fft.info, fft.dataInfo.CopyWithPtr(fft.GetPtr()), "Crop (in) " + name);
+  }();
+  auto outCrop = [&filter, &name, this]() {
+    auto ld = FourierDescriptor(filter.info.GetSize(),
+      umpalumpa::data::PaddingDescriptor(),
+      umpalumpa::data::FourierDescriptor::FourierSpaceDescriptor());
+    auto type = GetComplexDataType();
+    auto bytes = ld.Elems() * Sizeof(type);
+    // result of the crop is for long term storage
+    return Payload(ld, Create(bytes, type, false), "Crop (out) " + name);
+  }();
+  using namespace umpalumpa::fourier_processing;
+  using umpalumpa::fourier_transformation::Locality;
+  auto &alg = this->GetCropAlg();
+  auto in = AFP::InputData(inCrop, filter);
+  auto out = AFP::OutputData(outCrop);
+  if (!alg.IsInitialized()) {
+    auto settings = Settings(Locality::kOutOfPlace);
+    settings.SetApplyFilter(true);
+    settings.SetNormalize(true);
+    if (!alg.Init(out, in, settings)) {
+      spdlog::error("Initialization of the Crop algorithm failed");
+    }
+  }
+  // std::cout << "Executing Crop on image " << index << "\n";
+  if (!alg.Execute(out, in)) { spdlog::error("Execution of the Crop algorithm failed"); }
   return outCrop;
 }
 
@@ -145,11 +187,11 @@ typename FlexAlign<T>::Shift
     }
   }
 
-  Acquire(res);
+  Acquire(res.dataInfo);
   auto x = reinterpret_cast<float *>(res.GetPtr())[0];
   auto y = reinterpret_cast<float *>(res.GetPtr())[1];
   // std::cout << "FindMax correlation " << x << " and " << y << "\n";
-  Release(res);
+  Release(res.dataInfo);
   Remove(res.dataInfo);
   Remove(outCorrelation.dataInfo);
   Remove(empty.dataInfo);
@@ -222,25 +264,26 @@ Payload<FourierDescriptor> FlexAlign<T>::CreatePayloadOutCorrelation(size_t i,
 };
 
 template<typename T>
-Payload<LogicalDescriptor> FlexAlign<T>::CreatePayloadImage(size_t index, const Size &size)
+Payload<LogicalDescriptor> FlexAlign<T>::CreatePayloadImage(const Size &size,
+  const std::string &name)
 {
-  // std::cout << "Creating Payload for image " << index << "\n";
   auto ld = LogicalDescriptor(size);
   auto type = GetDataType();
   auto bytes = ld.Elems() * Sizeof(type);
-  return Payload(ld, Create(bytes, type, false), "Image " + std::to_string(index));
+  return Payload(ld, CreatePD(bytes, type, true), "Image " + name);
 };
 
 template<typename T> Payload<LogicalDescriptor> FlexAlign<T>::CreatePayloadFilter(const Size &size)
 {
-  // std::cout << "Creating Payload for filter\n";
   auto ld = LogicalDescriptor(size);
   auto type = GetDataType();
   auto bytes = ld.Elems() * Sizeof(type);
-  auto payload = Payload(ld, Create(bytes, type, false), "Filter");
+  auto payload = Payload(ld, CreatePD(bytes, type, true), "Filter");
   // fill the filter
+  Acquire(payload.dataInfo);
   auto start = reinterpret_cast<T *>(payload.GetPtr());
   std::fill(start, start + ld.GetSize().total, static_cast<T>(1));
+  Release(payload.dataInfo);
   return payload;
 };
 
@@ -265,7 +308,7 @@ Payload<FourierDescriptor> FlexAlign<T>::CreatePayloadOutFFT(size_t index,
   auto type = GetComplexDataType();
   auto bytes = ld.Elems() * Sizeof(type);
   // result of the FFT is only intermediary
-  return Payload(ld, Create(bytes, type, true), "FFT (in) " + std::to_string(index));
+  return Payload(ld, CreatePD(bytes, type, false), "FFT (in) " + std::to_string(index));
 };
 
 template<typename T>
@@ -321,6 +364,7 @@ void FlexAlign<T>::GenerateClockArms(size_t index,
   assert(posY + armSize.y < p.info.GetSize().y);
 
   auto &imgSize = p.info.GetSize();
+  Acquire(p.dataInfo);
   // draw vertical line
   for (size_t y = posY; y < posY + armSize.y; ++y) {
     size_t index = y * imgSize.x + posX;
@@ -331,6 +375,7 @@ void FlexAlign<T>::GenerateClockArms(size_t index,
     size_t index = posY * imgSize.x + x;
     reinterpret_cast<T *>(p.GetPtr())[index] = 1;
   }
+  Release(p.dataInfo);
 }
 
 template<typename T> constexpr DataType FlexAlign<T>::GetDataType() const

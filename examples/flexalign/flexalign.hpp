@@ -40,15 +40,6 @@ protected:
     Payload<LogicalDescriptor> &img,
     Payload<LogicalDescriptor> &filter);
 
-  /**
-   * Generate Payload representing a single image of given size.
-   **/
-  Payload<LogicalDescriptor> CreatePayloadImage(size_t index, const Size &size);
-
-  /**
-   * Create Payload representing a filter applied to the data
-   **/
-  Payload<LogicalDescriptor> CreatePayloadFilter(const Size &size);
 
   Payload<FourierDescriptor> CreatePayloadInFFT(size_t index,
     const Payload<LogicalDescriptor> &img);
@@ -83,31 +74,13 @@ protected:
    * If tmp is True, this data are not meant for long-term storage.
    **/
   virtual PhysicalDescriptor Create(size_t bytes, DataType type, bool tmp) const = 0;
+  virtual PhysicalDescriptor CreatePD(size_t bytes, DataType type, bool copyInRAM) = 0;
 
   /**
    * This method removes all data allocated by the Physical Descriptor
    **/
   virtual void Remove(const PhysicalDescriptor &pd) const = 0;
-
-  /**
-   * This method fetches data represented by the Payload to main RAM.
-   * Once not needed in RAM, data should be released.
-   **/
-  template<typename P> const Payload<P> &Acquire(const Payload<P> &p) const
-  {
-    Acquire(p.dataInfo);
-    return p;
-  }
-
-  /**
-   * This method release data represented by the Payload from main RAM.
-   * It has to be called once data fetched by Acquire are no longer needed.
-   **/
-  template<typename P> const Payload<P> &Release(const Payload<P> &p) const
-  {
-    Release(p.dataInfo);
-    return p;
-  };
+  virtual void RemovePD(const PhysicalDescriptor &pd) const = 0;
 
   /**
    * This method fetches data represented by the Physical Descriptor to main RAM.
@@ -120,7 +93,6 @@ protected:
    * It has to be called once data fetched by Acquire are no longer needed.
    **/
   virtual void Release(const PhysicalDescriptor &p) const = 0;
-
 
   constexpr DataType GetDataType() const;
 
@@ -135,6 +107,8 @@ protected:
   virtual AExtremaFinder &GetFindMaxAlg() const = 0;
 
   virtual ACorrelation &GetCorrelationAlg() const = 0;
+
+  virtual void Synchronize() = 0;
 
 private:
   /**
@@ -151,8 +125,47 @@ private:
    **/
   Shift Transform(const Shift &s, float scaleX, float scaleY, float shiftX, float shiftY)
   {
-    auto x = (s.x - shiftX) * scaleX;
-    auto y = (s.y - shiftY) * scaleY;
+    auto x = -(s.x - shiftX) * scaleX;
+    auto y = -(s.y - shiftY) * scaleY;
     return { x, y };
   }
+
+  /**
+   * Create Payload representing a filter applied to the data
+   **/
+  Payload<LogicalDescriptor> CreatePayloadFilter(const Size &size);
+
+  /**
+   * Generate Payload representing (multiple) image(s) of given size.
+   **/
+  Payload<LogicalDescriptor> CreatePayloadImage(const Size &size, const std::string &name);
+
+  Payload<FourierDescriptor> ConvertToFFT(const Payload<LogicalDescriptor> &img,
+    const std::string &name);
+
+  Payload<FourierDescriptor> Crop(const Payload<FourierDescriptor> &fft,
+    Payload<LogicalDescriptor> &filter,
+    const std::string &name);
+
+  void LogResult(size_t i, size_t j, const Shift &shift);
+
+  //   /**
+  //  * This method fetches data represented by the Payload to main RAM.
+  //  * Once not needed in RAM, data should be released.
+  //  **/
+  // template<typename P> const Payload<P> &Acquire(const Payload<P> &p) const
+  // {
+  //   Acquire(p.dataInfo);
+  //   return p;
+  // }
+
+  // /**
+  //  * This method release data represented by the Payload from main RAM.
+  //  * It has to be called once data fetched by Acquire are no longer needed.
+  //  **/
+  // template<typename P> const Payload<P> &Release(const Payload<P> &p) const
+  // {
+  //   Release(p.dataInfo);
+  //   return p;
+  // };
 };
