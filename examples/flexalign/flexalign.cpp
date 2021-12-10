@@ -5,6 +5,7 @@
 #include <type_traits>
 #include <libumpalumpa/utils/payload.hpp>
 #include <libumpalumpa/system_includes/spdlog.hpp>
+#include <future>
 
 template<typename T> void FlexAlign<T>::Execute(const umpalumpa::data::Size &sizeAll)
 {
@@ -26,6 +27,8 @@ template<typename T> void FlexAlign<T>::Execute(const umpalumpa::data::Size &siz
   auto ffts = std::vector<Payload<FourierDescriptor>>();
   ffts.reserve(sizeAll.n);
 
+  std::vector<std::future<std::string>> futures;
+
   for (size_t j = 0; j < sizeAll.n; ++j) {
     auto name = std::to_string(j);
     auto &img = imgs.emplace_back(CreatePayloadImage(sizeSingle, name));
@@ -34,19 +37,26 @@ template<typename T> void FlexAlign<T>::Execute(const umpalumpa::data::Size &siz
     ffts.emplace_back(Crop(fft, filter, name));
     RemovePD(fft.dataInfo);
     for (size_t i = 0; i < j; ++i) {
-      auto correlation = Correlate(i, j, ffts.at(i), ffts.at(j));
-      auto shift = FindMax(i, j, correlation);
-      Remove(correlation.dataInfo);
-      // reported shift is position in the 2D image, where center of that image
-      // has position [0, 0];
-      // To get the right shift, we need to shift by half of the cropped image
-      // Since we cropped the image in the Fourier domain and performed IFFT, we performed
-      // downscaling To get the rigth shift, we have to adjust the scale.
-      auto normShift = Transform(shift, scaleX, scaleY, sizeSingleCrop.x / 2, sizeSingleCrop.y / 2);
-      LogResult(i, j, normShift);
+      futures.emplace_back(std::async([i, j, &ffts, scaleX, scaleY, &sizeSingleCrop, this]() {
+        auto name = std::to_string(i) + " - " + std::to_string(j);
+        auto correlation = Correlate(ffts.at(i), ffts.at(j), name);
+        auto ifft = ConvertFromFFT(correlation, name);
+        RemovePD(correlation.dataInfo);
+        auto shift = FindMax(ifft, name);
+        RemovePD(ifft.dataInfo);
+        // reported shift is position in the 2D image, where center of that image
+        // has position [0, 0];
+        // To get the right shift, we need to shift by half of the cropped image
+        // Since we cropped the image in the Fourier domain and performed IFFT, we performed
+        // downscaling To get the rigth shift, we have to adjust the scale.
+        auto normShift =
+          Transform(shift, scaleX, scaleY, sizeSingleCrop.x / 2, sizeSingleCrop.y / 2);
+        LogResult(i, j, normShift);
+        return name;
+      }));
     }
   }
-  Synchronize();
+  for (auto &f : futures) { f.wait(); }
   // Release allocated data. Payloads themselves don't need any extra handling
   for (const auto &p : ffts) { RemovePD(p.dataInfo); }
   for (const auto &p : imgs) { RemovePD(p.dataInfo); }
@@ -144,35 +154,57 @@ Payload<FourierDescriptor> FlexAlign<T>::Crop(const Payload<FourierDescriptor> &
 }
 
 template<typename T>
-typename FlexAlign<T>::Shift
-  FlexAlign<T>::FindMax(size_t i, size_t j, Payload<FourierDescriptor> &correlation)
+Payload<FourierDescriptor> FlexAlign<T>::ConvertFromFFT(Payload<FourierDescriptor> &correlation,
+  const std::string &name)
 {
-  // perform inverse FFT
-  auto outCorrelation = CreatePayloadOutInverseFFT(i, j, correlation);
+  auto pOut = [&correlation, &name, this]() {
+    auto ld = FourierDescriptor(correlation.info.GetSpatialSize(), correlation.info.GetPadding());
+    auto type = GetDataType();
+    auto bytes = ld.Elems() * Sizeof(type);
+    return Payload(ld, CreatePD(bytes, type, false), "IFFT (out) " + name);
+  }();
+  using namespace umpalumpa::fourier_transformation;
+  auto &alg = this->GetInverseFFTAlg();
+  auto in = AFFT::InputData(correlation);
+  auto out = AFFT::OutputData(pOut);
   {
-    using namespace umpalumpa::fourier_transformation;
-    auto &alg = this->GetInverseFFTAlg();
-    auto in = AFFT::InputData(correlation);
-    auto out = AFFT::OutputData(outCorrelation);
+    std::lock_guard lock(mutex);
     if (!alg.IsInitialized()) {
       auto settings = Settings(Locality::kOutOfPlace, Direction::kInverse);
       if (!alg.Init(out, in, settings)) {
-        spdlog::error("Initialization of the FFT algorithm failed");
+        spdlog::error("Initialization of the IFFT algorithm failed");
       }
     }
-    // std::cout << "Executing inverse FFT on correlation " << i << " and " << j << "\n";
-    if (!alg.Execute(out, in)) { spdlog::error("Execution of the FFT algorithm failed"); }
   }
-  // find maxima
-  auto pIn = CreatePayloadMaxIn(i, j, outCorrelation);
+  if (!alg.Execute(out, in)) { spdlog::error("Execution of the IFFT algorithm failed"); }
+  return pOut;
+}
+
+template<typename T>
+typename FlexAlign<T>::Shift FlexAlign<T>::FindMax(Payload<FourierDescriptor> &outCorrelation,
+  const std::string &name)
+{
+  auto pIn = [&outCorrelation, &name]() {
+    auto ld = LogicalDescriptor(outCorrelation.info.GetSize(), outCorrelation.info.GetPadding());
+    return Payload(ld,
+      outCorrelation.dataInfo.CopyWithPtr(outCorrelation.GetPtr()),
+      "Location of Max (in) " + name);
+  }();
   auto empty =
-    Payload(LogicalDescriptor(Size(0, 0, 0, 0)), Create(0, DataType::kVoid, true), "Empty");
-  auto res = CreatePayloadLocMax(i, j, outCorrelation);
+    Payload(LogicalDescriptor(Size(0, 0, 0, 0)), CreatePD(0, DataType::kVoid, false), "Empty");
+  auto pOut = [&outCorrelation, &name, this]() {
+    auto type = DataType::kFloat;
+    auto size = Size(2, 1, 1, outCorrelation.info.GetSize().n);
+    auto ld = LogicalDescriptor(size);
+    auto bytes = ld.Elems() * Sizeof(type);
+    return Payload(ld, CreatePD(bytes, type, true), "Location of Max " + name);
+  }();
+  using namespace umpalumpa::extrema_finder;
+  auto &alg = this->GetFindMaxAlg();
+  auto in = AExtremaFinder::InputData(pIn);
+  auto out = AExtremaFinder::OutputData(empty, pOut);
   {
-    using namespace umpalumpa::extrema_finder;
-    auto &alg = this->GetFindMaxAlg();
-    auto in = AExtremaFinder::InputData(pIn);
-    auto out = AExtremaFinder::OutputData(empty, res);
+    std::lock_guard lock(mutex);
     if (!alg.IsInitialized()) {
       // FIXME search around center
       auto settings =
@@ -181,40 +213,40 @@ typename FlexAlign<T>::Shift
         spdlog::error("Initialization of the Extrema Finder algorithm failed");
       }
     }
-    // std::cout << "Finding maxima in correlation " << i << " and " << j << "\n";
-    if (!alg.Execute(out, in)) {
-      spdlog::error("Execution of the Extrema Finder algorithm failed");
-    }
   }
+  if (!alg.Execute(out, in)) { spdlog::error("Execution of the Extrema Finder algorithm failed"); }
 
-  Acquire(res.dataInfo);
-  auto x = reinterpret_cast<float *>(res.GetPtr())[0];
-  auto y = reinterpret_cast<float *>(res.GetPtr())[1];
+  Acquire(pOut.dataInfo);
+  auto x = reinterpret_cast<float *>(pOut.GetPtr())[0];
+  auto y = reinterpret_cast<float *>(pOut.GetPtr())[1];
   // std::cout << "FindMax correlation " << x << " and " << y << "\n";
-  Release(res.dataInfo);
-  Remove(res.dataInfo);
-  Remove(outCorrelation.dataInfo);
-  Remove(empty.dataInfo);
+  Release(pOut.dataInfo);
+  RemovePD(pOut.dataInfo);
+  RemovePD(empty.dataInfo);
   return { x, y };
 };
 
 template<typename T>
-Payload<FourierDescriptor> FlexAlign<T>::Correlate(size_t i,
-  size_t j,
-  Payload<FourierDescriptor> &first,
-  Payload<FourierDescriptor> &second)
+Payload<FourierDescriptor> FlexAlign<T>::Correlate(Payload<FourierDescriptor> &first,
+  Payload<FourierDescriptor> &second,
+  const std::string &name)
 {
   using namespace umpalumpa::correlation;
-  // std::cout << "Correlate img " << i << " and " << j << "\n";
-
-  auto pOut = CreatePayloadOutCorrelation(i, j, first);
+  auto pOut = [&first, &name, this]() {
+    return Payload(first.info,
+      CreatePD(first.dataInfo.GetBytes(), first.dataInfo.GetType(), false),
+      "Correlation of " + name);
+  }();
   auto &alg = this->GetCorrelationAlg();
   auto in = ACorrelation::InputData(first, second);
   auto out = ACorrelation::OutputData(pOut);
-  if (!alg.IsInitialized()) {
-    auto settings = Settings(CorrelationType::kOneToN);
-    if (!alg.Init(out, in, settings)) {
-      spdlog::error("Initialization of the Correlation algorithm failed");
+  {
+    std::lock_guard lock(mutex);
+    if (!alg.IsInitialized()) {
+      auto settings = Settings(CorrelationType::kOneToN);
+      if (!alg.Init(out, in, settings)) {
+        spdlog::error("Initialization of the Correlation algorithm failed");
+      }
     }
   }
   if (!alg.Execute(out, in)) { spdlog::error("Execution of the Correlation algorithm failed"); }
@@ -246,22 +278,6 @@ Payload<LogicalDescriptor> FlexAlign<T>::CreatePayloadMaxIn(size_t i,
   auto ld = LogicalDescriptor(correlation.info.GetSize(), correlation.info.GetPadding());
   return Payload(ld, correlation.dataInfo.CopyWithPtr(correlation.GetPtr()), name);
 }
-
-
-template<typename T>
-Payload<FourierDescriptor> FlexAlign<T>::CreatePayloadOutCorrelation(size_t i,
-  size_t j,
-  const Payload<FourierDescriptor> &inFFT)
-{
-  // std::cout << "Creating Payload for correlation (out) " << i << "-" << j << "\n";
-  auto name = "Image " + std::to_string(i) + "-" + std::to_string(j);
-  // result of the correlation is only intermediary
-  return Payload(
-    // FIXME this should be temp data
-    inFFT.info,
-    Create(inFFT.dataInfo.GetBytes(), inFFT.dataInfo.GetType(), false),
-    name);
-};
 
 template<typename T>
 Payload<LogicalDescriptor> FlexAlign<T>::CreatePayloadImage(const Size &size,

@@ -5,6 +5,8 @@
 #include <libumpalumpa/algorithms/correlation/acorrelation.hpp>
 #include <libumpalumpa/algorithms/extrema_finder/aextrema_finder.hpp>
 
+#include <mutex>
+
 using umpalumpa::data::Size;
 using umpalumpa::data::Payload;
 using umpalumpa::data::FourierDescriptor;
@@ -53,20 +55,11 @@ protected:
     const Payload<FourierDescriptor> &inFFT);
   Payload<FourierDescriptor> CreatePayloadOutCroppedFFT(size_t index, const Size &size);
 
-  Payload<FourierDescriptor>
-    CreatePayloadOutCorrelation(size_t i, size_t j, const Payload<FourierDescriptor> &inFFT);
-
   Payload<LogicalDescriptor>
     CreatePayloadLocMax(size_t i, size_t j, const Payload<FourierDescriptor> &correlation);
   Payload<LogicalDescriptor>
     CreatePayloadMaxIn(size_t i, size_t j, const Payload<FourierDescriptor> &correlation);
 
-  Payload<FourierDescriptor> Correlate(size_t i,
-    size_t j,
-    Payload<FourierDescriptor> &first,
-    Payload<FourierDescriptor> &second);
-
-  Shift FindMax(size_t i, size_t j, Payload<FourierDescriptor> &correlation);
 
   /**
    * This method creates a Physical Payload.
@@ -147,7 +140,20 @@ private:
     Payload<LogicalDescriptor> &filter,
     const std::string &name);
 
+  Payload<FourierDescriptor> Correlate(Payload<FourierDescriptor> &first,
+    Payload<FourierDescriptor> &second,
+    const std::string &name);
+
+  Payload<FourierDescriptor> ConvertFromFFT(Payload<FourierDescriptor> &correlation,
+    const std::string &name);
+
+
+  Shift FindMax(Payload<FourierDescriptor> &outCorrelation,
+  const std::string &name);
+
   void LogResult(size_t i, size_t j, const Shift &shift);
+
+   std::mutex mutex;
 
   //   /**
   //  * This method fetches data represented by the Payload to main RAM.
