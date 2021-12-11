@@ -36,43 +36,17 @@ public:
 
   void Execute(const Size &size);
 
-
 protected:
-  Payload<FourierDescriptor> ConvertToFFTAndCrop(size_t index,
-    Payload<LogicalDescriptor> &img,
-    Payload<LogicalDescriptor> &filter);
-
-
-  Payload<FourierDescriptor> CreatePayloadInFFT(size_t index,
-    const Payload<LogicalDescriptor> &img);
-  Payload<FourierDescriptor> CreatePayloadOutFFT(size_t index,
-    const Payload<FourierDescriptor> &inFFT);
-
-  Payload<FourierDescriptor>
-    CreatePayloadOutInverseFFT(size_t i, size_t j, const Payload<FourierDescriptor> &inFFT);
-
-  Payload<FourierDescriptor> CreatePayloadInCroppedFFT(size_t index,
-    const Payload<FourierDescriptor> &inFFT);
-  Payload<FourierDescriptor> CreatePayloadOutCroppedFFT(size_t index, const Size &size);
-
-  Payload<LogicalDescriptor>
-    CreatePayloadLocMax(size_t i, size_t j, const Payload<FourierDescriptor> &correlation);
-  Payload<LogicalDescriptor>
-    CreatePayloadMaxIn(size_t i, size_t j, const Payload<FourierDescriptor> &correlation);
-
-
   /**
    * This method creates a Physical Payload.
    * If necessary, data should be registered in the respective Memory Manager.
    * If tmp is True, this data are not meant for long-term storage.
    **/
-  virtual PhysicalDescriptor Create(size_t bytes, DataType type, bool tmp) const = 0;
   virtual PhysicalDescriptor CreatePD(size_t bytes, DataType type, bool copyInRAM) = 0;
 
   /**
    * This method removes all data allocated by the Physical Descriptor
    **/
-  virtual void Remove(const PhysicalDescriptor &pd) const = 0;
   virtual void RemovePD(const PhysicalDescriptor &pd) const = 0;
 
   /**
@@ -100,8 +74,6 @@ protected:
   virtual AExtremaFinder &GetFindMaxAlg() const = 0;
 
   virtual ACorrelation &GetCorrelationAlg() const = 0;
-
-  virtual void Synchronize() = 0;
 
 private:
   /**
@@ -153,25 +125,7 @@ private:
 
   void LogResult(size_t i, size_t j, const Shift &shift);
 
-   std::mutex mutex;
-
-  //   /**
-  //  * This method fetches data represented by the Payload to main RAM.
-  //  * Once not needed in RAM, data should be released.
-  //  **/
-  // template<typename P> const Payload<P> &Acquire(const Payload<P> &p) const
-  // {
-  //   Acquire(p.dataInfo);
-  //   return p;
-  // }
-
-  // /**
-  //  * This method release data represented by the Payload from main RAM.
-  //  * It has to be called once data fetched by Acquire are no longer needed.
-  //  **/
-  // template<typename P> const Payload<P> &Release(const Payload<P> &p) const
-  // {
-  //   Release(p.dataInfo);
-  //   return p;
-  // };
+   std::mutex mutex1;
+   std::mutex mutex2;
+   std::mutex mutex3;
 };

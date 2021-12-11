@@ -17,17 +17,16 @@ FlexAlignCPU<T>::FlexAlignCPU()
 {}
 
 template<typename T>
-PhysicalDescriptor FlexAlignCPU<T>::Create(size_t bytes, DataType type, bool tmp) const
+PhysicalDescriptor FlexAlignCPU<T>::CreatePD(size_t bytes, DataType type, bool copyInRAM)
 {
   void *ptr = nullptr;
-  tmp = false; // FIXME remove
-  if (!(tmp || 0 == bytes)) {
+  if (0 != bytes) {
     ptr = calloc(bytes, 1);
   }
   return PhysicalDescriptor(ptr, bytes, type, ManagedBy::Manually, nullptr);
 }
 
-template<typename T> void FlexAlignCPU<T>::Remove(const PhysicalDescriptor &pd) const
+template<typename T> void FlexAlignCPU<T>::RemovePD(const PhysicalDescriptor &pd) const
 {
   free(pd.GetPtr());
 }

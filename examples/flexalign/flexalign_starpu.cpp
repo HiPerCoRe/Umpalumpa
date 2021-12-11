@@ -20,21 +20,6 @@ FlexAlignStarPU<T>::FlexAlignStarPU()
 {}
 
 template<typename T>
-PhysicalDescriptor FlexAlignStarPU<T>::Create(size_t bytes, DataType type, bool tmp) const
-{
-  void *ptr = nullptr;
-  tmp = false;// FIXME remove
-  if (!(tmp || 0 == bytes)) {
-    starpu_malloc(&ptr, bytes);
-    memset(ptr, 0, bytes);
-  }
-  auto *handle = new starpu_data_handle_t();
-  auto pd = PhysicalDescriptor(ptr, bytes, type, ManagedBy::StarPU, handle);
-  StarPUUtils::Register(pd, tmp ? -1 : STARPU_MAIN_RAM);
-  return pd;
-}
-
-template<typename T>
 PhysicalDescriptor FlexAlignStarPU<T>::CreatePD(size_t bytes, DataType type, bool copyInRAM)
 {
   void *ptr = nullptr;
@@ -48,13 +33,6 @@ PhysicalDescriptor FlexAlignStarPU<T>::CreatePD(size_t bytes, DataType type, boo
   return pd;
 }
 
-template<typename T> void FlexAlignStarPU<T>::Remove(const PhysicalDescriptor &pd) const
-{
-  StarPUUtils::Unregister(pd, StarPUUtils::UnregisterType::kBlockingCopyToHomeNode);
-  delete StarPUUtils::GetHandle(pd);
-  starpu_free(pd.GetPtr());
-}
-
 template<typename T> void FlexAlignStarPU<T>::RemovePD(const PhysicalDescriptor &pd) const
 {
   StarPUUtils::Unregister(pd, StarPUUtils::UnregisterType::kSubmitNoCopy);
@@ -63,11 +41,6 @@ template<typename T> void FlexAlignStarPU<T>::RemovePD(const PhysicalDescriptor 
   // or not allocated at this node at all
   delete StarPUUtils::GetHandle(pd);
   starpu_free(pd.GetPtr());
-}
-
-template<typename T> void FlexAlignStarPU<T>::Synchronize()
-{
-  starpu_task_wait_for_all();
 }
 
 template<typename T> void FlexAlignStarPU<T>::Acquire(const PhysicalDescriptor &pd) const
