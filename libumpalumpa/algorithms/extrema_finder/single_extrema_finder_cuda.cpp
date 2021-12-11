@@ -59,11 +59,13 @@ namespace {// to avoid poluting
             return "UNSUPPORTED PRECISION";
           }
         }();
-        AddKernelDefinition(kRefineLocation, kKernelFile, ktt::DimensionVector{ size.n }, { "float", window });
+        AddKernelDefinition(
+          kRefineLocation, kKernelFile, ktt::DimensionVector{ size.n }, { "float", window });
         AddKernel(kRefineLocation, GetDefinitionId(1));
       }
 
-      tuner.AddParameter(kernelId, "blockSize", std::vector<uint64_t>{ 32, 64, 128, 256, 512 });
+      tuner.AddParameter(
+        kernelId, "blockSize", std::vector<uint64_t>{ 32, 64, 128, 256, 512, 1024 });
 
       tuner.AddThreadModifier(kernelId,
         { definitionId },
@@ -111,7 +113,8 @@ namespace {// to avoid poluting
         tuner.SetLauncher(GetKernelId(1), [this, &size](ktt::ComputeInterface &interface) {
           const ktt::DimensionVector blockDim(size.n);
           const ktt::DimensionVector gridDim(1);
-          interface.RunKernelAsync(GetKernelId(1), interface.GetAllQueues().at(0), gridDim, blockDim);
+          interface.RunKernelAsync(
+            GetKernelId(1), interface.GetAllQueues().at(0), gridDim, blockDim);
         });
       }
 
@@ -123,8 +126,8 @@ namespace {// to avoid poluting
         // the best configuration from multiple KTT instances, or loads the best
         // configuration from previous runs
         // auto bestConfig = tuner.GetBestConfiguration(kernelId);
-        auto bestConfig =
-          tuner.CreateConfiguration(GetKernelId(), { { "blockSize", static_cast<uint64_t>(32) } });
+        auto bestConfig = tuner.CreateConfiguration(
+          GetKernelId(), { { "blockSize", static_cast<uint64_t>(1024) } });
         tuner.Run(GetKernelId(), bestConfig, {});// run is blocking call
         if (refine) {
           tuner.Run(GetKernelId(1), {}, {});// run is blocking call
