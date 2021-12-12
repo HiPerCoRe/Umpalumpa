@@ -88,11 +88,19 @@ private:
   /**
    * Move Shift values by specified offset and scale by the specified factor
    **/
-  Shift Transform(const Shift &s, float scaleX, float scaleY, float shiftX, float shiftY)
+  std::vector<Shift> Transform(const std::vector<Shift> &shift,
+    float scaleX,
+    float scaleY,
+    float shiftX,
+    float shiftY)
   {
-    auto x = -(s.x - shiftX) * scaleX;
-    auto y = -(s.y - shiftY) * scaleY;
-    return { x, y };
+    auto res = std::vector<Shift>();
+    for (const auto &s : shift) {
+      auto x = -(s.x - shiftX) * scaleX;
+      auto y = -(s.y - shiftY) * scaleY;
+      res.push_back({ x, y });
+    }
+    return res;
   }
 
   /**
@@ -120,12 +128,18 @@ private:
     const std::string &name);
 
 
-  Shift FindMax(Payload<FourierDescriptor> &outCorrelation,
-  const std::string &name);
+  std::vector<Shift> FindMax(Payload<FourierDescriptor> &outCorrelation, const std::string &name);
 
-  void LogResult(size_t i, size_t j, const Shift &shift);
+  void LogResult(size_t i, size_t j, size_t batch, const std::vector<Shift> &shift);
 
-   std::mutex mutex1;
-   std::mutex mutex2;
-   std::mutex mutex3;
+  size_t NoOfCorrelations(size_t batch, bool isWithin)
+  {
+    // Note: we are wasting some performence by computing intra-buffer correlations
+    // return isWithin ? ((batch * (batch - 1)) / 2) : (batch * batch);
+    return batch * batch;
+  }
+
+  std::mutex mutex1;
+  std::mutex mutex2;
+  std::mutex mutex3;
 };
