@@ -175,6 +175,12 @@ bool FPStarPU::ExecuteImpl(const OutputData &out, const InputData &in)
     c.modes[0] = STARPU_W;
     c.modes[1] = STARPU_R;
     c.modes[2] = STARPU_R;
+    c.model = [] {
+      static starpu_perfmodel m = {};
+      m.type = STARPU_HISTORY_BASED;
+      m.symbol = "FourierProcessing_StarPU";
+      return &m;
+    }();
     return &c;
   }();
   task->name = this->taskName.c_str();

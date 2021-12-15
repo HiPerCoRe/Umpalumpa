@@ -146,9 +146,9 @@ bool SingleExtremaFinderStarPU::ExecuteImpl(const OutputData &out, const InputDa
   auto CreateArgs = [this, &out, &in]() {
     auto *a = reinterpret_cast<CodeletArgs *>(malloc(sizeof(CodeletArgs)));
     a->algs = &this->algs;
-    memcpy(reinterpret_cast<void*>(&a->vals), &out.GetValues(), sizeof(a->vals));
-    memcpy(reinterpret_cast<void*>(&a->locs), &out.GetLocations(), sizeof(a->locs));
-    memcpy(reinterpret_cast<void*>(&a->in), &in.GetData(), sizeof(a->in));
+    memcpy(reinterpret_cast<void *>(&a->vals), &out.GetValues(), sizeof(a->vals));
+    memcpy(reinterpret_cast<void *>(&a->locs), &out.GetLocations(), sizeof(a->locs));
+    memcpy(reinterpret_cast<void *>(&a->in), &in.GetData(), sizeof(a->in));
     return a;
   };
 
@@ -174,6 +174,12 @@ bool SingleExtremaFinderStarPU::ExecuteImpl(const OutputData &out, const InputDa
     c.modes[0] = STARPU_W;
     c.modes[1] = STARPU_W;
     c.modes[2] = STARPU_R;
+    c.model = [] {
+      static starpu_perfmodel m = {};
+      m.type = STARPU_HISTORY_BASED;
+      m.symbol = "SingleExtremaFinder_StarPU";
+      return &m;
+    }();
     return &c;
   }();
 
