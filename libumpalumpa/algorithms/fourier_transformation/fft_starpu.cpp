@@ -148,8 +148,8 @@ bool FFTStarPU::ExecuteImpl(const OutputData &out, const InputData &in)
   auto CreateArgs = [this, &out, &in]() {
     auto *a = reinterpret_cast<CodeletArgs *>(malloc(sizeof(CodeletArgs)));
     a->algs = &this->algs;
-    memcpy(reinterpret_cast<void*>(&a->out), &out.GetData(), sizeof(a->out));
-    memcpy(reinterpret_cast<void*>(&a->in), &in.GetData(), sizeof(a->in));
+    memcpy(reinterpret_cast<void *>(&a->out), &out.GetData(), sizeof(a->out));
+    memcpy(reinterpret_cast<void *>(&a->in), &in.GetData(), sizeof(a->in));
     return a;
   };
 
@@ -173,6 +173,12 @@ bool FFTStarPU::ExecuteImpl(const OutputData &out, const InputData &in)
     c.nbuffers = 2;
     c.modes[0] = STARPU_W;
     c.modes[1] = STARPU_R;
+    c.model = [] {
+      static starpu_perfmodel m = {};
+      m.type = STARPU_HISTORY_BASED;
+      m.symbol = "FFT_StarPU";
+      return &m;
+    }();
     return &c;
   }();
 
