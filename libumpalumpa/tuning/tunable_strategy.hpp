@@ -9,6 +9,12 @@ namespace umpalumpa::algorithm {
 struct Leader;
 
 namespace detail {
+  /**
+   * Interface of important methods that need to be shared between TunableStrategy and Leader
+   * strategy. It is used for virtual inheritance of TunableStrategy methods into the Leader. We
+   * can't use virtual inheritance without this interface because TunableStrategy has parametrized
+   * constructor.
+   */
   struct TunableStrategyInterface
   {
     virtual std::unique_ptr<Leader> CreateLeader() const = 0;

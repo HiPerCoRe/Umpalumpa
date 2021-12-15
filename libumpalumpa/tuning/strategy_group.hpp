@@ -7,6 +7,12 @@
 
 namespace umpalumpa::algorithm {
 
+/**
+ * Leader strategy that has properties of TunableStrategy (can be compared using methods: IsEqualTo
+ * and IsSimilarTo) and additional properties specific for Leader strategy.
+ *
+ * Leader strategies are not inteded as strategies that can be initialized and executed!
+ */
 struct Leader : virtual public detail::TunableStrategyInterface
 {
   virtual void SetBestConfigurations(const std::vector<ktt::KernelConfiguration> &configs)
