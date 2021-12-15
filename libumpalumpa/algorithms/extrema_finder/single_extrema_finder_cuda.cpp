@@ -35,9 +35,9 @@ namespace {// to avoid poluting
       return equal;
     }
 
-    std::unique_ptr<algorithm::Leader> CreateLeader() const override
+    std::unique_ptr<tuning::Leader> CreateLeader() const override
     {
-      return algorithm::StrategyGroup::CreateLeader(*this, alg);
+      return tuning::StrategyGroup::CreateLeader(*this, alg);
     }
 
     std::vector<ktt::KernelConfiguration> GetDefaultConfigurations() const override
@@ -193,9 +193,9 @@ namespace {// to avoid poluting
       return equal;
     }
 
-    std::unique_ptr<algorithm::Leader> CreateLeader() const override
+    std::unique_ptr<tuning::Leader> CreateLeader() const override
     {
-      return algorithm::StrategyGroup::CreateLeader(*this, alg);
+      return tuning::StrategyGroup::CreateLeader(*this, alg);
     }
 
     std::vector<ktt::KernelConfiguration> GetDefaultConfigurations() const override

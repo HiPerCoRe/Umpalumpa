@@ -6,7 +6,7 @@
 #include <libumpalumpa/tuning/tunable_strategy.hpp>
 #include <libumpalumpa/tuning/ktt_strategy_base.hpp>
 
-namespace umpalumpa::algorithm {
+namespace umpalumpa::tuning {
 
 /**
  * Leader strategy that has properties of TunableStrategy (can be compared using methods: IsEqualTo
@@ -149,5 +149,5 @@ private:
   };
 };
 
-}// namespace umpalumpa::algorithm
+}// namespace umpalumpa::tuning
 

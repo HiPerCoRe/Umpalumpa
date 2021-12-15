@@ -21,9 +21,9 @@ namespace {// to avoid poluting
 
     size_t GetHash() const override { return 0; }
 
-    std::unique_ptr<algorithm::Leader> CreateLeader() const override
+    std::unique_ptr<tuning::Leader> CreateLeader() const override
     {
-      return algorithm::StrategyGroup::CreateLeader(*this, alg);
+      return tuning::StrategyGroup::CreateLeader(*this, alg);
     }
 
     // FIXME this design might cause serious issues, while retrieving the correct configurations,

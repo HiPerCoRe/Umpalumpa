@@ -3,7 +3,7 @@
 #include <vector>
 #include <libumpalumpa/system_includes/ktt.hpp>
 
-namespace umpalumpa::algorithm {
+namespace umpalumpa::tuning {
 
 // Forward declarations
 class TunableStrategy;
@@ -62,4 +62,4 @@ public:
   void Cleanup();
 };
 
-}// namespace umpalumpa::algorithm
+}// namespace umpalumpa::tuning

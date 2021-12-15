@@ -14,7 +14,7 @@
 using namespace ::testing;
 using namespace umpalumpa;
 using namespace umpalumpa::data;
-using namespace umpalumpa::algorithm;
+using namespace umpalumpa::tuning;
 
 // PREPARATION OF TEST CLASSES
 
@@ -37,7 +37,7 @@ class TestAlgorithm_CUDA
 public:
   TestAlgorithm_CUDA() : KTT_Base(0) {}
 
-  using KTTStrategy = algorithm::KTTStrategyBase<OutputData, InputData, Settings>;
+  using KTTStrategy = KTTStrategyBase<OutputData, InputData, Settings>;
 
   void Synchronize() override {}
 

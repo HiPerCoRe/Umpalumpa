@@ -3,7 +3,7 @@
 #include <libumpalumpa/tuning/strategy_manager.hpp>
 #include <libumpalumpa/tuning/tuning_approach.hpp>
 
-namespace umpalumpa::algorithm {
+namespace umpalumpa::tuning {
 
 // Forward declarations
 struct Leader;
@@ -37,7 +37,7 @@ public:
   /**
    * Creates and initializes TunableStrategy.
    */
-  TunableStrategy(utils::KTTHelper &helper);
+  TunableStrategy(KTTHelper &helper);
 
   /**
    * Destroys the TunableStrategy. Cleans up all the resources (KTT ids) tied to this instance.
@@ -216,7 +216,7 @@ private:
   static size_t GetNewStrategyId();
 
 protected:
-  utils::KTTHelper &kttHelper;
+  KTTHelper &kttHelper;
 
 private:
   struct KernelInfo
@@ -228,7 +228,7 @@ private:
   std::vector<ktt::KernelDefinitionId> definitionIds;
   std::vector<KernelInfo> kernelIds;
   // Tracker of used ids, which allows for automatic cleanup after strategy's destruction
-  std::vector<std::shared_ptr<utils::KTTIdTracker>> idTrackers;
+  std::vector<std::shared_ptr<KTTIdTracker>> idTrackers;
 
   TuningApproach tuningApproach;
   // the strategy is equal to a Leader of a StrategyGroup and therefore is allowed to be tuned
@@ -241,4 +241,4 @@ private:
   const size_t strategyId;
 };
 
-}// namespace umpalumpa::algorithm
+}// namespace umpalumpa::tuning

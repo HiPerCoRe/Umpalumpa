@@ -2,9 +2,9 @@
 #include <libumpalumpa/tuning/strategy_group.hpp>
 #include <libumpalumpa/system_includes/spdlog.hpp>
 
-namespace umpalumpa::algorithm {
+namespace umpalumpa::tuning {
 
-TunableStrategy::TunableStrategy(utils::KTTHelper &helper)
+TunableStrategy::TunableStrategy(KTTHelper &helper)
   : kttHelper(helper), tuningApproach(TuningApproach::kNoTuning), canTuneStrategyGroup(false),
     isRegistered(false), strategyId(GetNewStrategyId())
 {}
@@ -178,4 +178,4 @@ size_t TunableStrategy::GetNewStrategyId()
   return strategyCounter++;
 }
 
-}// namespace umpalumpa::algorithm
+}// namespace umpalumpa::tuning

@@ -6,14 +6,14 @@
 #include <libumpalumpa/utils/system.hpp>
 #include <libumpalumpa/tuning/ktt_id_tracker.hpp>
 
-namespace umpalumpa::utils {
+namespace umpalumpa::tuning {
 class KTTHelper
 {
 public:
   KTTHelper(const CUcontext context, const std::vector<ktt::ComputeQueue> &queues)
     : tuner(ktt::ComputeApi::CUDA, ktt::ComputeApiInitializer(context, queues))
   {
-    tuner.SetCompilerOptions("-I" + kProjectRoot + " --std=c++14 -default-device");
+    tuner.SetCompilerOptions("-I" + utils::kProjectRoot + " --std=c++14 -default-device");
   }
 
   std::mutex &GetMutex() { return mutex; }
@@ -59,4 +59,4 @@ private:
   std::mutex mutex;
 };
 
-}// namespace umpalumpa::utils
+}// namespace umpalumpa::tuning
