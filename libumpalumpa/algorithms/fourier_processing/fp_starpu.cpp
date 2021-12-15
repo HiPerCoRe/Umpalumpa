@@ -31,11 +31,11 @@ namespace {// to avoid poluting
     using umpalumpa::utils::StarPUUtils;
     auto *args = reinterpret_cast<CodeletArgs *>(func_arg);
 
-    auto pOut = StarPUUtils::Assemble(args->out, StarPUUtils::ReceivePDPtr(buffers[0]));
+    auto pOut = StarPUUtils::Assemble(args->out, buffers[0]);
     auto out = AFP::OutputData(pOut);
 
-    auto pInData = StarPUUtils::Assemble(args->in, StarPUUtils::ReceivePDPtr(buffers[1]));
-    auto pInFilter = StarPUUtils::Assemble(args->filter, StarPUUtils::ReceivePDPtr(buffers[2]));
+    auto pInData = StarPUUtils::Assemble(args->in, buffers[1]);
+    auto pInFilter = StarPUUtils::Assemble(args->filter, buffers[2]);
     auto in = AFP::InputData(pInData, pInFilter);
 
     auto &alg = args->algs->at(static_cast<size_t>(starpu_worker_get_id()));
@@ -175,6 +175,12 @@ bool FPStarPU::ExecuteImpl(const OutputData &out, const InputData &in)
     c.modes[0] = STARPU_W;
     c.modes[1] = STARPU_R;
     c.modes[2] = STARPU_R;
+    c.model = [] {
+      static starpu_perfmodel m = {};
+      m.type = STARPU_HISTORY_BASED;
+      m.symbol = "FourierProcessing_StarPU";
+      return &m;
+    }();
     return &c;
   }();
   task->name = this->taskName.c_str();

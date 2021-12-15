@@ -29,10 +29,10 @@ namespace {// to avoid poluting
     using umpalumpa::utils::StarPUUtils;
     auto *args = reinterpret_cast<CodeletArgs *>(func_arg);
 
-    auto pOut = StarPUUtils::Assemble(args->out, StarPUUtils::ReceivePDPtr(buffers[0]));
+    auto pOut = StarPUUtils::Assemble(args->out, buffers[0]);
     auto out = AFFT::OutputData(pOut);
 
-    auto pIn = StarPUUtils::Assemble(args->in, StarPUUtils::ReceivePDPtr(buffers[1]));
+    auto pIn = StarPUUtils::Assemble(args->in, buffers[1]);
     auto in = AFFT::InputData(pIn);
 
     auto &alg = args->algs->at(static_cast<size_t>(starpu_worker_get_id()));
@@ -148,8 +148,8 @@ bool FFTStarPU::ExecuteImpl(const OutputData &out, const InputData &in)
   auto CreateArgs = [this, &out, &in]() {
     auto *a = reinterpret_cast<CodeletArgs *>(malloc(sizeof(CodeletArgs)));
     a->algs = &this->algs;
-    memcpy(reinterpret_cast<void*>(&a->out), &out.GetData(), sizeof(a->out));
-    memcpy(reinterpret_cast<void*>(&a->in), &in.GetData(), sizeof(a->in));
+    memcpy(reinterpret_cast<void *>(&a->out), &out.GetData(), sizeof(a->out));
+    memcpy(reinterpret_cast<void *>(&a->in), &in.GetData(), sizeof(a->in));
     return a;
   };
 
@@ -173,6 +173,12 @@ bool FFTStarPU::ExecuteImpl(const OutputData &out, const InputData &in)
     c.nbuffers = 2;
     c.modes[0] = STARPU_W;
     c.modes[1] = STARPU_R;
+    c.model = [] {
+      static starpu_perfmodel m = {};
+      m.type = STARPU_HISTORY_BASED;
+      m.symbol = "FFT_StarPU";
+      return &m;
+    }();
     return &c;
   }();
 

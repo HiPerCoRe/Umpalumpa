@@ -14,8 +14,9 @@ namespace umpalumpa::utils {
 class StarPUUtils
 {
 public:
-  template<typename T> static data::Payload<T> Assemble(const data::Payload<T> &p, void *ptr)
+  template<typename T> static data::Payload<T> Assemble(const data::Payload<T> &p, void *buffer)
   {
+    auto *ptr = (p.dataInfo.GetBytes() == 0) ? nullptr : ReceivePDPtr(buffer);
     auto pd = data::PhysicalDescriptor(ptr,
       p.dataInfo.GetBytes(),
       p.dataInfo.GetType(),
@@ -39,11 +40,16 @@ public:
   static void *ReceivePDPtr(void *buffer);
 
   /**
+   * Possible type of data unregistering
+   */
+  enum class UnregisterType { kBlockingCopyToHomeNode, kBlockingNoCopy, kSubmitNoCopy };
+
+  /**
    * Unregister content of the Physical Descriptor from StarPU.
    * Notice that this does not release the data hold by the descriptor.
    **/
   // FIXME this should register the entire Physical Descriptor
-  static void Unregister(const data::PhysicalDescriptor &pd);
+  static void Unregister(const data::PhysicalDescriptor &pd, UnregisterType type);
 
   /**
    * Receive StarPU handle from the Physical Descriptor

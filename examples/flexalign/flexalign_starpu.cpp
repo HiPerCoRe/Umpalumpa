@@ -20,23 +20,25 @@ FlexAlignStarPU<T>::FlexAlignStarPU()
 {}
 
 template<typename T>
-PhysicalDescriptor FlexAlignStarPU<T>::Create(size_t bytes, DataType type, bool tmp) const
+PhysicalDescriptor FlexAlignStarPU<T>::CreatePD(size_t bytes, DataType type, bool copyInRAM)
 {
   void *ptr = nullptr;
-  tmp = false; // FIXME remove
-  if (!(tmp || 0 == bytes)) {
+  if (copyInRAM) {
     starpu_malloc(&ptr, bytes);
     memset(ptr, 0, bytes);
   }
   auto *handle = new starpu_data_handle_t();
   auto pd = PhysicalDescriptor(ptr, bytes, type, ManagedBy::StarPU, handle);
-  StarPUUtils::Register(pd, tmp ? -1 : STARPU_MAIN_RAM);
+  StarPUUtils::Register(pd, copyInRAM ? STARPU_MAIN_RAM : -1);
   return pd;
 }
 
-template<typename T> void FlexAlignStarPU<T>::Remove(const PhysicalDescriptor &pd) const
+template<typename T> void FlexAlignStarPU<T>::RemovePD(const PhysicalDescriptor &pd) const
 {
-  StarPUUtils::Unregister(pd);
+  StarPUUtils::Unregister(pd, StarPUUtils::UnregisterType::kSubmitNoCopy);
+  // don't release the handle, some task might still use it
+  // we can release the pointer, because either the data should be already processed,
+  // or not allocated at this node at all
   delete StarPUUtils::GetHandle(pd);
   starpu_free(pd.GetPtr());
 }
