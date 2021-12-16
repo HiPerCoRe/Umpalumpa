@@ -110,8 +110,12 @@ FFTCUDA::~FFTCUDA()
   }
 }
 
-void FFTCUDA::Synchronize()
+void FFTCUDA::Synchronize() { CudaErrchk(cudaStreamSynchronize(stream)); }
+
+size_t FFTCUDA::GetUsedBytes() const
 {
-  CudaErrchk(cudaStreamSynchronize(stream));
+  size_t result = 0;
+  if (this->IsInitialized()) { CudaErrchk(cufftGetSize(plan, &result)); }
+  return result;
 }
 }// namespace umpalumpa::fourier_transformation
