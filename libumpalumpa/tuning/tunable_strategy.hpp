@@ -1,6 +1,6 @@
 #pragma once
 #include <libumpalumpa/tuning/ktt_helper.hpp>
-#include <libumpalumpa/tuning/algorithm_manager.hpp>
+#include <libumpalumpa/tuning/strategy_manager.hpp>
 #include <libumpalumpa/tuning/tuning_approach.hpp>
 
 namespace umpalumpa::algorithm {

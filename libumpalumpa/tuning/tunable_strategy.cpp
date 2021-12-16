@@ -13,7 +13,7 @@ TunableStrategy::~TunableStrategy()
 {
   // FIXME Needs to be synchronized
   // kttHelper.GetTuner().Synchronize();
-  if (isRegistered) { AlgorithmManager::Get().Unregister(*this); }
+  if (isRegistered) { StrategyManager::Get().Unregister(*this); }
   if (!idTrackers.empty()) {
     // Needs to be locked because Cleanup routine accesses ktt::Tuner
     std::lock_guard lck(kttHelper.GetMutex());
@@ -85,7 +85,7 @@ void TunableStrategy::RunBestConfiguration(ktt::KernelId kernelId) const
 
 void TunableStrategy::Register()
 {
-  AlgorithmManager::Get().Register(*this);
+  StrategyManager::Get().Register(*this);
   isRegistered = true;
 }
 
