@@ -60,9 +60,7 @@ template<typename T> void FlexAlignStarPU<T>::SetAvailableBytesCUDA()
     MB = static_cast<decltype(MB)>(MB * 0.95);
     spdlog::warn("Limiting max usage to {}MB", MB);
     auto src = "STARPU_LIMIT_CUDA_" + std::to_string(id) + "_MEM=" + std::to_string(MB);
-    auto *dst = MaxBytesCUDA[i];
-    strncpy(dst, src.c_str(), sizeof(dst));
-    putenv(dst);
+    putenv(strncpy(MaxBytesCUDA[i], src.c_str(), sizeof(MaxBytesCUDA[i])));
   }
 }
 
