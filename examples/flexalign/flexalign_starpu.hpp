@@ -9,6 +9,7 @@ template<typename T> class FlexAlignStarPU : public FlexAlign<T>
 {
 public:
   FlexAlignStarPU();
+  ~FlexAlignStarPU();
 
 protected:
   PhysicalDescriptor CreatePD(size_t bytes, DataType type, bool copyInRAM) override;
@@ -30,6 +31,9 @@ protected:
   void Release(const PhysicalDescriptor &p) const override;
 
 private:
+  static void SetAvailableBytesRAM();
+  static void SetAvailableBytesCUDA();
+
   std::unique_ptr<AFFT> forwardFFTAlg;
   std::unique_ptr<AFFT> inverseFFTAlg;
   std::unique_ptr<AFP> cropAlg;

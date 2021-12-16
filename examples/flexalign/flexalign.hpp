@@ -34,6 +34,8 @@ public:
 
   void Execute(const Size &size);
 
+  virtual ~FlexAlign() = default;
+
 protected:
   /**
    * This method creates a Physical Payload.
@@ -139,7 +141,8 @@ private:
     return batch * batch;
   }
 
-  size_t NoOfBatches(const Size &s, size_t batch) {
+  size_t NoOfBatches(const Size &s, size_t batch)
+  {
     return ((s.n / batch + 1) * (s.n / batch)) / 2;
   }
 };
