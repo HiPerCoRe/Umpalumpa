@@ -5,8 +5,6 @@
 #include <libumpalumpa/algorithms/correlation/acorrelation.hpp>
 #include <libumpalumpa/algorithms/extrema_finder/aextrema_finder.hpp>
 
-#include <mutex>
-
 using umpalumpa::data::Size;
 using umpalumpa::data::Payload;
 using umpalumpa::data::FourierDescriptor;
@@ -127,8 +125,10 @@ private:
   Payload<FourierDescriptor> ConvertFromFFT(Payload<FourierDescriptor> &correlation,
     const std::string &name);
 
+  Payload<LogicalDescriptor> FindMax(Payload<FourierDescriptor> &outCorrelation,
+    const std::string &name);
 
-  std::vector<Shift> FindMax(Payload<FourierDescriptor> &outCorrelation, const std::string &name);
+  std::vector<Shift> ExtractShift(const Payload<LogicalDescriptor> &shift);
 
   void LogResult(size_t i, size_t j, size_t batch, const std::vector<Shift> &shift);
 
@@ -139,7 +139,7 @@ private:
     return batch * batch;
   }
 
-  std::mutex mutex1;
-  std::mutex mutex2;
-  std::mutex mutex3;
+  size_t NoOfBatches(const Size &s, size_t batch) {
+    return ((s.n / batch + 1) * (s.n / batch)) / 2;
+  }
 };

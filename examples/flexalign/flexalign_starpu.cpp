@@ -24,7 +24,7 @@ PhysicalDescriptor FlexAlignStarPU<T>::CreatePD(size_t bytes, DataType type, boo
 {
   void *ptr = nullptr;
   if (copyInRAM) {
-    starpu_memory_allocate (STARPU_MAIN_RAM, bytes, STARPU_MEMORY_WAIT);
+    starpu_memory_allocate(STARPU_MAIN_RAM, bytes, STARPU_MEMORY_WAIT);
     starpu_memory_wait_available(STARPU_MAIN_RAM, bytes);
     starpu_malloc_flags(&ptr, bytes, STARPU_MALLOC_COUNT);
     memset(ptr, 0, bytes);
