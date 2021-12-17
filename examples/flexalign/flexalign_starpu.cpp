@@ -84,7 +84,7 @@ PhysicalDescriptor FlexAlignStarPU<T>::CreatePD(size_t bytes, DataType type, boo
   if (copyInRAM) {
     starpu_memory_allocate(STARPU_MAIN_RAM, bytes, STARPU_MEMORY_WAIT);
     starpu_memory_wait_available(STARPU_MAIN_RAM, bytes);
-    starpu_malloc_flags(&ptr, bytes, STARPU_MALLOC_COUNT);
+    starpu_malloc_flags(&ptr, bytes, STARPU_MALLOC_COUNT | STARPU_MALLOC_PINNED);
     memset(ptr, 0, bytes);
   }
   auto *handle = new starpu_data_handle_t();
@@ -101,7 +101,7 @@ template<typename T> void FlexAlignStarPU<T>::RemovePD(const PhysicalDescriptor 
   // or not allocated at this node at all
   delete StarPUUtils::GetHandle(pd);
   if (nullptr != pd.GetPtr()) {
-    starpu_free_flags(pd.GetPtr(), pd.GetBytes(), STARPU_MALLOC_COUNT);
+    starpu_free_flags(pd.GetPtr(), pd.GetBytes(), STARPU_MALLOC_COUNT | STARPU_MALLOC_PINNED);
   }
 }
 
