@@ -67,6 +67,11 @@ template<typename T> void FlexAlign<T>::Execute(const umpalumpa::data::Size &siz
   RemovePD(filter.dataInfo);
 }
 
+template<typename T> size_t FlexAlign<T>::GetAvailableCores() const
+{
+  return std::thread::hardware_concurrency() / 2; // assuming HT is available
+}
+
 template<typename T>
 std::vector<typename FlexAlign<T>::Shift> FlexAlign<T>::ExtractShift(
   const Payload<LogicalDescriptor> &shift)
@@ -136,7 +141,8 @@ Payload<FourierDescriptor> FlexAlign<T>::ConvertToFFT(const Payload<LogicalDescr
   auto in = AFFT::InputData(inFFT);
   auto out = AFFT::OutputData(outFFT);
   if (!alg.IsInitialized()) {
-    auto settings = Settings(Locality::kOutOfPlace, Direction::kForward);
+    auto settings =
+      Settings(Locality::kOutOfPlace, Direction::kForward, std::min(8ul, GetAvailableCores()));
     if (!alg.Init(out, in, settings)) {
       spdlog::error("Initialization of the FFT algorithm failed");
     }
@@ -194,7 +200,8 @@ Payload<FourierDescriptor> FlexAlign<T>::ConvertFromFFT(Payload<FourierDescripto
   auto in = AFFT::InputData(correlation);
   auto out = AFFT::OutputData(pOut);
   if (!alg.IsInitialized()) {
-    auto settings = Settings(Locality::kOutOfPlace, Direction::kInverse);
+    auto settings =
+      Settings(Locality::kOutOfPlace, Direction::kInverse, std::min(4ul, GetAvailableCores()));
     if (!alg.Init(out, in, settings)) {
       spdlog::error("Initialization of the IFFT algorithm failed");
     }

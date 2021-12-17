@@ -145,4 +145,6 @@ private:
   {
     return ((s.n / batch + 1) * (s.n / batch)) / 2;
   }
+
+  size_t GetAvailableCores() const;
 };

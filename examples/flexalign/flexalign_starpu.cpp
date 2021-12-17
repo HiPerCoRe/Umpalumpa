@@ -30,6 +30,8 @@ template<typename T> void FlexAlignStarPU<T>::SetAvailableBytesRAM()
 {
   struct sysinfo info;
   sysinfo(&info);
+  // FIXME this can be incorrect due to memory used as cache
+  // see e.g. https://scoutapm.com/blog/determining-free-memory-on-linux
   auto bytes = info.freeram * info.mem_unit;
   auto MB = bytes / 1048576;
   spdlog::info("Available {}MB of RAM", MB);
