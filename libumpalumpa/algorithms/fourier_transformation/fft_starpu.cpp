@@ -181,6 +181,7 @@ bool FFTStarPU::ExecuteImpl(const OutputData &out, const InputData &in)
     c.where = STARPU_CUDA | STARPU_CPU;
     c.cpu_funcs[0] = Codelet;
     c.cuda_funcs[0] = Codelet;
+    c.cuda_flags[0] = STARPU_CUDA_ASYNC;
     c.nbuffers = 2;
     c.modes[0] = STARPU_W;
     c.modes[1] = STARPU_R;
