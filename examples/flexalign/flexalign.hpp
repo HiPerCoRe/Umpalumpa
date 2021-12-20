@@ -42,12 +42,12 @@ protected:
    * If necessary, data should be registered in the respective Memory Manager.
    * If tmp is True, this data are not meant for long-term storage.
    **/
-  virtual PhysicalDescriptor CreatePD(size_t bytes, DataType type, bool copyInRAM) = 0;
+  virtual PhysicalDescriptor CreatePD(size_t bytes, DataType type, bool copyInRAM, bool pinned) = 0;
 
   /**
    * This method removes all data allocated by the Physical Descriptor
    **/
-  virtual void RemovePD(const PhysicalDescriptor &pd) const = 0;
+  virtual void RemovePD(const PhysicalDescriptor &pd, bool pinned) const = 0;
 
   /**
    * This method fetches data represented by the Physical Descriptor to main RAM.

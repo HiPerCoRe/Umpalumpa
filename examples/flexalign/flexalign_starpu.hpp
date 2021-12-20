@@ -12,9 +12,9 @@ public:
   ~FlexAlignStarPU();
 
 protected:
-  PhysicalDescriptor CreatePD(size_t bytes, DataType type, bool copyInRAM) override;
+  PhysicalDescriptor CreatePD(size_t bytes, DataType type, bool copyInRAM, bool pinned) override;
 
-  void RemovePD(const PhysicalDescriptor &pd) const override;
+  void RemovePD(const PhysicalDescriptor &pd, bool pinned) const override;
 
   AFFT &GetForwardFFTAlg() const override { return *forwardFFTAlg; }
 

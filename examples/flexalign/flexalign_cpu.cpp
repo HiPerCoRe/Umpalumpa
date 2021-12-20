@@ -17,7 +17,7 @@ FlexAlignCPU<T>::FlexAlignCPU()
 {}
 
 template<typename T>
-PhysicalDescriptor FlexAlignCPU<T>::CreatePD(size_t bytes, DataType type, bool copyInRAM)
+PhysicalDescriptor FlexAlignCPU<T>::CreatePD(size_t bytes, DataType type, bool copyInRAM, bool)
 {
   void *ptr = nullptr;
   if (0 != bytes) {
@@ -26,7 +26,7 @@ PhysicalDescriptor FlexAlignCPU<T>::CreatePD(size_t bytes, DataType type, bool c
   return PhysicalDescriptor(ptr, bytes, type, ManagedBy::Manually, nullptr);
 }
 
-template<typename T> void FlexAlignCPU<T>::RemovePD(const PhysicalDescriptor &pd) const
+template<typename T> void FlexAlignCPU<T>::RemovePD(const PhysicalDescriptor &pd, bool) const
 {
   free(pd.GetPtr());
 }

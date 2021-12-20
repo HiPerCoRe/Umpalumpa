@@ -29,21 +29,28 @@ template<typename T> void FlexAlign<T>::Execute(const umpalumpa::data::Size &siz
   auto shifts = std::vector<Payload<LogicalDescriptor>>();
   shifts.reserve(NoOfBatches(sizeAll, batch));
 
+  // Preallocate memory. This can be quite expensive, because e.g. cudaHostAlloc is
+  // synchronizing, i.e. it can slow down the execution later on
   for (size_t j = 0; j < sizeAll.n; j += batch) {
     auto name = std::to_string(j) + "-" + std::to_string(j + batch - 1);
     auto &img = imgs.emplace_back(CreatePayloadImage(sizeBatch, name));
+  }
+
+  for (size_t j = 0; j < sizeAll.n; j += batch) {
+    auto name = std::to_string(j) + "-" + std::to_string(j + batch - 1);
+    auto &img = imgs.at(j / batch);
     GenerateClockArms(j, img, sizeCross, j, j);
     auto fft = ConvertToFFT(img, name);
     ffts.emplace_back(Crop(fft, filter, name));
-    RemovePD(fft.dataInfo);
+    RemovePD(fft.dataInfo, false);
     for (size_t i = 0; i <= j; i += batch) {
       auto name = std::to_string(i) + "-" + std::to_string(i + batch - 1) + "<->"
                   + std::to_string(j) + "-" + std::to_string(j + batch - 1);
       auto correlation = Correlate(ffts.at(i / batch), ffts.at(j / batch), name);
       auto ifft = ConvertFromFFT(correlation, name);
-      RemovePD(correlation.dataInfo);
+      RemovePD(correlation.dataInfo, false);
       shifts.emplace_back(FindMax(ifft, name));
-      RemovePD(ifft.dataInfo);
+      RemovePD(ifft.dataInfo, false);
     }
   }
   // wait for results and process them
@@ -61,15 +68,15 @@ template<typename T> void FlexAlign<T>::Execute(const umpalumpa::data::Size &siz
     }
   }
   // Release allocated data. Payloads themselves don't need any extra handling
-  for (const auto &p : ffts) { RemovePD(p.dataInfo); }
-  for (const auto &p : imgs) { RemovePD(p.dataInfo); }
+  for (const auto &p : ffts) { RemovePD(p.dataInfo, false); }
+  for (const auto &p : imgs) { RemovePD(p.dataInfo, true); }
 
-  RemovePD(filter.dataInfo);
+  RemovePD(filter.dataInfo, true);
 }
 
 template<typename T> size_t FlexAlign<T>::GetAvailableCores() const
 {
-  return std::thread::hardware_concurrency() / 2; // assuming HT is available
+  return std::thread::hardware_concurrency() / 2;// assuming HT is available
 }
 
 template<typename T>
@@ -84,7 +91,7 @@ std::vector<typename FlexAlign<T>::Shift> FlexAlign<T>::ExtractShift(
     res.push_back({ x, y });
   }
   Release(shift.dataInfo);
-  RemovePD(shift.dataInfo);
+  RemovePD(shift.dataInfo, false);
   return res;
 }
 
@@ -134,7 +141,7 @@ Payload<FourierDescriptor> FlexAlign<T>::ConvertToFFT(const Payload<LogicalDescr
       umpalumpa::data::FourierDescriptor::FourierSpaceDescriptor());
     auto type = GetComplexDataType();
     auto bytes = ld.Elems() * Sizeof(type);
-    return Payload(ld, CreatePD(bytes, type, false), "FFT (out) " + name);
+    return Payload(ld, CreatePD(bytes, type, false, false), "FFT (out) " + name);
   }();
   using namespace umpalumpa::fourier_transformation;
   auto &alg = this->GetForwardFFTAlg();
@@ -166,7 +173,7 @@ Payload<FourierDescriptor> FlexAlign<T>::Crop(const Payload<FourierDescriptor> &
       umpalumpa::data::FourierDescriptor::FourierSpaceDescriptor());
     auto type = GetComplexDataType();
     auto bytes = ld.Elems() * Sizeof(type);
-    return Payload(ld, CreatePD(bytes, type, false), "Crop (out) " + name);
+    return Payload(ld, CreatePD(bytes, type, false, false), "Crop (out) " + name);
   }();
   using namespace umpalumpa::fourier_processing;
   using umpalumpa::fourier_transformation::Locality;
@@ -193,7 +200,7 @@ Payload<FourierDescriptor> FlexAlign<T>::ConvertFromFFT(Payload<FourierDescripto
     auto ld = FourierDescriptor(correlation.info.GetSpatialSize(), correlation.info.GetPadding());
     auto type = GetDataType();
     auto bytes = ld.Elems() * Sizeof(type);
-    return Payload(ld, CreatePD(bytes, type, false), "IFFT (out) " + name);
+    return Payload(ld, CreatePD(bytes, type, false, false), "IFFT (out) " + name);
   }();
   using namespace umpalumpa::fourier_transformation;
   auto &alg = this->GetInverseFFTAlg();
@@ -220,14 +227,14 @@ Payload<LogicalDescriptor> FlexAlign<T>::FindMax(Payload<FourierDescriptor> &out
       outCorrelation.dataInfo.CopyWithPtr(outCorrelation.GetPtr()),
       "Location of Max (in) " + name);
   }();
-  auto empty =
-    Payload(LogicalDescriptor(Size(0, 0, 0, 0)), CreatePD(0, DataType::kVoid, false), "Empty");
+  auto empty = Payload(
+    LogicalDescriptor(Size(0, 0, 0, 0)), CreatePD(0, DataType::kVoid, false, false), "Empty");
   auto pOut = [&outCorrelation, &name, this]() {
     auto type = DataType::kFloat;
     auto size = Size(2, 1, 1, outCorrelation.info.GetSize().n);
     auto ld = LogicalDescriptor(size);
     auto bytes = ld.Elems() * Sizeof(type);
-    return Payload(ld, CreatePD(bytes, type, true), "Location of Max " + name);
+    return Payload(ld, CreatePD(bytes, type, true, false), "Location of Max " + name);
   }();
   using namespace umpalumpa::extrema_finder;
   auto &alg = this->GetFindMaxAlg();
@@ -242,7 +249,7 @@ Payload<LogicalDescriptor> FlexAlign<T>::FindMax(Payload<FourierDescriptor> &out
     }
   }
   if (!alg.Execute(out, in)) { spdlog::error("Execution of the Extrema Finder algorithm failed"); }
-  RemovePD(empty.dataInfo);
+  RemovePD(empty.dataInfo, false);
   return pOut;
 };
 
@@ -261,7 +268,7 @@ Payload<FourierDescriptor> FlexAlign<T>::Correlate(Payload<FourierDescriptor> &f
     auto fd = first.info.GetFourierSpaceDescriptor();
     auto ld = FourierDescriptor(sizeOut, umpalumpa::data::PaddingDescriptor(), fd.value());
     auto bytes = ld.Elems() * Sizeof(first.dataInfo.GetType());
-    auto pd = CreatePD(bytes, first.dataInfo.GetType(), false);
+    auto pd = CreatePD(bytes, first.dataInfo.GetType(), false, false);
     return Payload(ld, std::move(pd), "Correlation of " + name);
   }();
   auto &alg = this->GetCorrelationAlg();
@@ -284,7 +291,7 @@ Payload<LogicalDescriptor> FlexAlign<T>::CreatePayloadImage(const Size &size,
   auto ld = LogicalDescriptor(size);
   auto type = GetDataType();
   auto bytes = ld.Elems() * Sizeof(type);
-  return Payload(ld, CreatePD(bytes, type, true), "Image(s) " + name);
+  return Payload(ld, CreatePD(bytes, type, true, true), "Image(s) " + name);
 };
 
 template<typename T> Payload<LogicalDescriptor> FlexAlign<T>::CreatePayloadFilter(const Size &size)
@@ -292,7 +299,7 @@ template<typename T> Payload<LogicalDescriptor> FlexAlign<T>::CreatePayloadFilte
   auto ld = LogicalDescriptor(size.CopyFor(1));
   auto type = GetDataType();
   auto bytes = ld.Elems() * Sizeof(type);
-  auto payload = Payload(ld, CreatePD(bytes, type, true), "Filter");
+  auto payload = Payload(ld, CreatePD(bytes, type, true, true), "Filter");
   // fill the filter
   Acquire(payload.dataInfo);
   auto start = reinterpret_cast<T *>(payload.GetPtr());
