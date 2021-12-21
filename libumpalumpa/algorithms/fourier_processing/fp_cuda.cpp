@@ -36,36 +36,36 @@ namespace {// to avoid poluting
 
     bool IsEqualTo(const TunableStrategy &ref) const override
     {
-      bool equal = true;
+      bool isEqual = true;
       try {
         auto &refStrat = dynamic_cast<const Strategy1 &>(ref);
-        equal = equal && GetOutputRef().IsEquivalentTo(refStrat.GetOutputRef());
-        equal = equal && GetInputRef().IsEquivalentTo(refStrat.GetInputRef());
-        equal = equal && GetSettings().IsEquivalentTo(refStrat.GetSettings());
+        isEqual = isEqual && GetOutputRef().IsEquivalentTo(refStrat.GetOutputRef());
+        isEqual = isEqual && GetInputRef().IsEquivalentTo(refStrat.GetInputRef());
+        isEqual = isEqual && GetSettings().IsEquivalentTo(refStrat.GetSettings());
         // Size.n has to be also equal for true equality
-        equal = equal
-                && GetInputRef().GetData().info.GetSize().n
-                     == refStrat.GetInputRef().GetData().info.GetSize().n;
+        isEqual = isEqual
+                  && GetInputRef().GetData().info.GetSize()
+                       == refStrat.GetInputRef().GetData().info.GetSize();
       } catch (std::bad_cast &) {
-        equal = false;
+        isEqual = false;
       }
-      return equal;
+      return isEqual;
     }
 
     bool IsSimilarTo(const TunableStrategy &ref) const override
     {
-      bool similar = true;
+      bool isSimilar = true;
       try {
         auto &refStrat = dynamic_cast<const Strategy1 &>(ref);
-        similar = similar && GetOutputRef().IsEquivalentTo(refStrat.GetOutputRef());
-        similar = similar && GetInputRef().IsEquivalentTo(refStrat.GetInputRef());
-        similar = similar && GetSettings().IsEquivalentTo(refStrat.GetSettings());
+        isSimilar = isSimilar && GetOutputRef().IsEquivalentTo(refStrat.GetOutputRef());
+        isSimilar = isSimilar && GetInputRef().IsEquivalentTo(refStrat.GetInputRef());
+        isSimilar = isSimilar && GetSettings().IsEquivalentTo(refStrat.GetSettings());
         // Using naive similarity: same as equality except for ignoring Size.n
         // TODO real similarity check
       } catch (std::bad_cast &) {
-        similar = false;
+        isSimilar = false;
       }
-      return similar;
+      return isSimilar;
     }
 
     bool InitImpl() override

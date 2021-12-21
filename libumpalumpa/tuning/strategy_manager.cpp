@@ -24,28 +24,33 @@ void StrategyManager::Register(TunableStrategy &strat)
     }
   }
 
-  bool equal = false;
-  bool similar = false;
+  bool isEqual = false;
+  bool isSimilar = false;
   StrategyGroup *groupPtr = nullptr;
   std::string debugMsg = "";
 
   // Check equality and similarity
   for (auto &group : strategyGroups) {
+    // If we find an equal group we are satisfied and we can exit the loop
+    // because equality has higher priority than similarity
     if (group.leader->IsEqualTo(strat)) {
-      equal = true;
+      isEqual = true;
       groupPtr = &group;
       break;
     }
-    if (!similar && group.leader->IsSimilarTo(strat)) {
-      similar = true;
+    // After we find a similar group we continue looking for an equal group
+    // but we ignore any other similar groups
+    // TODO might be updated to accept the best of all the similar groups instead of the first one
+    if (!isSimilar && group.leader->IsSimilarTo(strat)) {
+      isSimilar = true;
       groupPtr = &group;
     }
   }
 
-  if (equal) {
+  if (isEqual) {
     strat.AllowTuningStrategyGroup();
     debugMsg += "As equal to";
-  } else if (similar) {
+  } else if (isSimilar) {
     debugMsg += "As similar to";
   } else {
     // 'strat' does not belong to any of the existing groups, create new group based on the 'strat'
@@ -53,13 +58,13 @@ void StrategyManager::Register(TunableStrategy &strat)
     // First strategy in a new group can tune the group
     strat.AllowTuningStrategyGroup();
     groupPtr->leader->SetBestConfigurations(strat.GetDefaultConfigurations());
-    debugMsg += "As new Leader";
+    debugMsg += "As a new Leader";
   }
 
   strat.groupLeader = groupPtr->leader.get();
   groupPtr->strategies.push_back(&strat);
-  spdlog::debug("Strategy at address {0} registered", reinterpret_cast<size_t>(&strat));
-  spdlog::debug(debugMsg + " strategy {0}", reinterpret_cast<size_t>(groupPtr->leader.get()));
+  spdlog::debug("Strategy at address {} registered", reinterpret_cast<size_t>(&strat));
+  spdlog::debug(debugMsg + " strategy {}", reinterpret_cast<size_t>(groupPtr->leader.get()));
 }
 
 void StrategyManager::Unregister(TunableStrategy &strat)
@@ -73,7 +78,7 @@ void StrategyManager::Unregister(TunableStrategy &strat)
       // Remove strategy from group
       std::iter_swap(stratIt, group.strategies.end() - 1);
       group.strategies.pop_back();
-      spdlog::debug("Strategy at address {0} unregistered", reinterpret_cast<size_t>(&strat));
+      spdlog::debug("Strategy at address {} unregistered", reinterpret_cast<size_t>(&strat));
 
       // We don't want to remove empty groups... later some strategy may be added there.
       // The group can store best configurations (loaded from db, acquired from KTT, ...), etc...
