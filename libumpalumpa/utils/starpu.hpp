@@ -69,15 +69,13 @@ public:
   template<typename T> static uint32_t *CreateWorkerMask(unsigned &count, const T &col)
   {
     // how many 32b numbers do we need to mask all workers
-    const size_t len = (starpu_worker_get_count() / 32) + 1;
+    count = (starpu_worker_get_count() / 32) + 1;
     // create and zero-out the mask
-    auto *mask = reinterpret_cast<uint32_t *>(calloc(len, sizeof(uint32_t)));
-    count = 0;
+    auto *mask = reinterpret_cast<uint32_t *>(calloc(count, sizeof(uint32_t)));
     for (size_t i = 0; i < col.size(); ++i) {
       if (col[i]) {
         // set the corresponding bit to 1
         mask[i / 32] |= (1 << (i % 32));
-        ++count;
       }
     }
     return mask;

@@ -53,6 +53,9 @@ namespace {// to avoid poluting
     }
     // update the vector
     a->algs.at(id) = alg;
+    // inform StarPU that allocation used some memory
+    starpu_memory_allocate(
+      starpu_worker_get_local_memory_node(), alg->GetUsedBytes(), STARPU_MEMORY_OVERFLOW);
   }
 
   void CudaInit(void *args)
@@ -70,6 +73,9 @@ namespace {// to avoid poluting
     }
     // update the vector
     a->algs.at(id) = alg;
+    // inform StarPU that allocation used some memory
+    starpu_memory_allocate(
+      starpu_worker_get_local_memory_node(), alg->GetUsedBytes(), STARPU_MEMORY_OVERFLOW);
   }
 
   template<typename T> void UniversalCleanup(void *args)
@@ -77,7 +83,11 @@ namespace {// to avoid poluting
     auto *vec = reinterpret_cast<std::vector<AFFT *> *>(args);
     auto id = static_cast<size_t>(starpu_worker_get_id());
     auto *alg = reinterpret_cast<T *>(vec->at(id));
-    if (nullptr != alg) { alg->Cleanup(); }
+    if (nullptr != alg) {
+      auto bytes = alg->GetUsedBytes();
+      alg->Cleanup();
+      starpu_memory_deallocate(starpu_worker_get_local_memory_node(), bytes);
+    }
   }
 
   template<typename T> void DeleteAlg(void *args)
@@ -95,6 +105,7 @@ FFTStarPU::~FFTStarPU()
   Synchronize();
   starpu_execute_on_each_worker(DeleteAlg<FFTCPU>, &algs, STARPU_CPU);
   starpu_execute_on_each_worker(DeleteAlg<FFTCUDA>, &algs, STARPU_CUDA);
+  Cleanup();
 }
 
 void FFTStarPU::Cleanup()
@@ -170,6 +181,7 @@ bool FFTStarPU::ExecuteImpl(const OutputData &out, const InputData &in)
     c.where = STARPU_CUDA | STARPU_CPU;
     c.cpu_funcs[0] = Codelet;
     c.cuda_funcs[0] = Codelet;
+    c.cuda_flags[0] = STARPU_CUDA_ASYNC;
     c.nbuffers = 2;
     c.modes[0] = STARPU_W;
     c.modes[1] = STARPU_R;

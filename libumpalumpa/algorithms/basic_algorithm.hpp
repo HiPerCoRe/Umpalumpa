@@ -98,6 +98,11 @@ public:
 
   const Settings &GetSettings() const { return *settings.get(); }
 
+  /**
+   * Return bytes internally allocated by the algorithm to be able to process the
+   * given work
+   **/
+  virtual size_t GetUsedBytes() const { return 0; };
 
   struct Strategy
   {

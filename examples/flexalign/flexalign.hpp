@@ -5,8 +5,6 @@
 #include <libumpalumpa/algorithms/correlation/acorrelation.hpp>
 #include <libumpalumpa/algorithms/extrema_finder/aextrema_finder.hpp>
 
-#include <mutex>
-
 using umpalumpa::data::Size;
 using umpalumpa::data::Payload;
 using umpalumpa::data::FourierDescriptor;
@@ -36,18 +34,20 @@ public:
 
   void Execute(const Size &size);
 
+  virtual ~FlexAlign() = default;
+
 protected:
   /**
    * This method creates a Physical Payload.
    * If necessary, data should be registered in the respective Memory Manager.
    * If tmp is True, this data are not meant for long-term storage.
    **/
-  virtual PhysicalDescriptor CreatePD(size_t bytes, DataType type, bool copyInRAM) = 0;
+  virtual PhysicalDescriptor CreatePD(size_t bytes, DataType type, bool copyInRAM, bool pinned) = 0;
 
   /**
    * This method removes all data allocated by the Physical Descriptor
    **/
-  virtual void RemovePD(const PhysicalDescriptor &pd) const = 0;
+  virtual void RemovePD(const PhysicalDescriptor &pd, bool pinned) const = 0;
 
   /**
    * This method fetches data represented by the Physical Descriptor to main RAM.
@@ -127,8 +127,10 @@ private:
   Payload<FourierDescriptor> ConvertFromFFT(Payload<FourierDescriptor> &correlation,
     const std::string &name);
 
+  Payload<LogicalDescriptor> FindMax(Payload<FourierDescriptor> &outCorrelation,
+    const std::string &name);
 
-  std::vector<Shift> FindMax(Payload<FourierDescriptor> &outCorrelation, const std::string &name);
+  std::vector<Shift> ExtractShift(const Payload<LogicalDescriptor> &shift);
 
   void LogResult(size_t i, size_t j, size_t batch, const std::vector<Shift> &shift);
 
@@ -139,7 +141,10 @@ private:
     return batch * batch;
   }
 
-  std::mutex mutex1;
-  std::mutex mutex2;
-  std::mutex mutex3;
+  size_t NoOfBatches(const Size &s, size_t batch)
+  {
+    return ((s.n / batch + 1) * (s.n / batch)) / 2;
+  }
+
+  size_t GetAvailableCores() const;
 };
