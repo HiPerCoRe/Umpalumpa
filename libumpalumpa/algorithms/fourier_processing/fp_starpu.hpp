@@ -20,7 +20,7 @@ protected:
   bool ExecuteImpl(const OutputData &out, const InputData &in);
 
 private:
-  inline static const std::string taskName = "Fourier Processing StarPU";
+  inline static const std::string taskName = "FourierProcessingStarPU";
 
   std::vector<AFP *> algs;
   long noOfInitWorkers = 0;
