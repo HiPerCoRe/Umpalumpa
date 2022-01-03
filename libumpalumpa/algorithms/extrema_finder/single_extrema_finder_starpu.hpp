@@ -21,7 +21,7 @@ protected:
   bool ExecuteImpl(const OutputData &out, const InputData &in);
 
 private:
-  inline static const std::string taskName = "Single Extrema Finder StarPU";
+  inline static const std::string taskName = "SingleExtremaFinderStarPU";
 
   /**
    * Holds pointers to used algorithms.

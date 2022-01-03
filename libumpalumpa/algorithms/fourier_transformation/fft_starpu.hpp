@@ -20,7 +20,7 @@ protected:
   bool ExecuteImpl(const OutputData &out, const InputData &in);
 
 private:
-  inline static const std::string taskName = "FFT StarPU";
+  inline static const std::string taskName = "FFTStarPU";
 
   /**
    * Holds pointers to used algorithms.
