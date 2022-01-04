@@ -30,16 +30,18 @@ namespace {// to avoid poluting
         return false;
 
       const auto &s = alg.GetSettings();
-      utils::ExpandBools<ScaleFFT2DCPU>::Expand(
-        s.GetApplyFilter(),
+      utils::ExpandBools<ScaleFFT2DCPU>::Expand(s.GetApplyFilter(),
         s.GetNormalize(),
         s.GetCenter(),
+        s.GetMaxFreq().has_value(),
         reinterpret_cast<std::complex<float> *>(in.GetData().GetPtr()),
         reinterpret_cast<std::complex<float> *>(out.GetData().GetPtr()),
         in.GetData().info.GetSize(),
+        in.GetData().info.GetSpatialSize(),
         out.GetData().info.GetSize(),
         reinterpret_cast<float *>(in.GetFilter().GetPtr()),
-        1.f / static_cast<float>(in.GetData().info.GetPaddedSpatialSize().single));
+        1.f / static_cast<float>(in.GetData().info.GetPaddedSpatialSize().single),
+        s.GetMaxFreq().value_or(0));
       return true;
     }
   };
