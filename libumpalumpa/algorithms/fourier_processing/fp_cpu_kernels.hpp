@@ -23,7 +23,7 @@ template<bool applyFilter, bool normalize, bool center, bool cropFreq> struct Sc
           size_t origY = (y <= outSize.y / 2) ? y : (inSize.y - (outSize.y - y));
           size_t iIndex = n * inSize.single + origY * inSize.x + x;
           size_t oIndex = n * outSize.single + y * outSize.x + x;
-          T2 freq = { Idx2Freq<T>(x, inSpatialSize.x), Idx2Freq<T>(origY, inSpatialSize.y) };
+          T2 freq = { Idx2Freq(x, inSpatialSize.x), Idx2Freq(origY, inSpatialSize.y) };
           out[oIndex] = (cropFreq && (norm(freq) > maxFreqSquare)) ? T2{} : in[iIndex];
           if (applyFilter) { out[oIndex] *= filter[y * outSize.x + x]; }
           if (normalize) { out[oIndex] *= normFactor; }
