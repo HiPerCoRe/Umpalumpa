@@ -98,3 +98,19 @@ TEST_F(NAME, Filtering)
   
   testFP(out, in, settings);
 }
+
+TEST_F(NAME, MaxFreq)
+{
+  auto locality = Locality::kOutOfPlace;
+  auto settings = Settings(locality);
+  settings.SetMaxFreq(0.25);
+
+  Size size(12, 12, 1, 1);
+
+  SetUp(settings, size, size);
+
+  auto out = AFP::OutputData(*pOut);
+  auto in = AFP::InputData(*pIn, *pFilter);
+  
+  testFP(out, in, settings);
+}

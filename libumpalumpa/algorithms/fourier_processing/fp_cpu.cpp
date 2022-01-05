@@ -3,6 +3,7 @@
 #include <libumpalumpa/algorithms/fourier_processing/fp_cpu.hpp>
 #include <libumpalumpa/algorithms/fourier_processing/fp_cpu_kernels.hpp>
 #include <libumpalumpa/system_includes/spdlog.hpp>
+#include <libumpalumpa/utils/bool_expand.hpp>
 
 namespace umpalumpa::fourier_processing {
 
@@ -29,15 +30,18 @@ namespace {// to avoid poluting
         return false;
 
       const auto &s = alg.GetSettings();
-      scaleFFT2DCPU(reinterpret_cast<std::complex<float> *>(in.GetData().GetPtr()),
+      utils::ExpandBools<ScaleFFT2DCPU>::Expand(s.GetApplyFilter(),
+        s.GetNormalize(),
+        s.GetCenter(),
+        s.GetMaxFreq().has_value(),
+        reinterpret_cast<std::complex<float> *>(in.GetData().GetPtr()),
         reinterpret_cast<std::complex<float> *>(out.GetData().GetPtr()),
         in.GetData().info.GetSize(),
+        in.GetData().info.GetSpatialSize(),
         out.GetData().info.GetSize(),
         reinterpret_cast<float *>(in.GetFilter().GetPtr()),
         1.f / static_cast<float>(in.GetData().info.GetPaddedSpatialSize().single),
-        s.GetApplyFilter(),
-        s.GetNormalize(),
-        s.GetCenter());
+        s.GetMaxFreq().value_or(0));
       return true;
     }
   };

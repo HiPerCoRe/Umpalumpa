@@ -1,17 +1,20 @@
 #include <libumpalumpa/data/size.hpp>
+#include <libumpalumpa/algorithms/fourier_processing/fp_common_kernels.hpp>
 
 // This kernel assumes that low frequencies are located in the corners
 
 // FIXME not sure to work properly when out dimensions are bigger than
 //       input dimensions
 
-template<bool applyFilter, bool normalize, bool center>
+template<bool applyFilter, bool normalize, bool center, bool cropFreq>
 __global__ void scaleFFT2DKernel(const float2 *__restrict__ in,
   float2 *__restrict__ out,
   umpalumpa::data::Size inSize,
+  umpalumpa::data::Size inSpatialSize,
   umpalumpa::data::Size outSize,
   const float *__restrict__ filter,
-  float normFactor)
+  float normFactor,
+  float maxFreqSquare)
 {
   // assign pixel to thread
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -32,7 +35,9 @@ __global__ void scaleFFT2DKernel(const float2 *__restrict__ in,
     size_t iIndex =
       n * inSize.x * inSize.y + origY * inSize.x + idx;// index within consecutive images
     size_t oIndex = n * outSize.x * outSize.y + fIndex;// index within consecutive images
-    out[oIndex] = in[iIndex];
+    float2 freq = { umpalumpa::fourier_processing::Idx2Freq(idx, inSpatialSize.x), 
+      umpalumpa::fourier_processing::Idx2Freq(origY, inSpatialSize.y) };
+    out[oIndex] = (cropFreq && (freq.x * freq.x + freq.y * freq.y > maxFreqSquare)) ? make_float2(0, 0) : in[iIndex];
     if (applyFilter) {
       out[oIndex].x *= filter[fIndex];
       out[oIndex].y *= filter[fIndex];

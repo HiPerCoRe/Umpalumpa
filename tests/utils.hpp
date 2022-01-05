@@ -35,7 +35,7 @@ template<typename T> void Print(std::complex<T> *data, const data::Size size)
     for (size_t y = 0; y < size.y; ++y) {
       for (size_t x = 0; x < size.x; ++x) {
         auto v = data[offset + y * size.x + x];
-        printf("(%+.3f,%+.3f)\t", v.real(), v.imag());
+        printf("(% 7.3f,% 7.3f)\t", v.real(), v.imag());
       }
       std::cout << "\n";
     }

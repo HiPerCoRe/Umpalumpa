@@ -47,7 +47,8 @@ namespace {// to avoid poluting
         ktt::DimensionVector{ size.x, size.y, size.z },
         { std::to_string(s.GetApplyFilter()),
           std::to_string(s.GetNormalize()),
-          std::to_string(s.GetCenter()) });
+          std::to_string(s.GetCenter()),
+          std::to_string(s.GetMaxFreq().has_value()) });
       auto definitionId = GetDefinitionId();
 
       AddKernel(kTMP, definitionId);
@@ -109,6 +110,7 @@ namespace {// to avoid poluting
       auto argOut = AddArgumentVector<float2>(out.GetData(), ktt::ArgumentAccessType::WriteOnly);
 
       auto inSize = tuner.AddArgumentScalar(in.GetData().info.GetSize());
+      auto inSpatialSize = tuner.AddArgumentScalar(in.GetData().info.GetSpatialSize());
       auto outSize = tuner.AddArgumentScalar(out.GetData().info.GetSize());
 
       const auto &s = alg.Get().GetSettings();
@@ -123,10 +125,13 @@ namespace {// to avoid poluting
       auto normFactor =
         tuner.AddArgumentScalar(static_cast<float>(in.GetData().info.GetNormFactor()));
 
+      auto maxFreq = tuner.AddArgumentScalar(s.GetMaxFreq().value_or(0));
+
       auto definitionId = GetDefinitionId();
       auto kernelId = GetKernelId();
 
-      tuner.SetArguments(definitionId, { argIn, argOut, inSize, outSize, filter, normFactor });
+      tuner.SetArguments(definitionId,
+        { argIn, argOut, inSize, inSpatialSize, outSize, filter, normFactor, maxFreq });
 
       auto &size = out.GetData().info.GetPaddedSize();
       tuner.SetLauncher(kernelId, [definitionId, &size](ktt::ComputeInterface &interface) {

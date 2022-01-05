@@ -114,7 +114,14 @@ protected:
     Acquire(out.GetData().dataInfo);
     // check results
     float normFactor = 1.f / in.GetData().info.GetSpatialSize().single;
-    check(output, outSize, input, inSize, normFactor, filter, settings);
+    check(output,
+      outSize,
+      input,
+      inSize,
+      in.GetData().info.GetSpatialSize(),
+      normFactor,
+      filter,
+      settings);
     // we're done with those data
     Release(out.GetData().dataInfo);
   }
@@ -123,6 +130,7 @@ protected:
     const Size &outSize,
     const std::complex<float> *input,
     const Size &inSize,
+    const Size &inSpatialSize,
     float normFactor,
     const float *filter,
     const Settings &s) const
@@ -150,6 +158,13 @@ protected:
               1 - 2 * ((static_cast<int>(x + y)) & 1);// center FT, input must be even
             inReal *= centerCoef;
             inImag *= centerCoef;
+          }
+          if (s.GetMaxFreq().has_value()) {
+            auto freq = [](float i, float max) { return ((i <= (max / 2)) ? i : (i - max)) / max; };
+            auto max = s.GetMaxFreq().value();
+            auto freqX = freq(x, inSpatialSize.x);
+            auto freqY = freq(y, inSpatialSize.y);
+            if ((freqX * freqX + freqY * freqY) > max) { inReal = inImag = 0; }
           }
           ASSERT_FLOAT_EQ(inReal, output[outIndex].real()) << " at real " << outIndex;
           ASSERT_FLOAT_EQ(inImag, output[outIndex].imag()) << " at imag " << outIndex;
