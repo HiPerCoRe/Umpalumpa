@@ -48,7 +48,8 @@ namespace {// to avoid poluting
         { std::to_string(s.GetApplyFilter()),
           std::to_string(s.GetNormalize()),
           std::to_string(s.GetCenter()),
-          std::to_string(s.GetMaxFreq().has_value()) });
+          std::to_string(s.GetMaxFreq().has_value()),
+          std::to_string(s.GetShift()) });
       auto definitionId = GetDefinitionId();
 
       AddKernel(kTMP, definitionId);
