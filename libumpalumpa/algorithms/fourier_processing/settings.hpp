@@ -16,6 +16,11 @@ public:
   int GetVersion() const { return version; }
 
   void SetCenter(bool val) { this->center = val; }
+  /**
+   * Move low frequencies from corners to center or vice versa.
+   * This is different from Centering, which centers FFT in the spatial domain.
+   **/
+  void SetShift(bool val) { this->shift = val; }
   void SetNormalize(bool val) { this->normalize = val; }
   void SetApplyFilter(bool val) { this->applyFilter = val; }
   /**
@@ -29,6 +34,7 @@ public:
   }
 
   bool GetCenter() const { return center; }
+  bool GetShift() const { return shift; }
   auto GetLocality() const { return locality; }
   bool GetNormalize() const { return normalize; }
   bool GetApplyFilter() const { return applyFilter; }
@@ -40,6 +46,7 @@ private:
   bool center = false;
   bool normalize = false;
   bool applyFilter = false;
+  bool shift = false;
   std::optional<float> maxFreq;
 };
 }// namespace umpalumpa::fourier_processing

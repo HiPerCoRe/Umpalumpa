@@ -139,9 +139,10 @@ protected:
       size_t cropIndex = outSize.y / 2 + 1;
       for (size_t y = 0; y < outSize.y; y++) {
         for (size_t x = 0; x < outSize.x; x++) {
-          auto inIndex =
-            n * inSize.single + (y < cropIndex ? y : inSize.y - outSize.y + y) * inSize.x + x;
-          auto outIndex = n * outSize.single + y * outSize.x + x;
+          auto inY = y < cropIndex ? y : inSize.y - outSize.y + y;
+          auto inIndex = n * inSize.single + inY * inSize.x + x;
+          size_t shiftedY = (y + outSize.y + outSize.y / 2) % outSize.y;
+          auto outIndex = n * outSize.single + (s.GetShift() ? shiftedY : y) * outSize.x + x;
           float inReal = input[inIndex].real();
           float inImag = input[inIndex].imag();
           if (s.GetApplyFilter()) {

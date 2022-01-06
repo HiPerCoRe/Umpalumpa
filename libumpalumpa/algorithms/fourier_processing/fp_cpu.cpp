@@ -34,6 +34,7 @@ namespace {// to avoid poluting
         s.GetNormalize(),
         s.GetCenter(),
         s.GetMaxFreq().has_value(),
+        s.GetShift(),
         reinterpret_cast<std::complex<float> *>(in.GetData().GetPtr()),
         reinterpret_cast<std::complex<float> *>(out.GetData().GetPtr()),
         in.GetData().info.GetSize(),

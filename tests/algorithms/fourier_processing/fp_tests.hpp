@@ -114,3 +114,37 @@ TEST_F(NAME, MaxFreq)
   
   testFP(out, in, settings);
 }
+
+// TODO make sure that forward / backward shift works properly
+// see e.g. https://numpy.org/doc/stable/reference/generated/numpy.fft.ifftshift.html
+TEST_F(NAME, ShiftEven)
+{
+  auto locality = Locality::kOutOfPlace;
+  auto settings = Settings(locality);
+  settings.SetShift(true);
+
+  Size size(6, 4, 1, 1);
+
+  SetUp(settings, size, size);
+
+  auto out = AFP::OutputData(*pOut);
+  auto in = AFP::InputData(*pIn, *pFilter);
+  
+  testFP(out, in, settings);
+}
+
+TEST_F(NAME, ShiftOdd)
+{
+  auto locality = Locality::kOutOfPlace;
+  auto settings = Settings(locality);
+  settings.SetShift(true);
+
+  Size size(4, 3, 1, 1);
+
+  SetUp(settings, size, size);
+
+  auto out = AFP::OutputData(*pOut);
+  auto in = AFP::InputData(*pIn, *pFilter);
+  
+  testFP(out, in, settings);
+}
