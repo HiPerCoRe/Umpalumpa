@@ -18,9 +18,10 @@ namespace {// to avoid poluting
     {
       const auto &s = alg.GetSettings();
 
-      utils::ExpandBools<FR>::Expand(
-        s.GetInterpolation() == Settings::Interpolation::kLookup, s.GetBlobOrder());
-
+      utils::ExpandBools<FR>::Expand(s.GetInterpolation() == Settings::Interpolation::kLookup,
+        s.GetAlpha() <= 15.f,
+        s.GetType() == Settings::Type::kFast,
+        s.GetBlobOrder());
       return true;
     }
   };

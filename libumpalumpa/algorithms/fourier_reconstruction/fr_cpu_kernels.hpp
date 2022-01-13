@@ -6,7 +6,7 @@
 
 namespace umpalumpa::fourier_reconstruction {
 
-template<bool usePrecomputedInterpolation> struct FR
+template<bool useFast, bool usePrecomputedInterpolation, bool useFastKaiser> struct FR
 {
 
   template<int blobOrder> static void Execute()
@@ -20,6 +20,8 @@ template<bool usePrecomputedInterpolation> struct FR
     };
     Report("usePrecomputedInterpolation", usePrecomputedInterpolation);
     Report("blobOrder", blobOrder);
+    Report("useFastKaiser", useFastKaiser);
+    Report("useFast", useFast);
   }
 
   static void Execute(const BlobOrder &order)

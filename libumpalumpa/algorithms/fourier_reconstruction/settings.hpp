@@ -9,6 +9,8 @@ class Settings
 public:
   enum class Interpolation { kDynamic, kLookup };
 
+  enum class Type { kFast, kPrecise };
+
   auto GetInterpolation() const { return interpolation; }
 
   void SetInterpolation(const Interpolation &i) { this->interpolation = i; }
@@ -21,9 +23,14 @@ public:
 
   void SetAlpha(float a) { this->alpha = a; }
 
+  auto GetType() const { return type; }
+
+  void SetType(const Type &t) { this->type = t; }
+
 private:
   Interpolation interpolation = Interpolation::kDynamic;
   BlobOrder order = BlobOrder::k0;
+  Type type = Type::kFast;
   float alpha = 15.f;
 };
 }// namespace umpalumpa::fourier_reconstruction
