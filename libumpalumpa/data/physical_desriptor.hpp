@@ -51,6 +51,12 @@ public:
 
   PhysicalDescriptor(PhysicalDescriptor &&) = default;
 
+  bool operator==(const PhysicalDescriptor &o) const
+  {
+    return ptr == o.ptr && bytes == o.bytes && type == o.type && manager == o.manager
+           && handle == o.handle;
+  }
+
 private:
   // Prevent copying of this instance (to avoid accidental handle copy)
   PhysicalDescriptor(const PhysicalDescriptor &) = default;

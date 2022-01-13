@@ -129,7 +129,15 @@ namespace data {
              && (isSpatial == ref.isSpatial) && (fsd == ref.fsd);
     }
 
-    // fixme these should be private + getters / setters
+    bool operator==(const FourierDescriptor &o) const
+    {
+      return size == o.size && paddedSize == o.paddedSize
+             && frequencyDomainSize == o.frequencyDomainSize
+             && frequencyDomainSizePadded == o.frequencyDomainSizePadded && padding == o.padding
+             && frequencyDomainSizePadded == o.frequencyDomainSizePadded && isSpatial == o.isSpatial
+             && fsd == o.fsd;
+    }
+
   private:
     Size ComputeFrequencySize(const Size &s) { return Size(s.x / 2 + 1, s.y, s.z, s.n); }
 

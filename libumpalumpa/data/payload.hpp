@@ -62,6 +62,8 @@ public:
     return info.IsEquivalentTo(ref.info) && (dataInfo.GetType() == ref.dataInfo.GetType());
   }
 
+  bool operator==(const Payload<T> &o) const { return info == o.info && dataInfo == o.dataInfo; }
+
   /**
    * Returns minimal number of bytes necessary to fit this data.
    * Returned amount might be smaller than bytes provided by Physical descriptor,

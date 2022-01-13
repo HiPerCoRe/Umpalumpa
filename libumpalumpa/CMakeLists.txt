@@ -18,6 +18,7 @@ set(umpalumpa_sources
     algorithms/fourier_transformation/fft_cpu.cpp
     algorithms/fourier_processing/fp_cpu.cpp
     algorithms/fourier_processing/fp_cuda.cpp
+    algorithms/fourier_reconstruction/fr_cpu.cpp
     algorithms/correlation/correlation_cuda.cpp
     algorithms/correlation/correlation_cpu.cpp
     tuning/ktt_provider.cpp
