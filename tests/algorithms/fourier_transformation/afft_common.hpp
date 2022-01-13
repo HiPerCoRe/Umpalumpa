@@ -14,8 +14,9 @@ protected:
   auto CreatePayloadSpatial(const Size &size)
   {
     auto ld = FourierDescriptor(size);
-    auto bytes = ld.Elems() * Sizeof(DataType::kFloat);
-    auto pd = Create(bytes, DataType::kFloat);
+    auto type = DataType::Get<float>();
+    auto bytes = ld.Elems() * type.GetSize();
+    auto pd = Create(bytes, type);
     return Payload(ld, std::move(pd), "Spatial data");
   }
 
@@ -23,10 +24,11 @@ protected:
   {
     auto fd = FourierDescriptor::FourierSpaceDescriptor{};
     auto ld = FourierDescriptor(size, PaddingDescriptor(), fd);
-    auto bytes = ld.Elems() * Sizeof(DataType::kComplexFloat);
-    auto pd = [settings, this, bytes]() {
+    auto type = DataType::Get<std::complex<float>>();
+    auto bytes = ld.Elems() * type.GetSize();
+    auto pd = [settings, this, bytes, type]() {
       if (settings.IsOutOfPlace()) {
-        return Create(bytes, DataType::kComplexFloat);
+        return Create(bytes, type);
       } else {
         // TODO find out if in StarPU we can use the same Physical Descriptor
         // or if we have to create a new handle

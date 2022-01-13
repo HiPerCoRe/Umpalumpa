@@ -19,8 +19,9 @@ protected:
   {
     auto fd = FourierDescriptor::FourierSpaceDescriptor{};
     auto ld = FourierDescriptor(size, PaddingDescriptor(), fd);
-    auto bytes = ld.Elems() * Sizeof(DataType::kComplexFloat);
-    auto pd = Create(bytes, DataType::kComplexFloat);
+    auto type = DataType::Get<std::complex<float>>();
+    auto bytes = ld.Elems() * type.GetSize();
+    auto pd = Create(bytes, type);
     return Payload(ld, std::move(pd), "Input projecttion data in FD");
   }
 
@@ -28,16 +29,18 @@ protected:
   {
     auto fd = FourierDescriptor::FourierSpaceDescriptor{};
     auto ld = FourierDescriptor(size.CopyFor(1), PaddingDescriptor(), fd);
-    auto bytes = ld.Elems() * Sizeof(DataType::kComplexFloat);
-    auto pd = Create(bytes, DataType::kComplexFloat);
+    auto type = DataType::Get<std::complex<float>>();
+    auto bytes = ld.Elems() * type.GetSize();
+    auto pd = Create(bytes, type);
     return Payload(ld, std::move(pd), "Volume in FD");
   }
 
   auto CreatePayloadWeights(const Settings &settings, const Size &size)
   {
     auto ld = LogicalDescriptor(size);
-    auto bytes = ld.Elems() * Sizeof(DataType::kFloat);
-    auto pd = Create(bytes, DataType::kFloat);
+    auto type = DataType::Get<float>();
+    auto bytes = ld.Elems() * type.GetSize();
+    auto pd = Create(bytes, type);
     return Payload(ld, std::move(pd), "Weights");
   }
 

@@ -16,8 +16,9 @@ protected:
   {
     auto fd = FourierDescriptor::FourierSpaceDescriptor{};
     auto ld = FourierDescriptor(size, PaddingDescriptor(), fd);
-    auto bytes = ld.Elems() * Sizeof(DataType::kComplexFloat);
-    auto pd = Create(bytes, DataType::kComplexFloat);
+    auto type = DataType::Get<std::complex<float>>();
+    auto bytes = ld.Elems() * type.GetSize();
+    auto pd = Create(bytes, type);
     return Payload(ld, std::move(pd), name);
   }
 
@@ -31,8 +32,9 @@ protected:
     }
     auto fd = FourierDescriptor::FourierSpaceDescriptor{};
     auto ld = FourierDescriptor(size, PaddingDescriptor(), fd);
-    auto bytes = ld.Elems() * Sizeof(DataType::kComplexFloat);
-    auto pd = Create(bytes, DataType::kComplexFloat);
+    auto type = DataType::Get<std::complex<float>>();
+    auto bytes = ld.Elems() * type.GetSize();
+    auto pd = Create(bytes, type);
     return Payload(ld, std::move(pd), "Data 2");
   }
 

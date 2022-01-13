@@ -1,5 +1,6 @@
 #pragma once
 
+#include <complex>
 #include <libumpalumpa/algorithms/basic_algorithm.hpp>
 #include <libumpalumpa/data/payload_wrapper.hpp>
 #include <libumpalumpa/data/fourier_descriptor.hpp>
@@ -33,21 +34,21 @@ public:
   static bool IsDouble(const OutputData &out, const InputData &in, Direction d)
   {
     if (Direction::kForward == d) {
-      return ((out.GetData().dataInfo.GetType() == data::DataType::kComplexDouble)
-              && (in.GetData().dataInfo.GetType() == data::DataType::kDouble));
+      return ((out.GetData().dataInfo.GetType().Is<std::complex<double>>())
+              && (in.GetData().dataInfo.GetType().Is<double>()));
     }
-    return ((out.GetData().dataInfo.GetType() == data::DataType::kDouble)
-            && (in.GetData().dataInfo.GetType() == data::DataType::kComplexDouble));
+    return ((out.GetData().dataInfo.GetType().Is<double>())
+            && (in.GetData().dataInfo.GetType().Is<std::complex<double>>()));
   }
 
   static bool IsFloat(const OutputData &out, const InputData &in, Direction d)
   {
     if (Direction::kForward == d) {
-      return ((out.GetData().dataInfo.GetType() == data::DataType::kComplexFloat)
-              && (in.GetData().dataInfo.GetType() == data::DataType::kFloat));
+      return ((out.GetData().dataInfo.GetType().Is<std::complex<float>>())
+              && (in.GetData().dataInfo.GetType().Is<float>()));
     }
-    return ((out.GetData().dataInfo.GetType() == data::DataType::kFloat)
-            && (in.GetData().dataInfo.GetType() == data::DataType::kComplexFloat));
+    return ((out.GetData().dataInfo.GetType().Is<float>())
+            && (in.GetData().dataInfo.GetType().Is<std::complex<float>>()));
   }
 
 protected:

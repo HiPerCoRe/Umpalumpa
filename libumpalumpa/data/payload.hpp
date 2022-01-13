@@ -69,7 +69,7 @@ public:
    * Returned amount might be smaller than bytes provided by Physical descriptor,
    * as data represented by this Payload might not span the entire memory block.
    **/
-  size_t GetRequiredBytes() const { return info.Elems() * Sizeof(dataInfo.GetType()); }
+  size_t GetRequiredBytes() const { return info.Elems() * dataInfo.GetType().GetSize(); }
 
   inline void *GetPtr() const { return dataInfo.GetPtr(); }
 

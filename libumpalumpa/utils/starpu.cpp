@@ -30,8 +30,8 @@ void StarPUUtils::Register(const data::PhysicalDescriptor &pd, int home_node)
   starpu_vector_data_register(GetHandle(pd),
     home_node,
     reinterpret_cast<uintptr_t>(pd.GetPtr()),
-    static_cast<uint32_t>(pd.GetBytes() / Sizeof(pd.GetType())),
-    Sizeof(pd.GetType()));
+    static_cast<uint32_t>(pd.GetBytes() / pd.GetType().GetSize()),
+    pd.GetType().GetSize());
 }
 
 void *StarPUUtils::ReceivePDPtr(void *buffer)
