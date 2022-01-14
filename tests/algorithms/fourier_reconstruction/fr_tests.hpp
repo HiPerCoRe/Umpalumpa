@@ -12,7 +12,7 @@ TEST_F(NAME, XYPlane)
   SetUp(settings, size);
 
   auto out = AFR::OutputData(*pVolume, *pWeight);
-  auto in = AFR::InputData(*pFFT, *pVolume, *pWeight);
+  auto in = AFR::InputData(*pFFT, *pVolume, *pWeight, *pTraverseSpace);
 
   // testFP(out, in, settings);
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <libumpalumpa/algorithms/fourier_reconstruction/afr.hpp>
+#include <libumpalumpa/algorithms/fourier_reconstruction/traverse_space.hpp>
 #include <tests/algorithms/common.hpp>
 #include <tests/utils.hpp>
 
@@ -44,6 +45,16 @@ protected:
     return Payload(ld, std::move(pd), "Weights");
   }
 
+  auto CreatePayloadTraverseSpace(const Settings &settings)
+  {
+    // TODO pass number of spaces needed?
+    auto ld = LogicalDescriptor(Size(1, 1, 1, 1));
+    auto type = DataType::Get<TraverseSpace>();
+    auto bytes = ld.Elems() * type.GetSize();
+    auto pd = Create(bytes, type);
+    return Payload(ld, std::move(pd), "Traverse space");
+  }
+
   void SetUp(const Settings &settings, const Size &projectionSize)
   {
     pFFT = std::make_unique<Payload<FourierDescriptor>>(CreatePayloadFFT(settings, projectionSize));
@@ -56,6 +67,10 @@ protected:
 
     pWeight =
       std::make_unique<Payload<LogicalDescriptor>>(CreatePayloadWeights(settings, volumeSize));
+    Register(pWeight->dataInfo);
+
+    pTraverseSpace =
+      std::make_unique<Payload<LogicalDescriptor>>(CreatePayloadTraverseSpace(settings));
     Register(pWeight->dataInfo);
   }
 
@@ -72,9 +87,11 @@ protected:
     Clear(pFFT);
     Clear(pVolume);
     Clear(pWeight);
+    Clear(pTraverseSpace);
   }
 
   std::unique_ptr<Payload<FourierDescriptor>> pFFT;
   std::unique_ptr<Payload<FourierDescriptor>> pVolume;
   std::unique_ptr<Payload<LogicalDescriptor>> pWeight;
+  std::unique_ptr<Payload<LogicalDescriptor>> pTraverseSpace;
 };

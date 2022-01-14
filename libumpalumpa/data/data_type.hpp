@@ -20,7 +20,7 @@ public:
     return index == o.index;// and size has to be the same
   }
 
-  template<typename T> bool Is() const { return index == typeid(T); }
+  template<typename T> bool Is() const { return index == std::type_index(typeid(T)); }
 
 private:
   const std::type_index index;

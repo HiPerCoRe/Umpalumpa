@@ -15,22 +15,18 @@ template<typename T, typename U> struct OutputDataWrapper : public data::Payload
   OutputDataWrapper(T &volume, U &weight) : data::PayloadWrapper<T, U>(volume, weight) {}
   const T &GetVolume() const { return std::get<0>(this->payloads); };
   const U &GetWeight() const { return std::get<1>(this->payloads); };
-  typedef T VolumeType;
-  typedef U WeightType;
 };
 
-template<typename T, typename U> struct InputDataWrapper : public data::PayloadWrapper<T, T, U>
+template<typename T, typename U> struct InputDataWrapper : public data::PayloadWrapper<T, T, U, U>
 {
-  InputDataWrapper(std::tuple<T, T, U> &t) : data::PayloadWrapper<T, T, U>(t) {}
-  InputDataWrapper(T &fft, T &volume, U &weight)
-    : data::PayloadWrapper<T, T, U>(fft, volume, weight)
+  InputDataWrapper(std::tuple<T, T, U, U> &t) : data::PayloadWrapper<T, T, U, U>(t) {}
+  InputDataWrapper(T &fft, T &volume, U &weight, U &traverseSpace)
+    : data::PayloadWrapper<T, T, U, U>(fft, volume, weight, traverseSpace)
   {}
   const T &GetFFT() const { return std::get<0>(this->payloads); };
   const T &GetVolume() const { return std::get<1>(this->payloads); };
   const U &GetWeight() const { return std::get<2>(this->payloads); };
-  typedef T VolumeType;
-  typedef T FFTType;
-  typedef U WeightType;
+  const U &GetTraverseSpace() const { return std::get<3>(this->payloads); };
 };
 
 class AFR
@@ -46,7 +42,8 @@ protected:
     // TODO add size checks
     auto IsValidAndEqual = [](auto &p1, auto &p2) { return p1.IsValid() && p1 == p2; };
     return IsValidAndEqual(out.GetVolume(), in.GetVolume())
-           && IsValidAndEqual(out.GetWeight(), in.GetWeight()) && in.GetFFT().IsValid();
+           && IsValidAndEqual(out.GetWeight(), in.GetWeight()) && in.GetFFT().IsValid()
+           && in.GetTraverseSpace().IsValid();
   }
 };
 
