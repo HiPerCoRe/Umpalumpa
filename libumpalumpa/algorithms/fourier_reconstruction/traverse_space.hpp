@@ -28,7 +28,7 @@ struct TraverseSpace
    * Projection itself is a plane (with/without some thickness) somehow oriented in the AABB.
    * These variables hold normal to the plane
    */
-  Point3D<float> unitNormal;
+  data::Point3D<float> unitNormal;
 
   /**
    * Projection can have some thickness due to the blob radius.
@@ -37,7 +37,7 @@ struct TraverseSpace
    * specific rotation, so it can happen that 'topOrigin' is lower than 'bottomOrigin'.
    * In case the blob radius is zero, these variables hold the same values
    */
-  Point3D<float> topOrigin, bottomOrigin;
+  data::Point3D<float> topOrigin, bottomOrigin;
 
   int projectionIndex;// index to array of projections, which holds appropriate (visual) data
 
