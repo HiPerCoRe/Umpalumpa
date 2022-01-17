@@ -2,6 +2,7 @@ add_executable(payload_wrapper_tests)
 
 set(tests
     payload_wrapper.cpp
+    ../../empty.cu
 )
 
 target_sources(payload_wrapper_tests PRIVATE ${tests})
