@@ -43,8 +43,10 @@ public:
     return sPtr;
   }
 
-  void CleanupIdTracker(ktt::KernelDefinitionId id)
+  void CleanupIdTracker(std::shared_ptr<KTTIdTracker> &trackerSharedPtr)
   {
+    auto id = trackerSharedPtr->definitionId;
+    trackerSharedPtr.reset();
     if (auto it = tunerIds.find(id); it != tunerIds.end()) {
       if (it->second.expired()) { tunerIds.erase(it); }// erase from map is efficient
     } else {

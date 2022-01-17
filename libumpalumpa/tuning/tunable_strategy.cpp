@@ -104,11 +104,7 @@ void TunableStrategy::Register()
 
 void TunableStrategy::Cleanup()
 {
-  for (auto &sharedTracker : idTrackers) {
-    auto definitionId = sharedTracker->definitionId;
-    sharedTracker.reset();
-    kttHelper.CleanupIdTracker(definitionId);
-  }
+  for (auto &sharedTracker : idTrackers) { kttHelper.CleanupIdTracker(sharedTracker); }
   idTrackers.clear();
   definitionIds.clear();
   kernelIds.clear();

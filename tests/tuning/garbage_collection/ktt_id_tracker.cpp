@@ -53,8 +53,9 @@ TEST_F(KTTIdTrackerTests, when_destroyed_properly_releases_definitionId)
     ASSERT_NE(kernelId, ktt::InvalidKernelId);
     // Remove id again to not affect the rest of the test
     tuner.RemoveKernel(kernelId);
+
+    kttHelper.CleanupIdTracker(tracker);
   }// tracker destroyed -> id released from tuner
-  kttHelper.CleanupIdTracker(definitionId);
 
   // Check removal of ids by attempting to create a kernel
   ASSERT_KTT_ERROR_MSG(auto kernelId = tuner.CreateSimpleKernel(kernelName1, definitionId));
@@ -71,8 +72,9 @@ TEST_F(KTTIdTrackerTests, when_destroyed_properly_releases_kernelIds)
     ASSERT_NE(kernelId, ktt::InvalidKernelId);
     // Add kernel id into the tracker
     tracker->kernelIds.push_back(kernelId);
+
+    kttHelper.CleanupIdTracker(tracker);
   }// tracker destroyed -> ids released from tuner
-  kttHelper.CleanupIdTracker(definitionId);
 
   // Check removal of ids by attempting to create a kernel
   ASSERT_KTT_ERROR_MSG(auto kernelId = tuner.CreateSimpleKernel(kernelName1, definitionId));
@@ -96,8 +98,9 @@ TEST_F(KTTIdTrackerTests, when_destroyed_properly_releases_argumentIds)
     tracker->argumentIds.push_back(argumentId);
     // To check that argument id is really in the tuner we run a kernel
     ASSERT_TRUE(tuner.Run(kernelId, {}, {}).IsValid());
+
+    kttHelper.CleanupIdTracker(tracker);
   }// tracker destroyed -> ids released from tuner
-  kttHelper.CleanupIdTracker(definitionId);
 
   // Check removal of ids by attempting to create a kernel
   ASSERT_KTT_ERROR_MSG(auto kernelId = tuner.CreateSimpleKernel(kernelName1, definitionId));
@@ -139,8 +142,9 @@ TEST_F(KTTIdTrackerTests, tracker_destroyed_only_after_losing_last_reference_to_
     ASSERT_NE(kernelId1, ktt::InvalidKernelId);
     // Remove id again to not affect the rest of the test
     tuner.RemoveKernel(kernelId1);
+
+    kttHelper.CleanupIdTracker(tracker1);
   }// tracker destroyed -> ids released from the tuner
-  kttHelper.CleanupIdTracker(definitionId);
 
   // Check removal of ids by attempting to create a kernel
   ASSERT_KTT_ERROR_MSG(auto kernelId = tuner.CreateSimpleKernel(kernelName1, definitionId));
@@ -202,10 +206,7 @@ TEST_F(KTTIdTrackerTests, multithreaded_test)
       }
       {// Simulate strategy Destructor
         std::lock_guard lck(kttHelper.GetMutex());
-        // Destroy the shared ptr and cleanup the helper
-        auto dId = currentTracker->definitionId;
-        currentTracker.reset();
-        kttHelper.CleanupIdTracker(dId);
+        kttHelper.CleanupIdTracker(currentTracker);
       }
     }
   };
@@ -228,8 +229,7 @@ TEST_F(KTTIdTrackerTests, multithreaded_test)
   ASSERT_NE(validKernelId, ktt::InvalidKernelId);
   tuner.RemoveKernel(validKernelId);
 
-  tracker.reset();
-  kttHelper.CleanupIdTracker(definitionId);
+  kttHelper.CleanupIdTracker(tracker);
 
   ASSERT_TRUE(checkTracker.expired());
   ASSERT_KTT_ERROR_MSG(auto invalidKernelId = tuner.CreateSimpleKernel("Invalid", definitionId));
