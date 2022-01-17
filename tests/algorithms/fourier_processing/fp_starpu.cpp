@@ -32,7 +32,10 @@ public:
 
   void Register(const PhysicalDescriptor &pd) override { StarPUUtils::Register(pd); };
 
-  void Unregister(const PhysicalDescriptor &pd) override { StarPUUtils::Unregister(pd); };
+  void Unregister(const PhysicalDescriptor &pd) override
+  {
+    StarPUUtils::Unregister(pd, StarPUUtils::UnregisterType::kSubmitNoCopy);
+  };
 
   void Acquire(const PhysicalDescriptor &pd) override
   {

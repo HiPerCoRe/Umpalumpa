@@ -20,7 +20,7 @@ protected:
   bool ExecuteImpl(const OutputData &out, const InputData &in);
 
 private:
-  inline static const std::string taskName = "Correlation StarPU";
+  inline static const std::string taskName = "CorrelationStarPU";
 
   /**
    * Holds pointers to used algorithms.

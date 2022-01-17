@@ -9,27 +9,37 @@ namespace umpalumpa::extrema_finder {
 namespace {// to avoid poluting
   struct Args
   {
-    const AExtremaFinder::OutputData &out;
-    const AExtremaFinder::InputData &in;
-    const Settings &settings;
+    // we need to store local copies of the wrappers
+    // as references might not be valid by the time the codelet is executed
+    // FIXME this has to be refactored properly to work with MPI
+    const AExtremaFinder::OutputData out;
+    const AExtremaFinder::InputData in;
+    const Settings settings;
     std::vector<AExtremaFinder *> &algs;
+  };
+
+  struct CodeletArgs
+  {
+    data::Payload<data::LogicalDescriptor> vals;
+    data::Payload<data::LogicalDescriptor> locs;
+    data::Payload<data::LogicalDescriptor> in;
+    std::vector<AExtremaFinder *> *algs;
   };
 
   void Codelet(void *buffers[], void *func_arg)
   {
     using umpalumpa::utils::StarPUUtils;
-    auto *args = reinterpret_cast<Args *>(func_arg);
+    auto *args = reinterpret_cast<CodeletArgs *>(func_arg);
 
-    auto pVals =
-      StarPUUtils::Assemble(args->out.GetValues(), StarPUUtils::ReceivePDPtr(buffers[0]));
-    auto pLocs =
-      StarPUUtils::Assemble(args->out.GetLocations(), StarPUUtils::ReceivePDPtr(buffers[1]));
+    // FIXME if handle points to the void interface, we access illegal memory
+    auto pVals = StarPUUtils::Assemble(args->vals, buffers[0]);
+    auto pLocs = StarPUUtils::Assemble(args->locs, buffers[1]);
     auto out = AExtremaFinder::OutputData(pVals, pLocs);
 
-    auto pIn = StarPUUtils::Assemble(args->in.GetData(), StarPUUtils::ReceivePDPtr(buffers[2]));
+    auto pIn = StarPUUtils::Assemble(args->in, buffers[2]);
     auto in = AExtremaFinder::InputData(pIn);
 
-    auto &alg = args->algs.at(static_cast<size_t>(starpu_worker_get_id()));
+    auto &alg = args->algs->at(static_cast<size_t>(starpu_worker_get_id()));
     std::ignore = alg->Execute(out, in);// we have no way of comunicate the result
     alg->Synchronize();// this codelet is run asynchronously, but we have to wait till it's done
                        // to be able to use starpu task synchronization properly
@@ -132,14 +142,24 @@ bool SingleExtremaFinderStarPU::ExecuteImpl(const OutputData &out, const InputDa
   // we need at least one initialized worker, otherwise mask would be 0 and all workers
   // would be used
   if (noOfInitWorkers < 1) return false;
-  taskQueue.emplace(starpu_task_create());
-  auto *task = taskQueue.back();
+
+  auto CreateArgs = [this, &out, &in]() {
+    auto *a = reinterpret_cast<CodeletArgs *>(malloc(sizeof(CodeletArgs)));
+    a->algs = &this->algs;
+    memcpy(reinterpret_cast<void *>(&a->vals), &out.GetValues(), sizeof(a->vals));
+    memcpy(reinterpret_cast<void *>(&a->locs), &out.GetLocations(), sizeof(a->locs));
+    memcpy(reinterpret_cast<void *>(&a->in), &in.GetData(), sizeof(a->in));
+    return a;
+  };
+
+  auto *task = taskQueue.emplace(starpu_task_create());
   task->handles[0] = *StarPUUtils::GetHandle(out.GetValues().dataInfo);
   task->handles[1] = *StarPUUtils::GetHandle(out.GetLocations().dataInfo);
   task->handles[2] = *StarPUUtils::GetHandle(in.GetData().dataInfo);
   task->workerids = utils::StarPUUtils::CreateWorkerMask(task->workerids_len, algs);
-  task->cl_arg = new Args{ out, in, this->GetSettings(), algs };// FIXME memory leak
-  task->cl_arg_size = sizeof(Args);
+  task->cl_arg = CreateArgs();
+  task->cl_arg_size = sizeof(CodeletArgs);
+  task->cl_arg_free = 1;
   // make sure we free the mask
   task->callback_func = [](void *) { /* empty on purpose */ };
   task->callback_arg = task->workerids;
@@ -150,10 +170,17 @@ bool SingleExtremaFinderStarPU::ExecuteImpl(const OutputData &out, const InputDa
     c.where = STARPU_CUDA | STARPU_CPU;
     c.cpu_funcs[0] = Codelet;
     c.cuda_funcs[0] = Codelet;
+    c.cuda_flags[0] = STARPU_CUDA_ASYNC;
     c.nbuffers = 3;
     c.modes[0] = STARPU_W;
     c.modes[1] = STARPU_W;
     c.modes[2] = STARPU_R;
+    c.model = [] {
+      static starpu_perfmodel m = {};
+      m.type = STARPU_HISTORY_BASED;
+      m.symbol = "SingleExtremaFinder_StarPU";
+      return &m;
+    }();
     return &c;
   }();
 

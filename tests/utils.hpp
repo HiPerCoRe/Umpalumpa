@@ -10,7 +10,7 @@ namespace umpalumpa::test {
 template<typename T> void FillRandom(T *dst, size_t bytes)
 {
   int fd = open("/dev/urandom", O_RDONLY);
-  assert(read(fd, dst, bytes) > 0);
+  std::ignore = read(fd, dst, bytes);
   close(fd);
 }
 
@@ -35,7 +35,7 @@ template<typename T> void Print(std::complex<T> *data, const data::Size size)
     for (size_t y = 0; y < size.y; ++y) {
       for (size_t x = 0; x < size.x; ++x) {
         auto v = data[offset + y * size.x + x];
-        printf("(%+.3f,%+.3f)\t", v.real(), v.imag());
+        printf("(% 7.3f,% 7.3f)\t", v.real(), v.imag());
       }
       std::cout << "\n";
     }
@@ -45,6 +45,7 @@ template<typename T> void Print(std::complex<T> *data, const data::Size size)
 
 template<typename T> void PrintData(T *data, const data::Size size)
 {
+  ASSERT_EQ(size.GetDim(), data::Dimensionality::k2Dim);
   for (size_t n = 0; n < size.n; ++n) {
     size_t offset = n * size.single;
     for (size_t z = 0; z < size.z; ++z) {

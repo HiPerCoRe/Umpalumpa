@@ -16,6 +16,7 @@ public:
   ~FFTCUDA();
   void Synchronize() override;
   void Cleanup() override;
+  size_t GetUsedBytes() const override;
 
 protected:
   bool InitImpl() override;

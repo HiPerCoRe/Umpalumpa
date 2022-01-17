@@ -113,46 +113,36 @@ protected:
     // make sure that data are on this memory node
     Acquire(out.GetData().dataInfo);
     // check results
-    float delta = 0.00001f;
-    checkEdges(output, outSize, delta);
     float normFactor = 1.f / in.GetData().info.GetSpatialSize().single;
-    checkInside(output, outSize, input, inSize, normFactor, filter, settings, delta);
+    check(output,
+      outSize,
+      input,
+      inSize,
+      in.GetData().info.GetSpatialSize(),
+      normFactor,
+      filter,
+      settings);
     // we're done with those data
     Release(out.GetData().dataInfo);
   }
 
-  void checkEdges(const std::complex<float> *out, const Size &outSize, float delta = 0.00001f) const
-  {
-    for (size_t n = 0; n < outSize.n; n++) {
-      for (size_t x = 0; x < outSize.x; x++) {
-        auto outIndex = n * outSize.single + x;// y == 0
-        ASSERT_NEAR(0.f, out[outIndex].real(), delta) << " at checkEdges";
-        ASSERT_NEAR(0.f, out[outIndex].imag(), delta) << " at checkEdges";
-      }
-      for (size_t y = 0; y < outSize.y; y++) {
-        auto outIndex = n * outSize.single + y * outSize.x;// x == 0
-        ASSERT_NEAR(0.f, out[outIndex].real(), delta) << " at checkEdges";
-        ASSERT_NEAR(0.f, out[outIndex].imag(), delta) << " at checkEdges";
-      }
-    }
-  }
-
-  void checkInside(const std::complex<float> *output,
+  void check(const std::complex<float> *output,
     const Size &outSize,
     const std::complex<float> *input,
     const Size &inSize,
+    const Size &inSpatialSize,
     float normFactor,
     const float *filter,
-    const Settings &s,
-    float delta = 0.00001f) const
+    const Settings &s) const
   {
     for (size_t n = 0; n < outSize.n; n++) {
       size_t cropIndex = outSize.y / 2 + 1;
-      for (size_t y = 1; y < outSize.y; y++) {
-        for (size_t x = 1; x < outSize.x; x++) {
-          auto inIndex =
-            n * inSize.single + (y < cropIndex ? y : inSize.y - outSize.y + y) * inSize.x + x;
-          auto outIndex = n * outSize.single + y * outSize.x + x;
+      for (size_t y = 0; y < outSize.y; y++) {
+        for (size_t x = 0; x < outSize.x; x++) {
+          auto inY = y < cropIndex ? y : inSize.y - outSize.y + y;
+          auto inIndex = n * inSize.single + inY * inSize.x + x;
+          size_t shiftedY = (y + outSize.y + outSize.y / 2) % outSize.y;
+          auto outIndex = n * outSize.single + (s.GetShift() ? shiftedY : y) * outSize.x + x;
           float inReal = input[inIndex].real();
           float inImag = input[inIndex].imag();
           if (s.GetApplyFilter()) {
@@ -170,8 +160,15 @@ protected:
             inReal *= centerCoef;
             inImag *= centerCoef;
           }
-          ASSERT_NEAR(inReal, output[outIndex].real(), delta) << " at real " << outIndex;
-          ASSERT_NEAR(inImag, output[outIndex].imag(), delta) << " at imag " << outIndex;
+          if (s.GetMaxFreq().has_value()) {
+            auto freq = [](float i, float max) { return ((i <= (max / 2)) ? i : (i - max)) / max; };
+            auto max = s.GetMaxFreq().value();
+            auto freqX = freq(x, inSpatialSize.x);
+            auto freqY = freq(y, inSpatialSize.y);
+            if ((freqX * freqX + freqY * freqY) > max) { inReal = inImag = 0; }
+          }
+          ASSERT_FLOAT_EQ(inReal, output[outIndex].real()) << " at real " << outIndex;
+          ASSERT_FLOAT_EQ(inImag, output[outIndex].imag()) << " at imag " << outIndex;
         }
       }
     }

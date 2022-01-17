@@ -43,7 +43,7 @@ namespace {// to avoid poluting
     std::vector<ktt::KernelConfiguration> GetDefaultConfigurations() const override
     {
       return { kttHelper.GetTuner().CreateConfiguration(
-                 GetKernelId(), { { "blockSize", static_cast<uint64_t>(32) } }),
+                 GetKernelId(), { { "blockSize", static_cast<uint64_t>(1024) } }),
         {} };
     }
 
@@ -104,7 +104,8 @@ namespace {// to avoid poluting
         AddKernel(kRefineLocation, GetDefinitionId(1));
       }
 
-      tuner.AddParameter(kernelId, "blockSize", std::vector<uint64_t>{ 32, 64, 128, 256, 512 });
+      tuner.AddParameter(
+        kernelId, "blockSize", std::vector<uint64_t>{ 32, 64, 128, 256, 512, 1024 });
 
       tuner.AddThreadModifier(kernelId,
         { definitionId },

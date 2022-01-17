@@ -88,8 +88,7 @@ void FFTCUDA::setupPlan()
       cufftPlanMany(&plan, rank, n, inembed, istride, idist, onembed, ostride, odist, type, batch));
   };
   manyHelper(f);
-  // CudaErrchk(cufftSetStream(plan, stream)); // FIXME this causes CUFFT_EXEC_FAILED in Xmipp for
-  // no apparent reason
+  CudaErrchk(cufftSetStream(plan, stream));
 }
 
 FFTCUDA::FFTCUDA(int deviceOrdinal) : shouldDestroyStream(true)
@@ -111,11 +110,12 @@ FFTCUDA::~FFTCUDA()
   }
 }
 
-void FFTCUDA::Synchronize()
+void FFTCUDA::Synchronize() { CudaErrchk(cudaStreamSynchronize(stream)); }
+
+size_t FFTCUDA::GetUsedBytes() const
 {
-  // FIXME we want to synchronize the right stream only, but we don't use it yet,
-  // so we have to synchronize whole device (default stream 0)
-  CudaErrchk(cudaStreamSynchronize(0));
-  // CudaErrchk(cudaStreamSynchronize(stream));
+  size_t result = 0;
+  if (this->IsInitialized()) { CudaErrchk(cufftGetSize(plan, &result)); }
+  return result;
 }
 }// namespace umpalumpa::fourier_transformation

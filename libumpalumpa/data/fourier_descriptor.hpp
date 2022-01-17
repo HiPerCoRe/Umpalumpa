@@ -14,13 +14,16 @@ namespace data {
   public:
     struct FourierSpaceDescriptor
     {
-      bool isCentered;// FIXME: change to enum
+      bool isCentered;// data has been shifted in the spatial domain, i.e. phase has been altered //
+                      // FIXME: change to enum
+      bool isShifted;// data has been shifted in the fourier domain, position of the coefficient has
+                     // been altered // FIXME: change to enum
       bool isNormalized;// FIXME: change to enum
       bool hasSymetry;// FIXME: find proper name
       bool operator==(const FourierSpaceDescriptor &o) const
       {
-        return (isCentered == o.isCentered) && (isNormalized == o.isNormalized)
-               && (hasSymetry == o.hasSymetry);
+        return (isCentered == o.isCentered) && (isShifted == o.isShifted)
+               && (isNormalized == o.isNormalized) && (hasSymetry == o.hasSymetry);
       }
     };
 

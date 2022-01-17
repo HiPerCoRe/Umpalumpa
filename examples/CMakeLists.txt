@@ -6,3 +6,5 @@ if(USE_STARPU)
             # project_warnings
             umpalumpa)
 endif()
+
+add_subdirectory(flexalign)
