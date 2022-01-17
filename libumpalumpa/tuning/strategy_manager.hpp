@@ -3,7 +3,7 @@
 #include <vector>
 #include <libumpalumpa/system_includes/ktt.hpp>
 
-namespace umpalumpa::algorithm {
+namespace umpalumpa::tuning {
 
 // Forward declarations
 class TunableStrategy;
@@ -20,21 +20,21 @@ struct StrategyGroup;
  * AlgorithmManager is a singleton and can be accessed by calling static method
  * AlgorithmManager::Get().
  */
-class AlgorithmManager
+class StrategyManager
 {
   std::vector<StrategyGroup> strategyGroups;
   std::mutex mutex;
 
-  AlgorithmManager() = default;
-  AlgorithmManager(AlgorithmManager &&) = delete;
-  AlgorithmManager &operator=(AlgorithmManager &&) = delete;
+  StrategyManager() = default;
+  StrategyManager(StrategyManager &&) = delete;
+  StrategyManager &operator=(StrategyManager &&) = delete;
   // Copy constructor and assign operator are implicitly deleted because of the mutex
 
 public:
   /**
    * Returns an instance of the AlgorithmManager singleton.
    */
-  static AlgorithmManager &Get();
+  static StrategyManager &Get();
 
   /**
    * Registers the strategy into the AlgorithmManager which allows tuning and usage of prepared
@@ -47,13 +47,6 @@ public:
    * tuning parameters.
    */
   void Unregister(TunableStrategy &strat);
-
-  // FIXME needs to be changed because strategy can have more kernels, therefore there is no single
-  // best configuration
-  /**
-   * Returns the best known configuration of a strategy with the specified hash.
-   */
-  // ktt::KernelConfiguration GetBestConfiguration(size_t stratHash);
 
   /**
    * Returns the underlying strategy container.
@@ -69,4 +62,4 @@ public:
   void Cleanup();
 };
 
-}// namespace umpalumpa::algorithm
+}// namespace umpalumpa::tuning

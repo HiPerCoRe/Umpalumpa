@@ -6,7 +6,7 @@
 #include <libumpalumpa/tuning/tunable_strategy.hpp>
 #include <libumpalumpa/utils/ktt.hpp>
 
-namespace umpalumpa::algorithm {
+namespace umpalumpa::tuning {
 
 /**
  * Base class for every strategy that utilizes KTT for tuning.
@@ -19,7 +19,7 @@ namespace umpalumpa::algorithm {
 template<typename O, typename I, typename S>
 class KTTStrategyBase
   : public BasicAlgorithm<O, I, S>::Strategy
-  , public algorithm::TunableStrategy
+  , public tuning::TunableStrategy
 {
 public:
   using StrategyOutput = O;
@@ -93,4 +93,4 @@ protected:
   }
 };
 
-}// namespace umpalumpa::algorithm
+}// namespace umpalumpa::tuning
