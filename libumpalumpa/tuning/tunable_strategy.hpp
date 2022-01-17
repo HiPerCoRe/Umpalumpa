@@ -1,9 +1,9 @@
 #pragma once
 #include <libumpalumpa/tuning/ktt_helper.hpp>
-#include <libumpalumpa/tuning/algorithm_manager.hpp>
+#include <libumpalumpa/tuning/strategy_manager.hpp>
 #include <libumpalumpa/tuning/tuning_approach.hpp>
 
-namespace umpalumpa::algorithm {
+namespace umpalumpa::tuning {
 
 // Forward declarations
 struct Leader;
@@ -37,7 +37,7 @@ public:
   /**
    * Creates and initializes TunableStrategy.
    */
-  TunableStrategy(utils::KTTHelper &helper);
+  TunableStrategy(KTTHelper &helper);
 
   /**
    * Destroys the TunableStrategy. Cleans up all the resources (KTT ids) tied to this instance.
@@ -92,7 +92,7 @@ public:
   const std::vector<ktt::KernelConfiguration> &GetBestConfigurations() const override;
 
   // TODO move to private + Setter
-  const Leader *groupLeader = nullptr;
+  Leader *groupLeader = nullptr;
 
   /**
    * Sets a TuningApproach which controls how the strategy should be tuned.
@@ -123,7 +123,7 @@ protected:
   /**
    * Executes the specified kernel. Internally decides whether the strategy will be tuned or not.
    */
-  void ExecuteKernel(ktt::KernelId kernelId) const;
+  void ExecuteKernel(ktt::KernelId kernelId);
 
   // Can be moved to private
   /**
@@ -137,7 +137,7 @@ protected:
    * TODO IMPORTANT: This method assumes that it is being called from a critical section which locks
    * the KTT tuner.
    */
-  void RunTuning(ktt::KernelId kernelId) const;
+  ktt::KernelResult RunTuning(ktt::KernelId kernelId) const;
 
   // Can be moved to private
   /**
@@ -145,6 +145,12 @@ protected:
    * The call is non-blocking.
    */
   void RunBestConfiguration(ktt::KernelId kernelId) const;
+
+  /**
+   * If the tuning results are better, it saves them as the new best configuration of the specified
+   * kernel.
+   */
+  void SaveTuningToLeader(ktt::KernelId kernelId, const ktt::KernelResult &tuningResults);
 
   /**
    * Registers this strategy to the AlgorithmManager.
@@ -210,7 +216,7 @@ private:
   static size_t GetNewStrategyId();
 
 protected:
-  utils::KTTHelper &kttHelper;
+  KTTHelper &kttHelper;
 
 private:
   struct KernelInfo
@@ -222,7 +228,7 @@ private:
   std::vector<ktt::KernelDefinitionId> definitionIds;
   std::vector<KernelInfo> kernelIds;
   // Tracker of used ids, which allows for automatic cleanup after strategy's destruction
-  std::vector<std::shared_ptr<utils::KTTIdTracker>> idTrackers;
+  std::vector<std::shared_ptr<KTTIdTracker>> idTrackers;
 
   TuningApproach tuningApproach;
   // the strategy is equal to a Leader of a StrategyGroup and therefore is allowed to be tuned
@@ -235,4 +241,4 @@ private:
   const size_t strategyId;
 };
 
-}// namespace umpalumpa::algorithm
+}// namespace umpalumpa::tuning
