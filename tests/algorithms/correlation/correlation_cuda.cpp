@@ -42,6 +42,8 @@ public:
 
   void Release(const PhysicalDescriptor &pd) override{ /* nothing to do */ };
 
+  TestProcessingUnit GetTestProcessingUnit() const override { return TestProcessingUnit::kGPU; }
+
 private:
   const int worker = 0;
   Correlation_CUDA transformer = Correlation_CUDA(worker);

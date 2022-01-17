@@ -116,6 +116,11 @@ public:
     const BasicAlgorithm &alg;
   };
 
+  /**
+   * Hopefully just a temporary solution to get access to a strategy.
+   **/
+  Strategy &GetStrategy() { return *strategy; }
+
 protected:
   /**
    * Returns true if output, input and settings are not logically conflicting or malformed.

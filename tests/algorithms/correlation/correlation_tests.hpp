@@ -1,10 +1,5 @@
 #pragma once
 
-// TODO tests:
-//  - correct correlations
-//  - centering
-//  - center + odd sized image -> not working
-
 TEST_F(NAME, CorrelationOnetoOneIntraBufferNoCenter)
 {
   Settings settings(CorrelationType::kOneToN);
