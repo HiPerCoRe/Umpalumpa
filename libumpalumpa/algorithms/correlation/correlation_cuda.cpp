@@ -21,11 +21,15 @@ namespace {// to avoid poluting
 
     size_t GetHash() const override { return 0; }
 
-    std::unique_ptr<algorithm::Leader> CreateLeader() const override
+    std::unique_ptr<tuning::Leader> CreateLeader() const override
     {
-      return algorithm::StrategyGroup::CreateLeader(*this, alg);
+      return tuning::StrategyGroup::CreateLeader(*this, alg);
     }
 
+    // FIXME this design might cause serious issues, while retrieving the correct configurations,
+    // when there is more than 1 optional kernel, the same goes to GetBestConfig of Leader. Works
+    // for now with all the current algorithms, but some changes or new algorithms might cause
+    // issues.
     std::vector<ktt::KernelConfiguration> GetDefaultConfigurations() const override
     {
       return { kttHelper.GetTuner().CreateConfiguration(GetKernelId(),

@@ -3,7 +3,7 @@
 #include <libumpalumpa/system_includes/spdlog.hpp>
 #include <libumpalumpa/tuning/strategy_group.hpp>
 
-namespace umpalumpa::algorithm {
+namespace umpalumpa::tuning {
 
 StrategyManager &StrategyManager::Get()
 {
@@ -96,5 +96,5 @@ void StrategyManager::Cleanup()
   strategyGroups.clear();
 }
 
-}// namespace umpalumpa::algorithm
+}// namespace umpalumpa::tuning
 
