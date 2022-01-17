@@ -1,21 +1,43 @@
 #pragma once
 #include <libumpalumpa/tuning/ktt_helper.hpp>
-#include <libumpalumpa/tuning/algorithm_manager.hpp>
+#include <libumpalumpa/tuning/strategy_manager.hpp>
 #include <libumpalumpa/tuning/tuning_approach.hpp>
 
-namespace umpalumpa::algorithm {
+namespace umpalumpa::tuning {
+
+// Forward declarations
+struct Leader;
+
+namespace detail {
+  /**
+   * Interface of important methods that need to be shared between TunableStrategy and Leader
+   * strategy. It is used for virtual inheritance of TunableStrategy methods into the Leader. We
+   * can't use virtual inheritance without this interface because TunableStrategy has parametrized
+   * constructor.
+   */
+  struct TunableStrategyInterface
+  {
+    virtual std::unique_ptr<Leader> CreateLeader() const = 0;
+    virtual size_t GetHash() const = 0;
+    virtual bool IsSimilarTo(const TunableStrategy &ref) const = 0;
+    virtual bool IsEqualTo(const TunableStrategy &ref) const = 0;
+    virtual std::vector<ktt::KernelConfiguration> GetDefaultConfigurations() const = 0;
+    virtual const std::vector<ktt::KernelConfiguration> &GetBestConfigurations() const = 0;
+    virtual ~TunableStrategyInterface() = default;
+  };
+}// namespace detail
 
 /**
  * Base class for every strategy that uses KTT for tuning.
  * Having this class as a predecessor automates many tasks tied to the tuning process.
  */
-class TunableStrategy
+class TunableStrategy : virtual public detail::TunableStrategyInterface
 {
 public:
   /**
    * Creates and initializes TunableStrategy.
    */
-  TunableStrategy(utils::KTTHelper &helper);
+  TunableStrategy(KTTHelper &helper);
 
   /**
    * Destroys the TunableStrategy. Cleans up all the resources (KTT ids) tied to this instance.
@@ -29,26 +51,26 @@ public:
    *
    * return algorithm::StrategyGroup::CreateLeader(*this, alg);
    */
-  virtual std::unique_ptr<TunableStrategy> CreateLeader() const = 0;
+  std::unique_ptr<Leader> CreateLeader() const override = 0;
 
   /**
    * Returns hash of this strategy. This method needs to be overriden by successor strategy because
    * the hash is computed using algorithm specific data and settings.
    */
-  virtual size_t GetHash() const = 0;
+  size_t GetHash() const override = 0;
 
   /**
    * Each successor strategy defines similarity by its own rules.
    * When we have two similar strategies, we can reuse tuning parameters of one strategy when
    * executing the other one.
    */
-  virtual bool IsSimilarTo(const TunableStrategy &ref) const = 0;
+  bool IsSimilarTo(const TunableStrategy &ref) const override = 0;
 
   /**
    * Two strategies are equal when their hashes are the same.
    * When we have two equal strategies, we can use both for tuning.
    */
-  bool IsEqualTo(const TunableStrategy &ref) const;
+  bool IsEqualTo(const TunableStrategy &ref) const override;
 
   /**
    * Returns the full name of the strategy type (including namespaces).
@@ -56,9 +78,21 @@ public:
   std::string GetFullName() const;
 
   /**
+   * TODO
+   */
+  std::vector<ktt::KernelConfiguration> GetDefaultConfigurations() const override = 0;
+  /**
    * Returns the best known tuning configuration of the specified kernel saved in the KTT tuner.
    */
-  ktt::KernelConfiguration GetBestConfiguration(ktt::KernelId kernelId) const;
+  virtual ktt::KernelConfiguration GetBestConfiguration(ktt::KernelId kernelId) const;
+
+  /**
+   * TODO
+   */
+  const std::vector<ktt::KernelConfiguration> &GetBestConfigurations() const override;
+
+  // TODO move to private + Setter
+  Leader *groupLeader = nullptr;
 
   /**
    * Sets a TuningApproach which controls how the strategy should be tuned.
@@ -89,7 +123,7 @@ protected:
   /**
    * Executes the specified kernel. Internally decides whether the strategy will be tuned or not.
    */
-  void ExecuteKernel(ktt::KernelId kernelId, const ktt::KernelConfiguration &TMP = {}) const;
+  void ExecuteKernel(ktt::KernelId kernelId);
 
   // Can be moved to private
   /**
@@ -103,17 +137,20 @@ protected:
    * TODO IMPORTANT: This method assumes that it is being called from a critical section which locks
    * the KTT tuner.
    */
-  void RunTuning(ktt::KernelId kernelId) const;
+  ktt::KernelResult RunTuning(ktt::KernelId kernelId) const;
 
   // Can be moved to private
   /**
    * Runs the kernel with the best known configuration.
    * The call is non-blocking.
-   *
-   * TODO Second argument is temporary, will be removed once we can acquire the configuration via
-   * other means.
    */
-  void RunBestConfiguration(ktt::KernelId kernelId, const ktt::KernelConfiguration &TMP = {}) const;
+  void RunBestConfiguration(ktt::KernelId kernelId) const;
+
+  /**
+   * If the tuning results are better, it saves them as the new best configuration of the specified
+   * kernel.
+   */
+  void SaveTuningToLeader(ktt::KernelId kernelId, const ktt::KernelResult &tuningResults);
 
   /**
    * Registers this strategy to the AlgorithmManager.
@@ -179,7 +216,7 @@ private:
   static size_t GetNewStrategyId();
 
 protected:
-  utils::KTTHelper &kttHelper;
+  KTTHelper &kttHelper;
 
 private:
   struct KernelInfo
@@ -191,7 +228,7 @@ private:
   std::vector<ktt::KernelDefinitionId> definitionIds;
   std::vector<KernelInfo> kernelIds;
   // Tracker of used ids, which allows for automatic cleanup after strategy's destruction
-  std::vector<std::shared_ptr<utils::KTTIdTracker>> idTrackers;
+  std::vector<std::shared_ptr<KTTIdTracker>> idTrackers;
 
   TuningApproach tuningApproach;
   // the strategy is equal to a Leader of a StrategyGroup and therefore is allowed to be tuned
@@ -204,4 +241,4 @@ private:
   const size_t strategyId;
 };
 
-}// namespace umpalumpa::algorithm
+}// namespace umpalumpa::tuning

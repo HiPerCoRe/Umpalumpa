@@ -1,5 +1,7 @@
 #pragma once
 
+namespace umpalumpa::tuning {
+
 /**
  * Tuning of a strategy is done according to the selected TuningApproach.
  */
@@ -9,3 +11,5 @@ enum class TuningApproach {
   kSelectedKernels,// Only selected kernels will be tuned, the rest will run with the best known
                    // configuration
 };
+
+}// namespace umpalumpa::tuning

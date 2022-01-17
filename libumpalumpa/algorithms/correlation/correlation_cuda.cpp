@@ -20,28 +20,59 @@ namespace {// to avoid poluting
     // Z dimension, ie. create more threads, each thread processing fewer images.
 
     size_t GetHash() const override { return 0; }
-    std::unique_ptr<TunableStrategy> CreateLeader() const override
+
+    std::unique_ptr<tuning::Leader> CreateLeader() const override
     {
-      return algorithm::StrategyGroup::CreateLeader(*this, alg);
+      return tuning::StrategyGroup::CreateLeader(*this, alg);
     }
+
+    // FIXME this design might cause serious issues, while retrieving the correct configurations,
+    // when there is more than 1 optional kernel, the same goes to GetBestConfig of Leader. Works
+    // for now with all the current algorithms, but some changes or new algorithms might cause
+    // issues.
+    std::vector<ktt::KernelConfiguration> GetDefaultConfigurations() const override
+    {
+      return { kttHelper.GetTuner().CreateConfiguration(GetKernelId(),
+        { { "blockSizeX", static_cast<uint64_t>(32) },
+          { "blockSizeY", static_cast<uint64_t>(32) },
+          { "TILE", static_cast<uint64_t>(8) } }) };
+    }
+
+    bool IsEqualTo(const TunableStrategy &ref) const override
+    {
+      bool isEqual = true;
+      try {
+        auto &refStrat = dynamic_cast<const Strategy1 &>(ref);
+        isEqual = isEqual && GetOutputRef().IsEquivalentTo(refStrat.GetOutputRef());
+        isEqual = isEqual && GetInputRef().IsEquivalentTo(refStrat.GetInputRef());
+        isEqual = isEqual && GetSettings().IsEquivalentTo(refStrat.GetSettings());
+        // Size.n has to be also equal for true equality
+        isEqual = isEqual
+                  && GetInputRef().GetData1().info.GetSize()
+                       == refStrat.GetInputRef().GetData1().info.GetSize();
+        isEqual = isEqual
+                  && GetInputRef().GetData2().info.GetSize()
+                       == refStrat.GetInputRef().GetData2().info.GetSize();
+      } catch (std::bad_cast &) {
+        isEqual = false;
+      }
+      return isEqual;
+    }
+
     bool IsSimilarTo(const TunableStrategy &ref) const override
     {
-      bool similar = false;
-      // TODO move try-catch somewhere else
+      bool isSimilar = true;
       try {
-        // FIXME refactor
         auto &refStrat = dynamic_cast<const Strategy1 &>(ref);
-        auto refSize1 = refStrat.GetInputRef().GetData1().info.GetSize();
-        auto thisSize1 = GetInputRef().GetData1().info.GetSize();
-        auto refSize2 = refStrat.GetInputRef().GetData2().info.GetSize();
-        auto thisSize2 = GetInputRef().GetData2().info.GetSize();
-        // NOTE for testing size equivalence means similarity
-        similar = thisSize1.IsEquivalentTo(refSize1) && thisSize2.IsEquivalentTo(refSize2);
+        isSimilar = isSimilar && GetOutputRef().IsEquivalentTo(refStrat.GetOutputRef());
+        isSimilar = isSimilar && GetInputRef().IsEquivalentTo(refStrat.GetInputRef());
+        isSimilar = isSimilar && GetSettings().IsEquivalentTo(refStrat.GetSettings());
+        // Using naive similarity: same as equality except for ignoring Size.n
         // TODO real similarity check
       } catch (std::bad_cast &) {
-        similar = false;
+        isSimilar = false;
       }
-      return similar;
+      return isSimilar;
     }
 
     bool InitImpl() override
@@ -153,11 +184,7 @@ namespace {// to avoid poluting
         interface.RunKernelAsync(definitionId, interface.GetAllQueues().at(0), gridDim, blockDim);
       });
 
-      auto tmpBestConfig = tuner.CreateConfiguration(kernelId,
-        { { "blockSizeX", static_cast<uint64_t>(32) },
-          { "blockSizeY", static_cast<uint64_t>(32) },
-          { "TILE", static_cast<uint64_t>(8) } });
-      ExecuteKernel(kernelId, tmpBestConfig);
+      ExecuteKernel(kernelId);
 
       return true;
     };

@@ -1,8 +1,10 @@
 #include <libumpalumpa/tuning/tunable_strategy.hpp>
+#include <libumpalumpa/tuning/strategy_group.hpp>
+#include <libumpalumpa/system_includes/spdlog.hpp>
 
-namespace umpalumpa::algorithm {
+namespace umpalumpa::tuning {
 
-TunableStrategy::TunableStrategy(utils::KTTHelper &helper)
+TunableStrategy::TunableStrategy(KTTHelper &helper)
   : kttHelper(helper), tuningApproach(TuningApproach::kNoTuning), canTuneStrategyGroup(false),
     isRegistered(false), strategyId(GetNewStrategyId())
 {}
@@ -11,7 +13,7 @@ TunableStrategy::~TunableStrategy()
 {
   // FIXME Needs to be synchronized
   // kttHelper.GetTuner().Synchronize();
-  if (isRegistered) { AlgorithmManager::Get().Unregister(*this); }
+  if (isRegistered) { StrategyManager::Get().Unregister(*this); }
   if (!idTrackers.empty()) {
     // Needs to be locked because Cleanup routine accesses ktt::Tuner
     std::lock_guard lck(kttHelper.GetMutex());
@@ -19,6 +21,7 @@ TunableStrategy::~TunableStrategy()
   }
 }
 
+// This version is currently unused, might be removed later
 bool TunableStrategy::IsEqualTo(const TunableStrategy &ref) const
 {
   return GetHash() == ref.GetHash();
@@ -28,7 +31,15 @@ std::string TunableStrategy::GetFullName() const { return typeid(*this).name(); 
 
 ktt::KernelConfiguration TunableStrategy::GetBestConfiguration(ktt::KernelId kernelId) const
 {
-  return kttHelper.GetTuner().GetBestConfiguration(kernelId);
+  return GetBestConfigurations().at(GetKernelIndex(kernelId));
+}
+
+const std::vector<ktt::KernelConfiguration> &TunableStrategy::GetBestConfigurations() const
+{
+  if (groupLeader != nullptr) { return groupLeader->GetBestConfigurations(); }
+  throw std::logic_error(
+    "You are trying to access StrategyGroup Leader from a strategy that does not belong to any "
+    "StrategyGroup!");
 }
 
 bool TunableStrategy::ShouldBeTuned(ktt::KernelId kernelId) const
@@ -45,17 +56,17 @@ bool TunableStrategy::ShouldBeTuned(ktt::KernelId kernelId) const
   }
 }
 
-void TunableStrategy::ExecuteKernel(ktt::KernelId kernelId,
-  const ktt::KernelConfiguration &TMP) const
+void TunableStrategy::ExecuteKernel(ktt::KernelId kernelId)
 {
   if (canTuneStrategyGroup && ShouldBeTuned(kernelId)) {
-    RunTuning(kernelId);
+    auto tuningResults = RunTuning(kernelId);
+    SaveTuningToLeader(kernelId, tuningResults);
   } else {
-    RunBestConfiguration(kernelId, TMP);
+    RunBestConfiguration(kernelId);
   }
 }
 
-void TunableStrategy::RunTuning(ktt::KernelId kernelId) const
+ktt::KernelResult TunableStrategy::RunTuning(ktt::KernelId kernelId) const
 {
   auto &tuner = kttHelper.GetTuner();
   // TODO
@@ -63,26 +74,31 @@ void TunableStrategy::RunTuning(ktt::KernelId kernelId) const
   // kernel (this is done by locking the Tuner in Execute method).
   // tuner.Synchronize();
   // Now, there are no kernels at the GPU and we can start tuning
-  tuner.TuneIteration(kernelId, {});
-  // tuner.Synchronize();// tmp solution to make the call blocking
+  auto results = tuner.TuneIteration(kernelId, {});
+  tuner.Synchronize();// tmp solution to make the call blocking
   // TODO run should be blocking while tuning -> need change in the KernelLauncher
+  return results;
 }
 
-void TunableStrategy::RunBestConfiguration(ktt::KernelId kernelId,
-  const ktt::KernelConfiguration &TMP) const
+void TunableStrategy::RunBestConfiguration(ktt::KernelId kernelId) const
 {
-  auto &tuner = kttHelper.GetTuner();
-  // TODO GetBestConfiguration can be used once the KTT is able to synchronize
-  // the best configuration from multiple KTT instances, or loads the best
-  // configuration from previous runs
-  // auto bestConfig = GetBestConfiguration(kernelId);
-  const auto &bestConfig = TMP;
-  tuner.Run(kernelId, bestConfig, {});
+  kttHelper.GetTuner().Run(kernelId, GetBestConfiguration(kernelId), {});
+}
+
+void TunableStrategy::SaveTuningToLeader(ktt::KernelId kernelId,
+  const ktt::KernelResult &tuningResults)
+{
+  auto index = GetKernelIndex(kernelId);
+  auto bestTimeSoFar = groupLeader->GetBestConfigTime(index);
+  if (tuningResults.GetKernelDuration() < bestTimeSoFar) {
+    groupLeader->SetBestConfiguration(index, kttHelper.GetTuner().GetBestConfiguration(kernelId));
+    groupLeader->SetBestConfigTime(index, tuningResults.GetKernelDuration());
+  }
 }
 
 void TunableStrategy::Register()
 {
-  AlgorithmManager::Get().Register(*this);
+  StrategyManager::Get().Register(*this);
   isRegistered = true;
 }
 
@@ -162,4 +178,4 @@ size_t TunableStrategy::GetNewStrategyId()
   return strategyCounter++;
 }
 
-}// namespace umpalumpa::algorithm
+}// namespace umpalumpa::tuning

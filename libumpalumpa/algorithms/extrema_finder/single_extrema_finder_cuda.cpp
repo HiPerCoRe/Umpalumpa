@@ -17,15 +17,50 @@ namespace {// to avoid poluting
     static constexpr auto kRefineLocation = "RefineLocation";
 
     size_t GetHash() const override { return 0; }
-    std::unique_ptr<TunableStrategy> CreateLeader() const override
+    bool IsEqualTo(const TunableStrategy &ref) const override
     {
-      return algorithm::StrategyGroup::CreateLeader(*this, alg);
+      bool isEqual = true;
+      try {
+        auto &refStrat = dynamic_cast<const Strategy1 &>(ref);
+        isEqual = isEqual && GetOutputRef().IsEquivalentTo(refStrat.GetOutputRef());
+        isEqual = isEqual && GetInputRef().IsEquivalentTo(refStrat.GetInputRef());
+        isEqual = isEqual && GetSettings().IsEquivalentTo(refStrat.GetSettings());
+        // Size.n has to be also equal for true equality
+        isEqual = isEqual
+                  && GetInputRef().GetData().info.GetSize()
+                       == refStrat.GetInputRef().GetData().info.GetSize();
+      } catch (std::bad_cast &) {
+        isEqual = false;
+      }
+      return isEqual;
     }
-    bool IsSimilarTo(const TunableStrategy &) const override
+
+    std::unique_ptr<tuning::Leader> CreateLeader() const override
     {
-      // auto &o = dynamic_cast<const Strategy1 &>(other);
-      // TODO real similarity check
-      return false;
+      return tuning::StrategyGroup::CreateLeader(*this, alg);
+    }
+
+    std::vector<ktt::KernelConfiguration> GetDefaultConfigurations() const override
+    {
+      return { kttHelper.GetTuner().CreateConfiguration(
+                 GetKernelId(), { { "blockSize", static_cast<uint64_t>(32) } }),
+        {} };
+    }
+
+    bool IsSimilarTo(const TunableStrategy &ref) const override
+    {
+      bool isSimilar = true;
+      try {
+        auto &refStrat = dynamic_cast<const Strategy1 &>(ref);
+        isSimilar = isSimilar && GetOutputRef().IsEquivalentTo(refStrat.GetOutputRef());
+        isSimilar = isSimilar && GetInputRef().IsEquivalentTo(refStrat.GetInputRef());
+        isSimilar = isSimilar && GetSettings().IsEquivalentTo(refStrat.GetSettings());
+        // Using naive similarity: same as equality except for ignoring Size.n
+        // TODO real similarity check
+      } catch (std::bad_cast &) {
+        isSimilar = false;
+      }
+      return isSimilar;
     }
 
     bool InitImpl() override
@@ -125,9 +160,7 @@ namespace {// to avoid poluting
         });
       }
 
-      auto tmpBestConfig =
-        tuner.CreateConfiguration(kernelId, { { "blockSize", static_cast<uint64_t>(32) } });
-      ExecuteKernel(kernelId, tmpBestConfig);
+      ExecuteKernel(kernelId);
       if (refine) { ExecuteKernel(GetKernelId(1)); }
 
       return true;
@@ -142,15 +175,50 @@ namespace {// to avoid poluting
     static constexpr auto kFindMaxRect = "findMaxRect";
 
     size_t GetHash() const override { return 0; }
-    std::unique_ptr<TunableStrategy> CreateLeader() const override
+    bool IsEqualTo(const TunableStrategy &ref) const override
     {
-      return algorithm::StrategyGroup::CreateLeader(*this, alg);
+      bool equal = true;
+      try {
+        auto &refStrat = dynamic_cast<const Strategy2 &>(ref);
+        equal = equal && GetOutputRef().IsEquivalentTo(refStrat.GetOutputRef());
+        equal = equal && GetInputRef().IsEquivalentTo(refStrat.GetInputRef());
+        equal = equal && GetSettings().IsEquivalentTo(refStrat.GetSettings());
+        // Size.n has to be also equal for true equality
+        equal = equal
+                && GetInputRef().GetData().info.GetSize().n
+                     == refStrat.GetInputRef().GetData().info.GetSize().n;
+      } catch (std::bad_cast &) {
+        equal = false;
+      }
+      return equal;
     }
-    bool IsSimilarTo(const TunableStrategy &) const override
+
+    std::unique_ptr<tuning::Leader> CreateLeader() const override
     {
-      // auto &o = dynamic_cast<const Strategy2 &>(other);
-      // TODO real similarity check
-      return false;
+      return tuning::StrategyGroup::CreateLeader(*this, alg);
+    }
+
+    std::vector<ktt::KernelConfiguration> GetDefaultConfigurations() const override
+    {
+      return { kttHelper.GetTuner().CreateConfiguration(GetKernelId(),
+        { { "blockSizeX", static_cast<uint64_t>(64) },
+          { "blockSizeY", static_cast<uint64_t>(2) } }) };
+    }
+
+    bool IsSimilarTo(const TunableStrategy &ref) const override
+    {
+      bool similar = true;
+      try {
+        auto &refStrat = dynamic_cast<const Strategy2 &>(ref);
+        similar = similar && GetOutputRef().IsEquivalentTo(refStrat.GetOutputRef());
+        similar = similar && GetInputRef().IsEquivalentTo(refStrat.GetInputRef());
+        similar = similar && GetSettings().IsEquivalentTo(refStrat.GetSettings());
+        // Using naive similarity: same as equality except for ignoring Size.n
+        // TODO real similarity check
+      } catch (std::bad_cast &) {
+        similar = false;
+      }
+      return similar;
     }
 
     bool InitImpl() override
@@ -247,10 +315,7 @@ namespace {// to avoid poluting
         interface.RunKernelAsync(definitionId, interface.GetAllQueues().at(0), gridDim, blockDim);
       });
 
-      auto tmpBestConfig = tuner.CreateConfiguration(kernelId,
-        { { "blockSizeX", static_cast<uint64_t>(64) },
-          { "blockSizeY", static_cast<uint64_t>(2) } });
-      ExecuteKernel(kernelId, tmpBestConfig);
+      ExecuteKernel(kernelId);
 
       return true;
     };

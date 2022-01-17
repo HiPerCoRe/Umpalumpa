@@ -1,7 +1,7 @@
 #pragma once
 #include <libumpalumpa/system_includes/ktt.hpp>
 
-namespace umpalumpa::utils {
+namespace umpalumpa::tuning {
 /**
  * Class for tracking KTT ids, that takes care of their proper release when the ids are no longer
  * needed. Tracks all the ids tied to the specified ktt::KernelDefinitionId.
@@ -48,4 +48,4 @@ private:
   ktt::Tuner &tuner;
 };
 
-}// namespace umpalumpa::utils
+}// namespace umpalumpa::tuning
