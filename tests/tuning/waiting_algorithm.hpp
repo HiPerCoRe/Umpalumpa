@@ -16,8 +16,11 @@ struct DataWrapper : public data::PayloadWrapper<T>
   typedef T PayloadType;
 };
 
-class Settings
+struct Settings
 {
+  // serves for grouping equal/similar strategies together during tuning
+  int equalityGroup = 0;
+  int similarityGroup = 0;
 };
 
 class WaitingAlgorithm
@@ -28,7 +31,12 @@ public:
   using tuning::KTT_Base::KTT_Base;
   using BasicAlgorithm::Strategy;
   using KTTStrategy = tuning::KTTStrategyBase<OutputData, InputData, Settings>;
+
   void Synchronize() override { GetHelper().GetTuner().Synchronize(); }
+  bool IsValid(const OutputData &, const InputData &, const Settings &) const override
+  {
+    return true;
+  }
 
 protected:
   std::vector<std::unique_ptr<Strategy>> GetStrategies() const override;
@@ -42,28 +50,46 @@ namespace {
     using WaitingAlgorithm::KTTStrategy::KTTStrategy;
 
     static constexpr auto kWaitingKernel = "waitingKernel";
+
     size_t GetHash() const override { return 0; }
+
     std::unique_ptr<tuning::Leader> CreateLeader() const override
     {
       return tuning::StrategyGroup::CreateLeader(*this, alg);
     }
+
     std::vector<ktt::KernelConfiguration> GetDefaultConfigurations() const override
     {
       return { kttHelper.GetTuner().CreateConfiguration(
         GetKernelId(), { { "MILLISECONDS", static_cast<uint64_t>(5) } }) };
     }
+
     bool IsEqualTo(const TunableStrategy &ref) const override
     {
-      bool equal = true;
+      bool isEqual = true;
       try {
-        equal = IsSimilarTo(dynamic_cast<const WaitingStrategy &>(ref));
+        auto &r = dynamic_cast<const WaitingStrategy &>(ref);
+        isEqual = isEqual && (GetSettings().equalityGroup == r.GetSettings().equalityGroup);
       } catch (std::bad_cast &) {
-        equal = false;
+        isEqual = false;
       }
-      return equal;
+      return isEqual;
     }
-    bool IsSimilarTo(const TunableStrategy &) const override { return true; }
+
+    bool IsSimilarTo(const TunableStrategy &ref) const override
+    {
+      bool isSimilar = true;
+      try {
+        auto &r = dynamic_cast<const WaitingStrategy &>(ref);
+        isSimilar = isSimilar && (GetSettings().similarityGroup == r.GetSettings().similarityGroup);
+      } catch (std::bad_cast &) {
+        isSimilar = false;
+      }
+      return isSimilar;
+    }
+
     std::string GetName() const override final { return "WaitingStrategy"; }
+
     bool InitImpl() override
     {
       AddKernelDefinition(kWaitingKernel, kKernelFile, ktt::DimensionVector{});
@@ -71,10 +97,12 @@ namespace {
       AddKernel(kWaitingKernel, definitionId);
       auto kernelId = GetKernelId();
       auto &tuner = kttHelper.GetTuner();
-      tuner.AddParameter(kernelId, "MILLISECONDS", std::vector<uint64_t>{ 2, 4, 6, 8, 10 });
+      tuner.AddParameter(
+        kernelId, "MILLISECONDS", std::vector<uint64_t>{ 2, 4, 6, 8, 10, 12, 14, 16, 18, 20 });
       tuner.SetSearcher(kernelId, std::make_unique<ktt::RandomSearcher>());
       return true;
     }
+
     bool Execute(const WaitingAlgorithm::OutputData &,
       const WaitingAlgorithm::InputData &) override final
     {

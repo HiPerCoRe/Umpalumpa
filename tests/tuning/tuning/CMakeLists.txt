@@ -1,8 +1,9 @@
 add_executable(tuning_tests)
 
 set(tests
-    correlation_tuning.cpp
-    extrema_finder_tuning.cpp
+    #correlation_tuning.cpp
+    #extrema_finder_tuning.cpp
+    general_tuning_tests.cpp
     ../../empty.cu
 )
 
