@@ -27,10 +27,15 @@ public:
 
   void SetType(const Type &t) { this->type = t; }
 
+  auto GetBlobRadius() const { return blobRadius; }
+
+  void SetBlobRadius(float r) { this->blobRadius = r; }
+
 private:
   Interpolation interpolation = Interpolation::kDynamic;
   BlobOrder order = BlobOrder::k0;
   Type type = Type::kFast;
   float alpha = 15.f;
+  float blobRadius = 1.9f;
 };
 }// namespace umpalumpa::fourier_reconstruction

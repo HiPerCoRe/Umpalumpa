@@ -6,8 +6,8 @@
 #include <libumpalumpa/algorithms/fourier_reconstruction/traverse_space.hpp>
 #include <libumpalumpa/algorithms/fourier_reconstruction/fr_common_kernels.hpp>
 #include <libumpalumpa/algorithms/fourier_reconstruction/constants.hpp>
-#include <libumpalumpa/utils/geometry.hpp>
-#include <libumpalumpa/utils/math.hpp>
+#include <libumpalumpa/math/geometry.hpp>
+#include <libumpalumpa/utils/atomic.hpp>
 
 #include <iostream>
 

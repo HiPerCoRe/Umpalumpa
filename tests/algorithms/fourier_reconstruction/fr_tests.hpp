@@ -11,8 +11,14 @@ TEST_F(NAME, XYPlane)
 
   SetUp(settings, size);
 
+  float t[3][3] = {};
+  t[0][0] = t[1][1] = t[2][2] = 1.f;
+  auto &space = *reinterpret_cast<TraverseSpace *>(pTraverseSpace->GetPtr());
+  FillTraverseSpace(t, space, pFFT->info.GetSize(), size, settings);
+
   auto out = AFR::OutputData(*pVolume, *pWeight);
   auto in = AFR::InputData(*pFFT, *pVolume, *pWeight, *pTraverseSpace);
+
 
   // testFP(out, in, settings);
 

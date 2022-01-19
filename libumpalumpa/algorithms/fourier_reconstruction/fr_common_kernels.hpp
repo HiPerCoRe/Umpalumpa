@@ -3,6 +3,7 @@
 #include <libumpalumpa/utils/cuda_compatibility.hpp>
 #include <libumpalumpa/algorithms/fourier_reconstruction/constants.hpp>
 #include <libumpalumpa/data/point3d.hpp>
+#include <math.h>
 
 namespace umpalumpa {
 namespace fourier_reconstruction {

@@ -2,6 +2,7 @@
 
 #include <libumpalumpa/algorithms/fourier_reconstruction/afr.hpp>
 #include <libumpalumpa/algorithms/fourier_reconstruction/traverse_space.hpp>
+#include <libumpalumpa/algorithms/fourier_reconstruction/traverse_space_generator.hpp>
 #include <tests/algorithms/common.hpp>
 #include <tests/utils.hpp>
 
@@ -43,6 +44,22 @@ protected:
     auto bytes = ld.Elems() * type.GetSize();
     auto pd = Create(bytes, type);
     return Payload(ld, std::move(pd), "Weights");
+  }
+
+  void FillTraverseSpace(const float transform[3][3],
+    TraverseSpace &space,
+    const Size &transformationSize,
+    const Size &volumeSize,
+    const Settings &s)
+  {
+    return computeTraverseSpace(transformationSize.x,
+      transformationSize.y,
+      transform,
+      space,
+      volumeSize.x - 1,
+      volumeSize.y - 1,
+      s.GetType() == Settings::Type::kFast,
+      s.GetBlobRadius());
   }
 
   auto CreatePayloadTraverseSpace(const Settings &settings)
