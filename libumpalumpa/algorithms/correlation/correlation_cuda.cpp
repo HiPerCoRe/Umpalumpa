@@ -191,7 +191,7 @@ namespace {// to avoid poluting
   };
 }// namespace
 
-void Correlation_CUDA::Synchronize() { GetHelper().GetTuner().Synchronize(); }
+void Correlation_CUDA::Synchronize() { GetHelper().GetTuner().SynchronizeDevice(); }
 
 std::vector<std::unique_ptr<Correlation_CUDA::Strategy>> Correlation_CUDA::GetStrategies() const
 {

@@ -191,7 +191,7 @@ namespace {// to avoid poluting
   };
 }// namespace
 
-void FPCUDA::Synchronize() { GetHelper().GetTuner().Synchronize(); }
+void FPCUDA::Synchronize() { GetHelper().GetTuner().SynchronizeDevice(); }
 
 std::vector<std::unique_ptr<FPCUDA::Strategy>> FPCUDA::GetStrategies() const
 {
