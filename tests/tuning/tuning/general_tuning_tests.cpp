@@ -2,16 +2,6 @@
 #include <tests/tuning/waiting_algorithm.hpp>
 #include <iostream>
 
-// tests:
-// DONE strategy never tuned -> run default config
-// DONE strategy is tuning -> run various configs
-// DONE strategy already tuned -> run best found config
-// DONE strategy tuned -> run best -> continue tuning -> run best
-// multiple same strategies (should not interfere if not equal, should reuse tuned stuff when
-// equal/similar)
-// multiple different strategies (should not interfere, can tune just specified
-// subset)
-
 using namespace umpalumpa;
 using namespace umpalumpa::data;
 using namespace umpalumpa::tuning;
@@ -135,6 +125,12 @@ TEST_F(GeneralTuningTests, tune_then_run_best_tune_again_then_run_best)
   ASSERT_TRUE(alg.Execute(out, in));
   ASSERT_TRUE(alg.Execute(out, in));
 }
+
+// tests:
+// multiple same strategies (should not interfere if not equal, should reuse tuned stuff when
+// equal/similar)
+// multiple different strategies (should not interfere, can tune just specified
+// subset)
 
 /*
 TEST_F(GeneralTuningTests, TODOname)

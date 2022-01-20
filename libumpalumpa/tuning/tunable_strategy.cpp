@@ -60,7 +60,11 @@ void TunableStrategy::ExecuteKernel(ktt::KernelId kernelId)
 {
   if (canTuneStrategyGroup && ShouldBeTuned(kernelId)) {
     auto tuningResults = RunTuning(kernelId);
-    SaveTuningToLeader(kernelId, tuningResults);
+    if (tuningResults.IsValid()) {
+      SaveTuningToLeader(kernelId, tuningResults);
+    } else {
+      spdlog::warn("Tuning result is invalid. Cannot update the best configuration.");
+    }
   } else {
     RunBestConfiguration(kernelId);
   }
@@ -91,7 +95,7 @@ void TunableStrategy::SaveTuningToLeader(ktt::KernelId kernelId,
   auto index = GetKernelIndex(kernelId);
   auto bestTimeSoFar = groupLeader->GetBestConfigTime(index);
   if (tuningResults.GetKernelDuration() < bestTimeSoFar) {
-    groupLeader->SetBestConfiguration(index, kttHelper.GetTuner().GetBestConfiguration(kernelId));
+    groupLeader->SetBestConfiguration(index, tuningResults.GetConfiguration());
     groupLeader->SetBestConfigTime(index, tuningResults.GetKernelDuration());
   }
 }
