@@ -19,6 +19,11 @@ template<typename T> void FillIncreasing(T *dst, size_t elems, T first)
   std::iota(dst, dst + elems, first);
 }
 
+template<typename T> void FillConstant(T *dst, size_t elems, T c)
+{
+  std::fill(dst, dst + elems, c);
+}
+
 template<typename T> void FillNormalDist(T *data, size_t elems, T mean = 0, T stddev = 1)
 {
   auto mt = std::mt19937(42);
