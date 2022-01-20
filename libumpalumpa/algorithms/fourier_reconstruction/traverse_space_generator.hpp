@@ -87,7 +87,8 @@ static void computeTraverseSpace(uint32_t imgSizeX,
   uint32_t maxVolumeIndexX,
   uint32_t maxVolumeIndexYZ,
   bool useFast,
-  float blobRadius)
+  float blobRadius,
+  float weight)
 {
   data::Point3D<float> cuboid[8];
   data::Point3D<float> AABB[2];
@@ -128,6 +129,8 @@ static void computeTraverseSpace(uint32_t imgSizeX,
   } else if (nZ >= nX && nZ >= nY) {// iterate XY plane
     space.dir = TraverseSpace::Direction::XY;
   }
+
+  space.weight = weight;
 }
 
 }// namespace umpalumpa::fourier_reconstruction

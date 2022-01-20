@@ -13,7 +13,7 @@
 
 namespace umpalumpa::fourier_reconstruction {
 
-template<bool useFast, bool usePrecomputedInterpolation, bool useFastKaiser> class FR
+template<bool useFast, bool useFastKaiser, bool usePrecomputedInterpolation> class FR
 {
 public:
   static void ProcessVoxel(std::complex<float> *const __restrict__ volume,

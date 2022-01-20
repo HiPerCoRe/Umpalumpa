@@ -13,7 +13,12 @@ namespace {// to avoid poluting
     // Inherit constructor
     using FRCPU::Strategy::Strategy;
 
-    bool Init() override { return true; }
+    bool Init() override
+    {
+      const auto &in = alg.Get().GetInputRef();
+      // we can process only odd sized data
+      return (1 == in.GetVolume().info.GetSize().x % 2);
+    }
 
     std::string GetName() const override { return "Strategy1"; }
 
@@ -21,8 +26,8 @@ namespace {// to avoid poluting
     {
       Constants c = {};
       // TODO review if these casts are necessary
-      c.cMaxVolumeIndexX = static_cast<int>(in.GetVolume().info.GetSize().x);
-      c.cMaxVolumeIndexYZ = static_cast<int>(in.GetVolume().info.GetSize().y);
+      c.cMaxVolumeIndexX = static_cast<int>(in.GetVolume().info.GetSize().x - 1);
+      c.cMaxVolumeIndexYZ = static_cast<int>(in.GetVolume().info.GetSize().y - 1);
       c.cBlobRadius = s.GetBlobRadius();
       c.cOneOverBlobRadiusSqr = 1.f / (s.GetBlobRadius() * s.GetBlobRadius());
       c.cBlobAlpha = s.GetAlpha();
@@ -40,9 +45,9 @@ namespace {// to avoid poluting
 
       float f;
 
-      utils::ExpandBools<FR>::Expand(s.GetInterpolation() == Settings::Interpolation::kLookup,
+      utils::ExpandBools<FR>::Expand(s.GetType() == Settings::Type::kFast,
         s.GetAlpha() <= 15.f,
-        s.GetType() == Settings::Type::kFast,
+        s.GetInterpolation() == Settings::Interpolation::kLookup,
         s.GetBlobOrder(),
         reinterpret_cast<std::complex<float> *>(in.GetVolume().GetPtr()),
         reinterpret_cast<float *>(in.GetWeight().GetPtr()),

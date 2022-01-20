@@ -30,6 +30,7 @@ protected:
   auto CreatePayloadVolume(const Settings &settings, const Size &size)
   {
     auto fd = FourierDescriptor::FourierSpaceDescriptor{};
+    fd.hasSymetry = true;
     auto ld = FourierDescriptor(size.CopyFor(1), PaddingDescriptor(), fd);
     auto type = DataType::Get<std::complex<float>>();
     auto bytes = ld.Elems() * type.GetSize();
@@ -50,16 +51,20 @@ protected:
     TraverseSpace &space,
     const Size &transformationSize,
     const Size &volumeSize,
-    const Settings &s)
+    const Settings &s,
+    float weight)
   {
-    return computeTraverseSpace(transformationSize.x,
+    return computeTraverseSpace(
+      transformationSize.y
+        / 2,// FIXME this should be probably .x, but Xmipp implementation has it like this
       transformationSize.y,
       transform,
       space,
       volumeSize.x - 1,
       volumeSize.y - 1,
       s.GetType() == Settings::Type::kFast,
-      s.GetBlobRadius());
+      s.GetBlobRadius(),
+      weight);
   }
 
   auto CreatePayloadTraverseSpace(const Settings &settings)
@@ -77,7 +82,8 @@ protected:
     pFFT = std::make_unique<Payload<FourierDescriptor>>(CreatePayloadFFT(settings, projectionSize));
     Register(pFFT->dataInfo);
 
-    auto volumeSize = Size(projectionSize.x, projectionSize.x, projectionSize.x, 1);
+    // we need uniform cube in the fourier domain
+    auto volumeSize = Size(projectionSize.y + 1, projectionSize.y + 1, projectionSize.y + 1, 1);
     pVolume =
       std::make_unique<Payload<FourierDescriptor>>(CreatePayloadVolume(settings, volumeSize));
     Register(pVolume->dataInfo);

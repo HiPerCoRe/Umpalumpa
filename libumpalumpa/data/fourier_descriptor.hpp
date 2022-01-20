@@ -19,7 +19,8 @@ namespace data {
       bool isShifted;// data has been shifted in the fourier domain, position of the coefficient has
                      // been altered // FIXME: change to enum
       bool isNormalized;// FIXME: change to enum
-      bool hasSymetry;// FIXME: find proper name
+      bool hasSymetry = false;// FIXME: find proper name // if true, the whole space is stored.
+                              // Otherwise only the non-redundant half is stored
       bool operator==(const FourierSpaceDescriptor &o) const
       {
         return (isCentered == o.isCentered) && (isShifted == o.isShifted)
@@ -33,7 +34,7 @@ namespace data {
      * Size is the size in the Spatial domain, i.e. before transformation to Fourier space
      **/
     explicit FourierDescriptor(const Size &s)
-      : size(s), paddedSize(s), frequencyDomainSize(ComputeFrequencySize(s)),
+      : size(s), paddedSize(s), frequencyDomainSize(ComputeFrequencySize(s, {})),
         frequencyDomainSizePadded(frequencyDomainSize), padding(PaddingDescriptor()),
         frequencyDomainPadding(padding), isSpatial(true)
     {}
@@ -43,7 +44,8 @@ namespace data {
      * Size is the size in the Spatial domain, i.e. before transformation to Fourier space
      **/
     explicit FourierDescriptor(const Size &s, const PaddingDescriptor &p)
-      : size(s), paddedSize(ComputePaddedSize(s, p)), frequencyDomainSize(ComputeFrequencySize(s)),
+      : size(s), paddedSize(ComputePaddedSize(s, p)),
+        frequencyDomainSize(ComputeFrequencySize(s, {})),
         frequencyDomainSizePadded(frequencyDomainSize), padding(p), frequencyDomainPadding(p),
         isSpatial(true)
     {}
@@ -55,7 +57,8 @@ namespace data {
     explicit FourierDescriptor(const Size &s,
       const PaddingDescriptor &p,
       const FourierSpaceDescriptor &d)
-      : size(s), paddedSize(ComputePaddedSize(s, p)), frequencyDomainSize(ComputeFrequencySize(s)),
+      : size(s), paddedSize(ComputePaddedSize(s, p)),
+        frequencyDomainSize(ComputeFrequencySize(s, d)),
         frequencyDomainSizePadded(frequencyDomainSize), padding(PaddingDescriptor()),
         frequencyDomainPadding(padding), isSpatial(false), fsd(d)
     {}
@@ -139,7 +142,10 @@ namespace data {
     }
 
   private:
-    Size ComputeFrequencySize(const Size &s) { return Size(s.x / 2 + 1, s.y, s.z, s.n); }
+    Size ComputeFrequencySize(const Size &s, const FourierSpaceDescriptor &d)
+    {
+      return Size((d.hasSymetry ? s.x : s.x / 2 + 1), s.y, s.z, s.n);
+    }
 
     Size ComputePaddedSize(const Size &s, const PaddingDescriptor &p) const
     {

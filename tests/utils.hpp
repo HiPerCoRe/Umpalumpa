@@ -29,13 +29,17 @@ template<typename T> void FillNormalDist(T *data, size_t elems, T mean = 0, T st
 
 template<typename T> void Print(std::complex<T> *data, const data::Size size)
 {
-  ASSERT_EQ(size.GetDim(), data::Dimensionality::k2Dim);
+  std::cout << "Printing data of size " << size.x << " x " << size.y << " x " << size.z << " ("
+            << size.n << ")\n";
   for (size_t n = 0; n < size.n; ++n) {
     size_t offset = n * size.single;
-    for (size_t y = 0; y < size.y; ++y) {
-      for (size_t x = 0; x < size.x; ++x) {
-        auto v = data[offset + y * size.x + x];
-        printf("(% 7.3f,% 7.3f)\t", v.real(), v.imag());
+    for (size_t z = 0; z < size.z; ++z) {
+      for (size_t y = 0; y < size.y; ++y) {
+        for (size_t x = 0; x < size.x; ++x) {
+          auto v = data[offset + z * (size.x * size.y) + y * size.x + x];
+          printf("(% 7.3f,% 7.3f)\t", v.real(), v.imag());
+        }
+        std::cout << "\n";
       }
       std::cout << "\n";
     }
