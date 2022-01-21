@@ -107,7 +107,11 @@ namespace {
       const WaitingAlgorithm::InputData &) override final
     {
       kttHelper.GetTuner().SetLauncher(GetKernelId(), [this](ktt::ComputeInterface &interface) {
-        interface.RunKernelAsync(GetDefinitionId(), interface.GetAllQueues().at(0));
+        if (ShouldBeTuned(GetKernelId())) {
+          interface.RunKernel(GetDefinitionId());
+        } else {
+          interface.RunKernelAsync(GetDefinitionId(), interface.GetAllQueues().at(0));
+        }
       });
       ExecuteKernel(GetKernelId());
       return true;
