@@ -209,6 +209,44 @@ protected:
     ASSERT_FLOAT_EQ(s.weight, 1.f);
   }
 
+    void TestTravelSpace5x6XZFast(const TraverseSpace &s)
+  {
+    ASSERT_EQ(s.minY, 3);
+    ASSERT_EQ(s.minX, 0);
+    ASSERT_EQ(s.minZ, 0);
+    ASSERT_EQ(s.maxY, 3);
+    ASSERT_EQ(s.maxX, 6);
+    ASSERT_EQ(s.maxZ, 3);
+
+    ASSERT_FLOAT_EQ(s.maxDistanceSqr, 9);
+    ASSERT_EQ(s.dir, TraverseSpace::Direction::XZ);
+
+    TestPoint(s.unitNormal, 0.f, 1.f, 0.f);
+    TestPoint(s.topOrigin, 6.f, 3.f, 0.f);
+    TestPoint(s.bottomOrigin, 6.f, 3.f, 0.f);
+
+    ASSERT_FLOAT_EQ(s.weight, 1.f);
+  }
+
+  void TestTravelSpace5x6XZPrecise(const TraverseSpace &s)
+  {
+    ASSERT_EQ(s.minY, 1);
+    ASSERT_EQ(s.minX, 0);
+    ASSERT_EQ(s.minZ, 0);
+    ASSERT_EQ(s.maxY, 5);
+    ASSERT_EQ(s.maxX, 6);
+    ASSERT_EQ(s.maxZ, 5);
+
+    ASSERT_FLOAT_EQ(s.maxDistanceSqr, 24.0100002);
+    ASSERT_EQ(s.dir, TraverseSpace::Direction::XZ);
+
+    TestPoint(s.unitNormal, 0.f, 1.f, 0.f);
+    TestPoint(s.topOrigin, 7.9f, 1.1f, -1.9f);
+    TestPoint(s.bottomOrigin, 7.9f, 4.9f, -1.9f);
+
+    ASSERT_FLOAT_EQ(s.weight, 1.f);
+  }
+
   void TestResult(const AFR::OutputData &d, const TraverseSpace &s, float maxDistance)
   {
     auto &volume = d.GetVolume();
@@ -309,6 +347,44 @@ protected:
 
     settings.GetType() == Settings::Type::kFast ? TestTravelSpace5x6YZFast(space)
                                                 : TestTravelSpace5x6YZPrecise(space);
+
+    auto out = AFR::OutputData(*pVolume, *pWeight);
+    auto in = AFR::InputData(*pFFT, *pVolume, *pWeight, *pTraverseSpace, *pBlobTable);
+
+    if (settings.GetInterpolation() == Settings::Interpolation::kLookup) {
+      AFR::FillBlobTable(in, settings);
+    }
+
+    FillIncreasing(reinterpret_cast<float *>(pFFT->GetPtr()), pFFT->info.Elems() * 2, 1.f);
+
+    // Print(reinterpret_cast<std::complex<float> *>(pFFT->GetPtr()), pFFT->info.GetSize());
+
+    auto &alg = GetAlg();
+    ASSERT_TRUE(alg.Init(out, in, settings));
+    ASSERT_TRUE(alg.Execute(out, in));
+    // wait till the work is done
+    alg.Synchronize();
+
+    // Print(reinterpret_cast<std::complex<float> *>(pVolume->GetPtr()), pVolume->info.GetSize());
+
+    TestResult(
+      out, space, settings.GetType() == Settings::Type::kFast ? 0 : settings.GetBlobRadius());
+  }
+
+  void TestXZPlane5x6(const Settings &settings)
+  {
+    auto size = Size(5, 6, 1, 1);
+
+    SetUp(settings, size);
+
+    float t[3][3] = {};
+    t[0][1] = t[2][0] = -1.f;
+    t[1][2] = 1.f;
+    auto &space = *reinterpret_cast<TraverseSpace *>(pTraverseSpace->GetPtr());
+    FillTraverseSpace(t, space, pFFT->info.GetSize(), pVolume->info.GetSize(), settings, 1.f);
+
+    settings.GetType() == Settings::Type::kFast ? TestTravelSpace5x6XZFast(space)
+                                                : TestTravelSpace5x6XZPrecise(space);
 
     auto out = AFR::OutputData(*pVolume, *pWeight);
     auto in = AFR::InputData(*pFFT, *pVolume, *pWeight, *pTraverseSpace, *pBlobTable);
