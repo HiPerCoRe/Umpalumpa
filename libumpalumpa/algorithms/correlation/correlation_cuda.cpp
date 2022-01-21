@@ -170,18 +170,22 @@ namespace {// to avoid poluting
       auto isWithin =
         tuner.AddArgumentScalar(static_cast<int>(in.GetData1().GetPtr() == in.GetData2().GetPtr()));
 
-      auto definitionId = GetDefinitionId();
       auto kernelId = GetKernelId();
 
-      SetArguments(definitionId, { argOut, argIn1, inSize, argIn2, in2N, isWithin });
+      SetArguments(GetDefinitionId(), { argOut, argIn1, inSize, argIn2, in2N, isWithin });
 
       const auto &size = out.GetCorrelations().info.GetPaddedSize();
-      tuner.SetLauncher(kernelId, [definitionId, &size](ktt::ComputeInterface &interface) {
+      tuner.SetLauncher(kernelId, [this, &size](ktt::ComputeInterface &interface) {
+        auto definitionId = GetDefinitionId();
         auto blockDim = interface.GetCurrentLocalSize(definitionId);
         ktt::DimensionVector gridDim(size.x, size.y, size.z);
         gridDim.RoundUp(blockDim);
         gridDim.Divide(blockDim);
-        interface.RunKernelAsync(definitionId, interface.GetAllQueues().at(0), gridDim, blockDim);
+        if (ShouldBeTuned(GetKernelId())) {
+          interface.RunKernel(definitionId, gridDim, blockDim);
+        } else {
+          interface.RunKernelAsync(definitionId, interface.GetAllQueues().at(0), gridDim, blockDim);
+        }
       });
 
       ExecuteKernel(kernelId);
