@@ -126,15 +126,15 @@ protected:
     Clear(pTraverseSpace);
     Clear(pBlobTable);
   }
+  void TestPoint(const Point3D<float> &l, float x, float y, float z)
+  {
+    ASSERT_FLOAT_EQ(l.x, x);
+    ASSERT_FLOAT_EQ(l.y, y);
+    ASSERT_FLOAT_EQ(l.z, z);
+  };
 
   void TestTravelSpace5x6XYFast(const TraverseSpace &s)
   {
-    auto TestPoint = [](const auto &l, auto x, auto y, auto z) {
-      ASSERT_FLOAT_EQ(l.x, x);
-      ASSERT_FLOAT_EQ(l.y, y);
-      ASSERT_FLOAT_EQ(l.z, z);
-    };
-
     ASSERT_EQ(s.minY, 0);
     ASSERT_EQ(s.minX, 3);
     ASSERT_EQ(s.minZ, 3);
@@ -154,12 +154,6 @@ protected:
 
   void TestTravelSpace5x6XYPrecise(const TraverseSpace &s)
   {
-    auto TestPoint = [](const auto &l, auto x, auto y, auto z) {
-      ASSERT_FLOAT_EQ(l.x, x);
-      ASSERT_FLOAT_EQ(l.y, y);
-      ASSERT_FLOAT_EQ(l.z, z);
-    };
-
     ASSERT_EQ(s.minY, 0);
     ASSERT_EQ(s.minX, 1);
     ASSERT_EQ(s.minZ, 1);
@@ -173,6 +167,44 @@ protected:
     TestPoint(s.unitNormal, 0.f, 0.f, 1.f);
     TestPoint(s.topOrigin, 7.9f, -1.9f, 1.1f);
     TestPoint(s.bottomOrigin, 7.9f, -1.9f, 4.9f);
+
+    ASSERT_FLOAT_EQ(s.weight, 1.f);
+  }
+
+  void TestTravelSpace5x6YZFast(const TraverseSpace &s)
+  {
+    ASSERT_EQ(s.minY, 0);
+    ASSERT_EQ(s.minX, 3);
+    ASSERT_EQ(s.minZ, 0);
+    ASSERT_EQ(s.maxY, 6);
+    ASSERT_EQ(s.maxX, 3);
+    ASSERT_EQ(s.maxZ, 3);
+
+    ASSERT_FLOAT_EQ(s.maxDistanceSqr, 9);
+    ASSERT_EQ(s.dir, TraverseSpace::Direction::YZ);
+
+    TestPoint(s.unitNormal, 1.f, 0.f, 0.f);
+    TestPoint(s.topOrigin, 3.f, 0.f, 0.f);
+    TestPoint(s.bottomOrigin, 3.f, 0.f, 0.f);
+
+    ASSERT_FLOAT_EQ(s.weight, 1.f);
+  }
+
+  void TestTravelSpace5x6YZPrecise(const TraverseSpace &s)
+  {
+    ASSERT_EQ(s.minY, 0);
+    ASSERT_EQ(s.minX, 1);
+    ASSERT_EQ(s.minZ, 0);
+    ASSERT_EQ(s.maxY, 6);
+    ASSERT_EQ(s.maxX, 5);
+    ASSERT_EQ(s.maxZ, 5);
+
+    ASSERT_FLOAT_EQ(s.maxDistanceSqr, 24.0100002);
+    ASSERT_EQ(s.dir, TraverseSpace::Direction::YZ);
+
+    TestPoint(s.unitNormal, 1.f, 0.f, 0.f);
+    TestPoint(s.topOrigin, 1.1f, -1.9f, -1.9f);
+    TestPoint(s.bottomOrigin, 4.9f, -1.9f, -1.9f);
 
     ASSERT_FLOAT_EQ(s.weight, 1.f);
   }
@@ -194,20 +226,20 @@ protected:
       EXPECT_NE(c.real(), 0.f) << " at " << x << " " << y << " " << z;
       EXPECT_NE(c.imag(), 0.f) << " at " << x << " " << y << " " << z;
     };
-    Point3D<float> imgPos;
+    Point3D<float> posInVolume;
     for (int z = 0; z < volumeSize.z; ++z) {
-      imgPos.z = static_cast<float>(z - (static_cast<int>(volumeSize.z) - 1) / 2);
+      posInVolume.z = static_cast<float>(z - (static_cast<int>(volumeSize.z) - 1) / 2);
       for (int y = 0; y < volumeSize.y; ++y) {
-        imgPos.y = static_cast<float>(y - (static_cast<int>(volumeSize.y) - 1) / 2);
+        posInVolume.y = static_cast<float>(y - (static_cast<int>(volumeSize.y) - 1) / 2);
         for (int x = 0; x < volumeSize.x; ++x) {
           // transform current point to center
-          imgPos.x = static_cast<float>(x - (static_cast<int>(volumeSize.x) - 1) / 2);
+          posInVolume.x = static_cast<float>(x - (static_cast<int>(volumeSize.x) - 1) / 2);
           // iterations that would access pixel with too high frequency should be 0
-          if (imgPos.x * imgPos.x + imgPos.y * imgPos.y + imgPos.z * imgPos.z > s.maxDistanceSqr) {
+          if (posInVolume.x * posInVolume.x + posInVolume.y * posInVolume.y + posInVolume.z * posInVolume.z > s.maxDistanceSqr) {
             ExpectZero(volume.GetPtr(), x, y, z);
             continue;
           }
-          auto posInVolume = imgPos;// because we just shifted the center
+          auto imgPos = posInVolume;// because we just shifted the center
           // rotate around center
           multiply(s.transformInv, imgPos);
           if (imgPos.x < -maxDistance
@@ -248,6 +280,44 @@ protected:
     }
 
     FillConstant(reinterpret_cast<float *>(pFFT->GetPtr()), pFFT->info.Elems() * 2, 1.f);
+
+    // Print(reinterpret_cast<std::complex<float> *>(pFFT->GetPtr()), pFFT->info.GetSize());
+
+    auto &alg = GetAlg();
+    ASSERT_TRUE(alg.Init(out, in, settings));
+    ASSERT_TRUE(alg.Execute(out, in));
+    // wait till the work is done
+    alg.Synchronize();
+
+    // Print(reinterpret_cast<std::complex<float> *>(pVolume->GetPtr()), pVolume->info.GetSize());
+
+    TestResult(
+      out, space, settings.GetType() == Settings::Type::kFast ? 0 : settings.GetBlobRadius());
+  }
+
+  void TestYZPlane5x6(const Settings &settings)
+  {
+    auto size = Size(5, 6, 1, 1);
+
+    SetUp(settings, size);
+
+    float t[3][3] = {};
+    t[0][2] = t[1][1] = 1.f;
+    t[2][0] = -1.f;
+    auto &space = *reinterpret_cast<TraverseSpace *>(pTraverseSpace->GetPtr());
+    FillTraverseSpace(t, space, pFFT->info.GetSize(), pVolume->info.GetSize(), settings, 1.f);
+
+    settings.GetType() == Settings::Type::kFast ? TestTravelSpace5x6YZFast(space)
+                                                : TestTravelSpace5x6YZPrecise(space);
+
+    auto out = AFR::OutputData(*pVolume, *pWeight);
+    auto in = AFR::InputData(*pFFT, *pVolume, *pWeight, *pTraverseSpace, *pBlobTable);
+
+    if (settings.GetInterpolation() == Settings::Interpolation::kLookup) {
+      AFR::FillBlobTable(in, settings);
+    }
+
+    FillIncreasing(reinterpret_cast<float *>(pFFT->GetPtr()), pFFT->info.Elems() * 2, 1.f);
 
     // Print(reinterpret_cast<std::complex<float> *>(pFFT->GetPtr()), pFFT->info.GetSize());
 
