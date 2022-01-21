@@ -1,6 +1,7 @@
 #pragma once
 
 #include <libumpalumpa/math/pi.hpp>
+#include <math.h>
 #include <libumpalumpa/algorithms/fourier_reconstruction/blob_order.hpp>
 
 namespace umpalumpa::math {

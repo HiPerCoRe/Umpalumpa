@@ -10,7 +10,7 @@ public:
 
   PhysicalDescriptor Create(size_t bytes, DataType type) override
   {
-    return PhysicalDescriptor(malloc(bytes), bytes, type, ManagedBy::Manually, nullptr);
+    return PhysicalDescriptor(calloc(1, bytes), bytes, type, ManagedBy::Manually, nullptr);
   }
 
   void Remove(const PhysicalDescriptor &pd) override { free(pd.GetPtr()); }

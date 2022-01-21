@@ -237,26 +237,6 @@ public:
       }
     } break;
     }
-
-    auto ToString = [](auto v) -> std::string {
-      if constexpr (std::is_same_v<decltype(v), bool>) return v ? "yes" : "no";
-      return std::to_string(v);
-    };
-    auto Report = [ToString](const std::string &s, auto b) {
-      std::cout << s << ": " << ToString(b) << "\n";
-    };
-    Report("usePrecomputedInterpolation", usePrecomputedInterpolation);
-    Report("blobOrder", blobOrder);
-    Report("useFastKaiser", useFastKaiser);
-    Report("useFast", useFast);
-    std::cout << "volume: " << volume << "\n";
-    std::cout << "weights: " << weights << "\n";
-    std::cout << "xSize: " << xSize << "\n";
-    std::cout << "ySize: " << ySize << "\n";
-    std::cout << "FFT: " << FFT << "\n";
-    std::cout << "tSpace: " << tSpace << "\n";
-    std::cout << "blobTableSqrt: " << blobTableSqrt << "\n";
-    std::cout << "constants: " << &constants << "\n";
   }
 
   template<typename T>
