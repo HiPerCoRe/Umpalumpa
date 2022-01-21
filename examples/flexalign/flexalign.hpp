@@ -32,7 +32,7 @@ public:
     float y;
   };
 
-  void Execute(const Size &size);
+  void Execute(const Size &size, const size_t batch, const size_t num_of_movies, const size_t downscale_factor);
 
   virtual ~FlexAlign() = default;
 

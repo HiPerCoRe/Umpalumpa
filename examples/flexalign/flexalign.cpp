@@ -2,76 +2,79 @@
 #include <cassert>
 #include <libumpalumpa/system_includes/spdlog.hpp>
 
-template<typename T> void FlexAlign<T>::Execute(const umpalumpa::data::Size &sizeAll)
+template<typename T> void FlexAlign<T>::Execute(const umpalumpa::data::Size &sizeAll, const size_t batch, const size_t num_of_movies, const size_t downscale_factor)
 {
   assert(sizeAll.x > 5);
   assert(sizeAll.y > 5);
   assert(sizeAll.z == 1);
 
-  const size_t batch = 5;
+  //const size_t batch = 5;
   assert(0 == sizeAll.n % batch);
 
   auto sizeBatch = sizeAll.CopyFor(batch);
-  auto sizeBatchCrop = Size(sizeBatch.x / 2, sizeBatch.y / 2, sizeBatch.z, sizeBatch.n);
+  //auto sizeBatchCrop = Size(sizeBatch.x / 2, sizeBatch.y / 2, sizeBatch.z, sizeBatch.n);
+  auto sizeBatchCrop = Size(sizeBatch.x / downscale_factor, sizeBatch.y / downscale_factor, sizeBatch.z, sizeBatch.n);
   // auto sizeBatchCrop = Size(928, 928, 1, 1);
   auto sizeCross = Size(3, 3, 1, 1);
   auto scaleX = static_cast<float>(sizeBatch.x) / static_cast<float>(sizeBatchCrop.x);
   auto scaleY = static_cast<float>(sizeBatch.y) / static_cast<float>(sizeBatchCrop.y);
 
-  auto filter = CreatePayloadFilter(sizeBatchCrop);
+  for (size_t k = 0; k < num_of_movies; k++) {
+    auto filter = CreatePayloadFilter(sizeBatchCrop);
 
-  auto imgs = std::vector<Payload<LogicalDescriptor>>();
-  imgs.reserve(sizeAll.n);
+    auto imgs = std::vector<Payload<LogicalDescriptor>>();
+    imgs.reserve(sizeAll.n);
 
-  auto ffts = std::vector<Payload<FourierDescriptor>>();
-  ffts.reserve(sizeAll.n);
+    auto ffts = std::vector<Payload<FourierDescriptor>>();
+    ffts.reserve(sizeAll.n);
 
-  auto shifts = std::vector<Payload<LogicalDescriptor>>();
-  shifts.reserve(NoOfBatches(sizeAll, batch));
+    auto shifts = std::vector<Payload<LogicalDescriptor>>();
+    shifts.reserve(NoOfBatches(sizeAll, batch));
 
-  // Preallocate memory. This can be quite expensive, because e.g. cudaHostAlloc is
-  // synchronizing, i.e. it can slow down the execution later on
-  for (size_t j = 0; j < sizeAll.n; j += batch) {
-    auto name = std::to_string(j) + "-" + std::to_string(j + batch - 1);
-    auto &img = imgs.emplace_back(CreatePayloadImage(sizeBatch, name));
-  }
-
-  for (size_t j = 0; j < sizeAll.n; j += batch) {
-    auto name = std::to_string(j) + "-" + std::to_string(j + batch - 1);
-    auto &img = imgs.at(j / batch);
-    GenerateClockArms(j, img, sizeCross, j, j);
-    auto fft = ConvertToFFT(img, name);
-    ffts.emplace_back(Crop(fft, filter, name));
-    RemovePD(fft.dataInfo, false);
-    for (size_t i = 0; i <= j; i += batch) {
-      auto name = std::to_string(i) + "-" + std::to_string(i + batch - 1) + "<->"
-                  + std::to_string(j) + "-" + std::to_string(j + batch - 1);
-      auto correlation = Correlate(ffts.at(i / batch), ffts.at(j / batch), name);
-      auto ifft = ConvertFromFFT(correlation, name);
-      RemovePD(correlation.dataInfo, false);
-      shifts.emplace_back(FindMax(ifft, name));
-      RemovePD(ifft.dataInfo, false);
+    // Preallocate memory. This can be quite expensive, because e.g. cudaHostAlloc is
+    // synchronizing, i.e. it can slow down the execution later on
+    for (size_t j = 0; j < sizeAll.n; j += batch) {
+      auto name = std::to_string(j) + "-" + std::to_string(j + batch - 1);
+      auto &img = imgs.emplace_back(CreatePayloadImage(sizeBatch, name));
     }
-  }
-  // wait for results and process them
-  assert(shifts.size() == NoOfBatches(sizeAll, batch));
-  for (size_t j = 0, counter = 0; j < sizeAll.n; j += batch) {
-    for (size_t i = 0; i <= j; i += batch, ++counter) {
-      auto shift = ExtractShift(shifts.at(counter));
-      // reported shift is position in the 2D image, where center of that image
-      // has position [0, 0];
-      // To get the right shift, we need to shift by half of the cropped image
-      // Since we cropped the image in the Fourier domain and performed IFFT, we performed
-      // downscaling To get the rigth shift, we have to adjust the scale.
-      auto normShift = Transform(shift, scaleX, scaleY, sizeBatchCrop.x / 2, sizeBatchCrop.y / 2);
-      LogResult(i, j, batch, normShift);
-    }
-  }
-  // Release allocated data. Payloads themselves don't need any extra handling
-  for (const auto &p : ffts) { RemovePD(p.dataInfo, false); }
-  for (const auto &p : imgs) { RemovePD(p.dataInfo, true); }
 
-  RemovePD(filter.dataInfo, true);
+    for (size_t j = 0; j < sizeAll.n; j += batch) {
+      auto name = std::to_string(j) + "-" + std::to_string(j + batch - 1);
+      auto &img = imgs.at(j / batch);
+      GenerateClockArms(j, img, sizeCross, j, j);
+      auto fft = ConvertToFFT(img, name);
+      ffts.emplace_back(Crop(fft, filter, name));
+      RemovePD(fft.dataInfo, false);
+      for (size_t i = 0; i <= j; i += batch) {
+        auto name = std::to_string(i) + "-" + std::to_string(i + batch - 1) + "<->"
+                    + std::to_string(j) + "-" + std::to_string(j + batch - 1);
+        auto correlation = Correlate(ffts.at(i / batch), ffts.at(j / batch), name);
+        auto ifft = ConvertFromFFT(correlation, name);
+        RemovePD(correlation.dataInfo, false);
+        shifts.emplace_back(FindMax(ifft, name));
+        RemovePD(ifft.dataInfo, false);
+      }
+    }
+    // wait for results and process them
+    assert(shifts.size() == NoOfBatches(sizeAll, batch));
+    for (size_t j = 0, counter = 0; j < sizeAll.n; j += batch) {
+      for (size_t i = 0; i <= j; i += batch, ++counter) {
+        auto shift = ExtractShift(shifts.at(counter));
+        // reported shift is position in the 2D image, where center of that image
+        // has position [0, 0];
+        // To get the right shift, we need to shift by half of the cropped image
+        // Since we cropped the image in the Fourier domain and performed IFFT, we performed
+        // downscaling To get the rigth shift, we have to adjust the scale.
+        auto normShift = Transform(shift, scaleX, scaleY, sizeBatchCrop.x / 2, sizeBatchCrop.y / 2);
+        LogResult(i, j, batch, normShift);
+      }
+    }
+    // Release allocated data. Payloads themselves don't need any extra handling
+    for (const auto &p : ffts) { RemovePD(p.dataInfo, false); }
+    for (const auto &p : imgs) { RemovePD(p.dataInfo, true); }
+
+    RemovePD(filter.dataInfo, true);
+  }  
 }
 
 template<typename T> size_t FlexAlign<T>::GetAvailableCores() const
