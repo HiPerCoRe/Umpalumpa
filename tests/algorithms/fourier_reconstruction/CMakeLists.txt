@@ -3,7 +3,7 @@ add_executable(fourier_reconstruction_tests)
 # list of test files
 set(tests
     fr_cpu.cpp
-    # fr_cuda.cpp
+    fr_cuda.cpp
     ../../empty.cu # needs to be here so that CMAKE links CUDA libraries
 )
 

@@ -41,7 +41,7 @@ public:
     }
     // rotate around center
     multiply(space->transformInv, imgPos);
-    if (imgPos.x < 0.f)
+    if (imgPos.x < 0.f) // FIXME here maybe should be some rounding, in case the matrix is not very precise
       return;// reading outside of the image boundary. Z is always correct and Y is checked by the
              // condition above
 
