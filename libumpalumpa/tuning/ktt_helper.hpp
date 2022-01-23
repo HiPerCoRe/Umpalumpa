@@ -13,7 +13,7 @@ public:
   KTTHelper(const CUcontext context, const std::vector<ktt::ComputeQueue> &queues)
     : tuner(ktt::ComputeApi::CUDA, ktt::ComputeApiInitializer(context, queues))
   {
-    tuner.SetCompilerOptions("-I" + kProjectRoot + " --std=c++14 -default-device");
+    tuner.SetCompilerOptions("-I" + kProjectRoot + " --std=c++17 -default-device");
   }
 
   std::mutex &GetMutex() { return mutex; }

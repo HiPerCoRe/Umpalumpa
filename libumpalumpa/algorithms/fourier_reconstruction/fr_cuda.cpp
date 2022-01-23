@@ -14,7 +14,7 @@ namespace {// to avoid poluting
 
 
     // FIXME improve name of the kernel and variable
-    static constexpr auto kTMP = "ProcessProjection";
+    static constexpr auto kTMP = "ProcessKernel";
 
     size_t GetHash() const override { return 0; }
     bool IsSimilarTo(const TunableStrategy &) const override
@@ -29,6 +29,8 @@ namespace {// to avoid poluting
       // we can process only odd sized data
       if (0 == in.GetVolume().info.GetSize().x % 2) { return false; }
 
+      // FIXME we have to synchronize to make sure that the constants are not being used ATM
+      constants = AFR::CreateConstants(in, alg.Get().GetSettings());
 
       const auto &size = in.GetVolume().info.GetSize();
       auto &tuner = kttHelper.GetTuner();
@@ -108,7 +110,6 @@ namespace {// to avoid poluting
 
       auto &tuner = kttHelper.GetTuner();
       // TODO add type check
-
       auto argVolume =
         AddArgumentVector<float2>(in.GetVolume(), ktt::ArgumentAccessType::ReadWrite);
       auto argWeight = AddArgumentVector<float>(in.GetWeight(), ktt::ArgumentAccessType::ReadWrite);
@@ -117,13 +118,15 @@ namespace {// to avoid poluting
         AddArgumentVector<TraverseSpace>(in.GetTraverseSpace(), ktt::ArgumentAccessType::ReadOnly);
       auto argTable =
         AddArgumentVector<float>(in.GetBlobTable(), ktt::ArgumentAccessType::ReadOnly);
+      auto argConstants = tuner.AddArgumentScalar(constants);
 
       auto argSize = tuner.AddArgumentScalar(in.GetFFT().info.GetSize());
+      auto argSpaceCount = tuner.AddArgumentScalar(in.GetTraverseSpace().info.GetSize());
       auto definitionId = GetDefinitionId();
       auto kernelId = GetKernelId();
 
-      tuner.SetArguments(
-        definitionId, { argVolume, argWeight, argSize, argFFT, argSpace, argTable });
+      tuner.SetArguments(definitionId,
+        { argVolume, argWeight, argSize, argSpaceCount, argSpace, argFFT, argTable, argConstants });
 
       auto &size = in.GetVolume().info.GetSize();
       tuner.SetLauncher(kernelId, [definitionId, &size](ktt::ComputeInterface &interface) {
@@ -143,9 +146,11 @@ namespace {// to avoid poluting
         // auto bestConfig = tuner.GetBestConfiguration(kernelId);
         auto bestConfig = tuner.CreateConfiguration(kernelId,
           { { "BLOCK_DIM", static_cast<uint64_t>(16) },
-            { "SHARED_BLOB_TABLE", static_cast<uint64_t>(1) },
+            { "SHARED_BLOB_TABLE", static_cast<uint64_t>(0) },
             { "SHARED_IMG", static_cast<uint64_t>(0) },
             { "TILE", static_cast<uint64_t>(2) },
+            { "PRECOMPUTE_BLOB_VAL",
+              static_cast<uint64_t>(alg.GetSettings().GetInterpolation() == Settings::Interpolation::kLookup) },
             { "GRID_DIM_Z", static_cast<uint64_t>(1) } });
         tuner.Run(kernelId, bestConfig, {});// run is blocking call
         // arguments shall be removed once the run is done
@@ -153,6 +158,9 @@ namespace {// to avoid poluting
 
       return true;
     };
+
+  private:
+    Constants constants;
   };
 }// namespace
 

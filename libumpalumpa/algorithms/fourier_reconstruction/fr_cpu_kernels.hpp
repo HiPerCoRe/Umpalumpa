@@ -1,7 +1,6 @@
 #pragma once
 
 #include <complex>
-#include <algorithm>// std::clamp
 #include <libumpalumpa/algorithms/fourier_reconstruction/blob_order.hpp>
 #include <libumpalumpa/algorithms/fourier_reconstruction/traverse_space.hpp>
 #include <libumpalumpa/algorithms/fourier_reconstruction/fr_common_kernels.hpp>
@@ -47,8 +46,8 @@ public:
 
     // transform back and round
     // just Y coordinate needs adjusting, since X now matches to picture and Z is irrelevant
-    int imgX = std::clamp(static_cast<int>(imgPos.x + 0.5f), 0, xSize - 1);
-    int imgY = std::clamp(
+    int imgX = clamp(static_cast<int>(imgPos.x + 0.5f), 0, xSize - 1);
+    int imgY = clamp(
       static_cast<int>(imgPos.y + 0.5f + static_cast<float>(constants.cMaxVolumeIndexYZ / 2)),
       0,
       ySize - 1);
@@ -176,8 +175,8 @@ public:
           } else {
             float z1 = getZ(idxT, idyT, tSpace->unitNormal, tSpace->bottomOrigin);// lower plane
             float z2 = getZ(idxT, idyT, tSpace->unitNormal, tSpace->topOrigin);// upper plane
-            z1 = std::clamp(z1, 0.f, static_cast<float>(constants.cMaxVolumeIndexYZ));
-            z2 = std::clamp(z2, 0.f, static_cast<float>(constants.cMaxVolumeIndexYZ));
+            z1 = clamp(z1, 0.f, static_cast<float>(constants.cMaxVolumeIndexYZ));
+            z2 = clamp(z2, 0.f, static_cast<float>(constants.cMaxVolumeIndexYZ));
             int lower = static_cast<int>(floorf(fminf(z1, z2)));
             int upper = static_cast<int>(ceilf(fmaxf(z1, z2)));
             for (int z = lower; z <= upper; z++) {
@@ -200,8 +199,8 @@ public:
           } else {
             float y1 = getY(idxT, idyT, tSpace->unitNormal, tSpace->bottomOrigin);// lower plane
             float y2 = getY(idxT, idyT, tSpace->unitNormal, tSpace->topOrigin);// upper plane
-            y1 = std::clamp(y1, 0.f, static_cast<float>(constants.cMaxVolumeIndexYZ));
-            y2 = std::clamp(y2, 0.f, static_cast<float>(constants.cMaxVolumeIndexYZ));
+            y1 = clamp(y1, 0.f, static_cast<float>(constants.cMaxVolumeIndexYZ));
+            y2 = clamp(y2, 0.f, static_cast<float>(constants.cMaxVolumeIndexYZ));
             int lower = static_cast<int>(floorf(fminf(y1, y2)));
             int upper = static_cast<int>(ceilf(fmaxf(y1, y2)));
             for (int y = lower; y <= upper; y++) {
@@ -224,8 +223,8 @@ public:
           } else {
             float x1 = getX(idxT, idyT, tSpace->unitNormal, tSpace->bottomOrigin);// lower plane
             float x2 = getX(idxT, idyT, tSpace->unitNormal, tSpace->topOrigin);// upper plane
-            x1 = std::clamp(x1, 0.f, static_cast<float>(constants.cMaxVolumeIndexX));
-            x2 = std::clamp(x2, 0.f, static_cast<float>(constants.cMaxVolumeIndexX));
+            x1 = clamp(x1, 0.f, static_cast<float>(constants.cMaxVolumeIndexX));
+            x2 = clamp(x2, 0.f, static_cast<float>(constants.cMaxVolumeIndexX));
             int lower = static_cast<int>(floorf(fminf(x1, x2)));
             int upper = static_cast<int>(ceilf(fmaxf(x1, x2)));
             for (int x = lower; x <= upper; x++) {
