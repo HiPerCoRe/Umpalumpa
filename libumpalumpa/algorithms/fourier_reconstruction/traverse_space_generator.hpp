@@ -1,9 +1,20 @@
 #pragma once
 
 #include <libumpalumpa/algorithms/fourier_reconstruction/traverse_space.hpp>
-#include <libumpalumpa/algorithms/fourier_reconstruction/fr_common_kernels.hpp>
+#include <limits>
+#include <cmath>
 
 namespace umpalumpa::fourier_reconstruction {
+
+template<typename T> void multiply(const T transform[3][3], data::Point3D<T> &inOut)
+{
+  T tmp0 = transform[0][0] * inOut.x + transform[0][1] * inOut.y + transform[0][2] * inOut.z;
+  T tmp1 = transform[1][0] * inOut.x + transform[1][1] * inOut.y + transform[1][2] * inOut.z;
+  T tmp2 = transform[2][0] * inOut.x + transform[2][1] * inOut.y + transform[2][2] * inOut.z;
+  inOut.x = tmp0;
+  inOut.y = tmp1;
+  inOut.z = tmp2;
+}
 
 /**
 *          6____5
@@ -99,12 +110,12 @@ static void computeTraverseSpace(uint32_t imgSizeX,
   computeAABB(AABB, cuboid, 0, 0, 0, maxVolumeIndexX, maxVolumeIndexYZ, maxVolumeIndexYZ);
 
   // store data
-  space.minZ = floor(AABB[0].z);
-  space.minY = floor(AABB[0].y);
-  space.minX = floor(AABB[0].x);
-  space.maxZ = ceil(AABB[1].z);
-  space.maxY = ceil(AABB[1].y);
-  space.maxX = ceil(AABB[1].x);
+  space.minZ = std::floor(AABB[0].z);
+  space.minY = std::floor(AABB[0].y);
+  space.minX = std::floor(AABB[0].x);
+  space.maxZ = std::ceil(AABB[1].z);
+  space.maxY = std::ceil(AABB[1].y);
+  space.maxX = std::ceil(AABB[1].x);
   space.topOrigin = cuboid[4];
   space.bottomOrigin = cuboid[0];
   space.maxDistanceSqr =
