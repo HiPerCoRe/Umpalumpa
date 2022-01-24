@@ -195,7 +195,11 @@ namespace {// to avoid poluting
   };
 }// namespace
 
-void FPCUDA::Synchronize() { GetHelper().GetTuner().SynchronizeDevice(); }
+void FPCUDA::Synchronize()
+{
+  // FIXME when queues are implemented, synchronize only used queues
+  GetHelper().GetTuner().SynchronizeDevice();
+}
 
 std::vector<std::unique_ptr<FPCUDA::Strategy>> FPCUDA::GetStrategies() const
 {

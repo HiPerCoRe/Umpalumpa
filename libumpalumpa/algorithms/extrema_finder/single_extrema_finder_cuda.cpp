@@ -335,7 +335,11 @@ namespace {// to avoid poluting
   };
 }// namespace
 
-void SingleExtremaFinderCUDA::Synchronize() { GetHelper().GetTuner().SynchronizeDevice(); }
+void SingleExtremaFinderCUDA::Synchronize()
+{
+  // FIXME when queues are implemented, synchronize only used queues
+  GetHelper().GetTuner().SynchronizeDevice();
+}
 
 std::vector<std::unique_ptr<SingleExtremaFinderCUDA::Strategy>>
   SingleExtremaFinderCUDA::GetStrategies() const
