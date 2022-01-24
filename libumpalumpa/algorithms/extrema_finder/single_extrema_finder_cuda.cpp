@@ -136,16 +136,20 @@ namespace {// to avoid poluting
       auto argLocs =
         AddArgumentVector<float>(out.GetLocations(), ktt::ArgumentAccessType::WriteOnly);
 
-      auto definitionId = GetDefinitionId();
       auto kernelId = GetKernelId();
 
-      SetArguments(definitionId, { argIn, argVals, argLocs, argSize });
+      SetArguments(GetDefinitionId(), { argIn, argVals, argLocs, argSize });
 
       auto &size = in.GetData().info.GetSize();
-      tuner.SetLauncher(GetKernelId(), [definitionId, &size](ktt::ComputeInterface &interface) {
+      tuner.SetLauncher(GetKernelId(), [this, &size](ktt::ComputeInterface &interface) {
+        auto definitionId = GetDefinitionId();
         auto blockDim = interface.GetCurrentLocalSize(definitionId);
         const ktt::DimensionVector gridDim(size.n);
-        interface.RunKernelAsync(definitionId, interface.GetAllQueues().at(0), gridDim, blockDim);
+        if (ShouldBeTuned(GetKernelId())) {
+          interface.RunKernel(definitionId, gridDim, blockDim);
+        } else {
+          interface.RunKernelAsync(definitionId, interface.GetAllQueues().at(0), gridDim, blockDim);
+        }
       });
 
       const bool refine =
@@ -156,8 +160,12 @@ namespace {// to avoid poluting
         tuner.SetLauncher(GetKernelId(1), [this, &size](ktt::ComputeInterface &interface) {
           const ktt::DimensionVector blockDim(size.n);
           const ktt::DimensionVector gridDim(1);
-          interface.RunKernelAsync(
-            GetDefinitionId(1), interface.GetAllQueues().at(0), gridDim, blockDim);
+          if (ShouldBeTuned(GetKernelId(1))) {
+            interface.RunKernel(GetDefinitionId(1), gridDim, blockDim);
+          } else {
+            interface.RunKernelAsync(
+              GetDefinitionId(1), interface.GetAllQueues().at(0), gridDim, blockDim);
+          }
         });
       }
 
@@ -303,17 +311,21 @@ namespace {// to avoid poluting
       auto argRectWidth = tuner.AddArgumentScalar(searchRectWidth);
       auto argRectHeight = tuner.AddArgumentScalar(searchRectHeight);
 
-      auto definitionId = GetDefinitionId();
       auto kernelId = GetKernelId();
 
-      SetArguments(definitionId,
+      SetArguments(GetDefinitionId(),
         { argIn, argInSize, argVals, argLocs, argOffX, argOffY, argRectWidth, argRectHeight });
 
       auto &size = in.GetData().info.GetSize();
-      tuner.SetLauncher(kernelId, [definitionId, &size](ktt::ComputeInterface &interface) {
+      tuner.SetLauncher(kernelId, [this, &size](ktt::ComputeInterface &interface) {
+        auto definitionId = GetDefinitionId();
         auto blockDim = interface.GetCurrentLocalSize(definitionId);
         ktt::DimensionVector gridDim(size.n);
-        interface.RunKernelAsync(definitionId, interface.GetAllQueues().at(0), gridDim, blockDim);
+        if (ShouldBeTuned(GetKernelId())) {
+          interface.RunKernel(definitionId, gridDim, blockDim);
+        } else {
+          interface.RunKernelAsync(definitionId, interface.GetAllQueues().at(0), gridDim, blockDim);
+        }
       });
 
       ExecuteKernel(kernelId);
@@ -323,7 +335,11 @@ namespace {// to avoid poluting
   };
 }// namespace
 
-void SingleExtremaFinderCUDA::Synchronize() { GetHelper().GetTuner().Synchronize(); }
+void SingleExtremaFinderCUDA::Synchronize()
+{
+  // FIXME when queues are implemented, synchronize only used queues
+  GetHelper().GetTuner().SynchronizeDevice();
+}
 
 std::vector<std::unique_ptr<SingleExtremaFinderCUDA::Strategy>>
   SingleExtremaFinderCUDA::GetStrategies() const

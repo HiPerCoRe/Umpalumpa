@@ -75,14 +75,14 @@ ktt::KernelResult TunableStrategy::RunTuning(ktt::KernelId kernelId) const
   // tuner.Synchronize();
   // Now, there are no kernels at the GPU and we can start tuning
   auto results = tuner.TuneIteration(kernelId, {});
-  tuner.Synchronize();// tmp solution to make the call blocking
-  // TODO run should be blocking while tuning -> need change in the KernelLauncher
   return results;
 }
 
 void TunableStrategy::RunBestConfiguration(ktt::KernelId kernelId) const
 {
+  if (kttLoggingOff) { kttHelper.GetTuner().SetLoggingLevel(ktt::LoggingLevel::Off); }
   kttHelper.GetTuner().Run(kernelId, GetBestConfiguration(kernelId), {});
+  if (kttLoggingOff) { kttHelper.GetTuner().SetLoggingLevel(ktt::LoggingLevel::Info); }
 }
 
 void TunableStrategy::SaveTuningToLeader(ktt::KernelId kernelId,

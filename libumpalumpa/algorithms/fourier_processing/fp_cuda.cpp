@@ -169,19 +169,23 @@ namespace {// to avoid poluting
 
       auto maxFreq = tuner.AddArgumentScalar(s.GetMaxFreq().value_or(0));
 
-      auto definitionId = GetDefinitionId();
       auto kernelId = GetKernelId();
 
-      SetArguments(definitionId,
+      SetArguments(GetDefinitionId(),
         { argIn, argOut, inSize, inSpatialSize, outSize, filter, normFactor, maxFreq });
 
       auto &size = out.GetData().info.GetPaddedSize();
-      tuner.SetLauncher(kernelId, [definitionId, &size](ktt::ComputeInterface &interface) {
+      tuner.SetLauncher(kernelId, [this, &size](ktt::ComputeInterface &interface) {
+        auto definitionId = GetDefinitionId();
         auto blockDim = interface.GetCurrentLocalSize(definitionId);
         ktt::DimensionVector gridDim(size.x, size.y, size.z);
         gridDim.RoundUp(blockDim);
         gridDim.Divide(blockDim);
-        interface.RunKernelAsync(definitionId, interface.GetAllQueues().at(0), gridDim, blockDim);
+        if (ShouldBeTuned(GetKernelId())) {
+          interface.RunKernel(definitionId, gridDim, blockDim);
+        } else {
+          interface.RunKernelAsync(definitionId, interface.GetAllQueues().at(0), gridDim, blockDim);
+        }
       });
 
       ExecuteKernel(kernelId);
@@ -191,7 +195,11 @@ namespace {// to avoid poluting
   };
 }// namespace
 
-void FPCUDA::Synchronize() { GetHelper().GetTuner().Synchronize(); }
+void FPCUDA::Synchronize()
+{
+  // FIXME when queues are implemented, synchronize only used queues
+  GetHelper().GetTuner().SynchronizeDevice();
+}
 
 std::vector<std::unique_ptr<FPCUDA::Strategy>> FPCUDA::GetStrategies() const
 {
