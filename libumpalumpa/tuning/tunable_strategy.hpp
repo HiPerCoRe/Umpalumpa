@@ -119,6 +119,8 @@ public:
    */
   bool ShouldBeTuned(ktt::KernelId kernelId) const;
 
+  void SetKttLogging(bool val) { kttLoggingOff = !val; }
+
 protected:
   /**
    * Executes the specified kernel. Internally decides whether the strategy will be tuned or not.
@@ -235,6 +237,7 @@ private:
   bool canTuneStrategyGroup;
 
   bool isRegistered;
+  bool kttLoggingOff = true;
 
   // FIXME maybe needs to be new before every InitImpl
   // KTT needs different names for each kernel, this id serves as a simple unique identifier

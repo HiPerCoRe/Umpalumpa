@@ -80,7 +80,9 @@ ktt::KernelResult TunableStrategy::RunTuning(ktt::KernelId kernelId) const
 
 void TunableStrategy::RunBestConfiguration(ktt::KernelId kernelId) const
 {
+  if (kttLoggingOff) { kttHelper.GetTuner().SetLoggingLevel(ktt::LoggingLevel::Off); }
   kttHelper.GetTuner().Run(kernelId, GetBestConfiguration(kernelId), {});
+  if (kttLoggingOff) { kttHelper.GetTuner().SetLoggingLevel(ktt::LoggingLevel::Info); }
 }
 
 void TunableStrategy::SaveTuningToLeader(ktt::KernelId kernelId,
