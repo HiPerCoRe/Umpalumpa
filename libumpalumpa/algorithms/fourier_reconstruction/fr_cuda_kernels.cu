@@ -16,9 +16,10 @@ using umpalumpa::utils::getY;
 using umpalumpa::utils::getZ;
 using umpalumpa::data::Point3D;
 
-// #if SHARED_BLOB_TABLE
-// __shared__ float BLOB_TABLE[BLOB_TABLE_SIZE_SQRT]; // FIXME support
-// #endif
+// TODO this in theory can also be in the constant memory, provided it fits
+#if SHARED_BLOB_TABLE
+__shared__ float BLOB_TABLE[BLOB_TABLE_SIZE_SQRT];// the size of an array must be greater than zero
+#endif
 
 #if SHARED_IMG
 __shared__ Point3D<float> SHARED_AABB[2];

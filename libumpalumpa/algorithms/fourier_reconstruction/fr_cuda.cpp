@@ -55,21 +55,22 @@ namespace {// to avoid poluting
       tuner.AddParameter(kernelId, "BLOCK_DIM", std::vector<uint64_t>{ 8, 16 });
       tuner.AddParameter(kernelId, "SHARED_BLOB_TABLE", std::vector<uint64_t>{ 0, 1 });
       tuner.AddParameter(kernelId, "SHARED_IMG", std::vector<uint64_t>{ 0, 1 });
-      tuner.AddParameter(kernelId, "PRECOMPUTE_BLOB_VAL", std::vector<uint64_t>{ 0, 1 });
+      tuner.AddParameter(kernelId,
+        "PRECOMPUTE_BLOB_VAL",
+        std::vector<uint64_t>{ s.GetInterpolation() == Settings::Interpolation::kLookup });
       tuner.AddParameter(kernelId, "TILE", std::vector<uint64_t>{ 2, 4, 8 });
       tuner.AddParameter(kernelId, "GRID_DIM_Z", std::vector<uint64_t>{ 1, 8 });
+      tuner.AddParameter(kernelId,
+        "BLOB_TABLE_SIZE_SQRT",
+        std::vector<uint64_t>{ in.GetBlobTable().info.GetSize().total });
 
       // FIXME add constraints, probably from the old branch or the paper
       tuner.AddConstraint(
         kernelId, { "BLOCK_DIM", "BLOCK_DIM" }, [&tuner](const std::vector<uint64_t> &params) {
           return params[0] * params[1] <= tuner.GetCurrentDeviceInfo().GetMaxWorkGroupSize();
         });
-      tuner.AddConstraint(
-        kernelId, { "PRECOMPUTE_BLOB_VAL" }, [&s](const std::vector<uint64_t> &params) {
-          return params[0] == (s.GetInterpolation() == Settings::Interpolation::kLookup);
-        });
 
-
+      // multiply blocksize in specified dimension by 'BLOCK_DIM'
       tuner.AddThreadModifier(kernelId,
         { definitionId },
         ktt::ModifierType::Local,
@@ -83,6 +84,7 @@ namespace {// to avoid poluting
         "BLOCK_DIM",
         ktt::ModifierAction::Multiply);
 
+      // divide gridsize in specified dimension by 'BLOCK_DIM' so that it's multiple of blocksize
       tuner.AddThreadModifier(kernelId,
         { definitionId },
         ktt::ModifierType::Global,
@@ -146,11 +148,8 @@ namespace {// to avoid poluting
         // auto bestConfig = tuner.GetBestConfiguration(kernelId);
         auto bestConfig = tuner.CreateConfiguration(kernelId,
           { { "BLOCK_DIM", static_cast<uint64_t>(16) },
-            { "SHARED_BLOB_TABLE", static_cast<uint64_t>(0) },
             { "SHARED_IMG", static_cast<uint64_t>(0) },
             { "TILE", static_cast<uint64_t>(2) },
-            { "PRECOMPUTE_BLOB_VAL",
-              static_cast<uint64_t>(alg.GetSettings().GetInterpolation() == Settings::Interpolation::kLookup) },
             { "GRID_DIM_Z", static_cast<uint64_t>(1) } });
         tuner.Run(kernelId, bestConfig, {});// run is blocking call
         // arguments shall be removed once the run is done
