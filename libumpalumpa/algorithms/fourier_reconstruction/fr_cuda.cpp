@@ -110,6 +110,8 @@ namespace {// to avoid poluting
           || in.GetFFT().IsEmpty() || !in.GetWeight().IsValid() || in.GetWeight().IsEmpty())
         return false;
 
+      const auto &s = alg.GetSettings();
+
       auto &tuner = kttHelper.GetTuner();
       // TODO add type check
       auto argVolume =
@@ -120,16 +122,17 @@ namespace {// to avoid poluting
         AddArgumentVector<TraverseSpace>(in.GetTraverseSpace(), ktt::ArgumentAccessType::ReadOnly);
       auto argTable =
         AddArgumentVector<float>(in.GetBlobTable(), ktt::ArgumentAccessType::ReadOnly);
-      auto argConstants = tuner.AddArgumentScalar(constants);
+      auto argImgCacheDim = tuner.AddArgumentScalar(0);// value will be replaced in the launcher
 
       auto argSize = tuner.AddArgumentScalar(in.GetFFT().info.GetSize());
       auto argSpaceCount = tuner.AddArgumentScalar(in.GetTraverseSpace().info.GetSize());
 
-      auto argSharedMemSize = tuner.AddArgumentLocal<uint64_t>(1); //must be non-zero value because KTT
+      // FIXME change to 0 once KTT supports it
+      auto argSharedMemSize =
+        tuner.AddArgumentLocal<uint64_t>(1);// must be non-zero value because KTT
 
-      auto argConstConstants =
-        tuner.AddArgumentSymbol<Constants>(AFR::CreateConstants(in, alg.GetSettings()), "constants");
-
+      auto argConstants =
+        tuner.AddArgumentSymbol<Constants>(AFR::CreateConstants(in, s), "constants");
 
       auto definitionId = GetDefinitionId();
       auto kernelId = GetKernelId();
@@ -142,14 +145,14 @@ namespace {// to avoid poluting
           argSpace,
           argFFT,
           argTable,
-          argConstants,
+          argImgCacheDim,
           argSharedMemSize,
-          argConstConstants 
-          });
+          argConstants });
 
       auto &size = in.GetVolume().info.GetSize();
-      tuner.SetLauncher(
-        kernelId, [definitionId, &size, &argSharedMemSize](ktt::ComputeInterface &interface) {
+      tuner.SetLauncher(kernelId,
+        [definitionId, &size, &argSharedMemSize, &argImgCacheDim, &s](
+          ktt::ComputeInterface &interface) {
           auto blockDim = interface.GetCurrentLocalSize(definitionId);
           // FIXME check sizes
           ktt::DimensionVector gridDim(size.x, size.y, size.z);
@@ -157,11 +160,12 @@ namespace {// to avoid poluting
           gridDim.Divide(blockDim);
           auto &pairs = interface.GetCurrentConfiguration().GetPairs();
           bool useSharedImg = ktt::ParameterPair::GetParameterValue<uint64_t>(pairs, "SHARED_IMG");
-          if (!useSharedImg) {
-            // const int imgCacheDim = static_cast<int>(ceil(sqrt(2.f) * sqrt(3.f) * (BLOCK_DIM + 2
-            // * blobRadius))); SHARED_IMG ? (imgCacheDim*imgCacheDim*sizeof(float2)) : 0;
-            // size_t dataSize = 0;
-            // interface.UpdateLocalArgument(argSharedMemSize, dataSize);
+          if (useSharedImg) {
+            auto imgCacheDim = size_t(
+              ceil(sqrt(2.f) * sqrt(3.f) * (float(blockDim.GetSizeX()) + 2 * s.GetBlobRadius())));
+            size_t dataSize = imgCacheDim * imgCacheDim * sizeof(float2);
+            interface.UpdateScalarArgument(argImgCacheDim, &imgCacheDim);
+            interface.UpdateLocalArgument(argSharedMemSize, dataSize);
           }
           interface.RunKernelAsync(definitionId, interface.GetAllQueues().at(0), gridDim, blockDim);
         });

@@ -5,6 +5,8 @@
 #include <libumpalumpa/algorithms/fourier_reconstruction/fr_common_kernels.hpp>
 #include <libumpalumpa/math/geometry.hpp>
 
+#define INFINITY 0x7f800000;
+
 using umpalumpa::fourier_reconstruction::TraverseSpace;
 using umpalumpa::fourier_reconstruction::Constants;
 using umpalumpa::fourier_reconstruction::multiply;
@@ -21,12 +23,191 @@ using umpalumpa::data::Point3D;
 __shared__ float BLOB_TABLE[BLOB_TABLE_SIZE_SQRT];// the size of an array must be greater than zero
 #endif
 
-#if SHARED_IMG
-__shared__ Point3D<float> SHARED_AABB[2];
-extern __shared__ float2 IMG[];
-#endif
-
 __device__ __constant__ Constants constants;
+
+
+#if SHARED_IMG
+// FIXME these are mostly copies of methods used in traverse space generator. Try to unify them
+
+__shared__ float3 SHARED_AABB[2];
+extern __shared__ float2 IMG[];
+
+/**
+ * Method will load data from image at position tXindex, tYindex
+ * and return them.
+ * In case the data lies outside of the image boundaries, zeros (0,0)
+ * are returned
+ */
+__device__ void getImgData(const float3 AABB[2],
+  const int tXindex,
+  const int tYindex,
+  const float2 *FFTs,
+  const int fftSizeX,
+  const int fftSizeY,
+  const int imgIndex,
+  float2 &vComplex)
+{
+  int imgXindex = tXindex + static_cast<int>(AABB[0].x);
+  int imgYindex = tYindex + static_cast<int>(AABB[0].y);
+  if ((imgXindex >= 0) && (imgXindex < fftSizeX) && (imgYindex >= 0) && (imgYindex < fftSizeY)) {
+    int index = imgYindex * fftSizeX + imgXindex;// copy data from image
+    vComplex = (FFTs + fftSizeX * fftSizeY * imgIndex)[index];
+  } else {
+    vComplex = { 0.f, 0.f };// out of image bound, so return zero
+  }
+}
+
+/**
+ * Method will copy imgIndex(th) data from buffer
+ * to given destination (shared memory).
+ * Only data within AABB will be copied.
+ * Destination is expected to be continuous array of sufficient
+ * size (imgCacheDim^2)
+ */
+__device__ void copyImgToCache(float2 *dest,
+  const float3 AABB[2],
+  const float2 *FFTs,
+  const int fftSizeX,
+  const int fftSizeY,
+  const int imgIndex,
+  const int imgCacheDim)
+{
+  for (int y = threadIdx.y; y < imgCacheDim; y += blockDim.y) {
+    for (int x = threadIdx.x; x < imgCacheDim; x += blockDim.x) {
+      int memIndex = y * imgCacheDim + x;
+      getImgData(AABB, x, y, FFTs, fftSizeX, fftSizeY, imgIndex, dest[memIndex]);
+    }
+  }
+}
+
+/**
+ * Method will rotate box using transformation matrix around center of the
+ * working space
+ */
+__device__ void rotate(Point3D<float> box[8], const float transform[3][3])
+{
+  for (int i = 0; i < 8; i++) {
+    Point3D<float> imgPos;
+    // transform current point to center
+    imgPos.x = box[i].x - constants.cMaxVolumeIndexX / 2;
+    imgPos.y = box[i].y - constants.cMaxVolumeIndexYZ / 2;
+    imgPos.z = box[i].z - constants.cMaxVolumeIndexYZ / 2;
+    // rotate around center
+    multiply(transform, imgPos);
+    // transform back just Y coordinate, since X now matches to picture and Z is irrelevant
+    imgPos.y += constants.cMaxVolumeIndexYZ / 2;
+
+    box[i] = imgPos;
+  }
+}
+
+__device__ void computeAABB(float3 AABB[2], const Point3D<float> cuboid[8])
+{
+  AABB[0].x = AABB[0].y = AABB[0].z = INFINITY;
+  AABB[1].x = AABB[1].y = AABB[1].z = -INFINITY;
+  for (int i = 0; i < 8; i++) {
+    Point3D<float> tmp = cuboid[i];
+    if (AABB[0].x > tmp.x) AABB[0].x = tmp.x;
+    if (AABB[0].y > tmp.y) AABB[0].y = tmp.y;
+    if (AABB[0].z > tmp.z) AABB[0].z = tmp.z;
+    if (AABB[1].x < tmp.x) AABB[1].x = tmp.x;
+    if (AABB[1].y < tmp.y) AABB[1].y = tmp.y;
+    if (AABB[1].z < tmp.z) AABB[1].z = tmp.z;
+  }
+  AABB[0].x = ceilf(AABB[0].x);
+  AABB[0].y = ceilf(AABB[0].y);
+  AABB[0].z = ceilf(AABB[0].z);
+
+  AABB[1].x = floorf(AABB[1].x);
+  AABB[1].y = floorf(AABB[1].y);
+  AABB[1].z = floorf(AABB[1].z);
+}
+
+
+/**
+ * Method calculates an Axis Aligned Bounding Box in the image space.
+ * AABB is guaranteed to be big enough that all threads in the block,
+ * while processing the traverse space, will not read image data outside
+ * of the AABB
+ */
+__device__ void calculateAABB(const TraverseSpace &tSpace, float3 dest[2])
+{
+
+  Point3D<float> box[8];
+  // calculate AABB for the whole working block
+  if (TraverseSpace::Direction::XY == tSpace.dir) {// iterate XY plane
+    box[0].x = box[3].x = box[4].x = box[7].x = blockIdx.x * blockDim.x - constants.cBlobRadius;
+    box[1].x = box[2].x = box[5].x = box[6].x =
+      (blockIdx.x + 1) * blockDim.x + constants.cBlobRadius - 1.f;
+
+    box[2].y = box[3].y = box[6].y = box[7].y =
+      (blockIdx.y + 1) * blockDim.y + constants.cBlobRadius - 1.f;
+    box[0].y = box[1].y = box[4].y = box[5].y = blockIdx.y * blockDim.y - constants.cBlobRadius;
+
+    box[0].z = getZ(box[0].x, box[0].y, tSpace.unitNormal, tSpace.bottomOrigin);
+    box[4].z = getZ(box[4].x, box[4].y, tSpace.unitNormal, tSpace.topOrigin);
+
+    box[3].z = getZ(box[3].x, box[3].y, tSpace.unitNormal, tSpace.bottomOrigin);
+    box[7].z = getZ(box[7].x, box[7].y, tSpace.unitNormal, tSpace.topOrigin);
+
+    box[2].z = getZ(box[2].x, box[2].y, tSpace.unitNormal, tSpace.bottomOrigin);
+    box[6].z = getZ(box[6].x, box[6].y, tSpace.unitNormal, tSpace.topOrigin);
+
+    box[1].z = getZ(box[1].x, box[1].y, tSpace.unitNormal, tSpace.bottomOrigin);
+    box[5].z = getZ(box[5].x, box[5].y, tSpace.unitNormal, tSpace.topOrigin);
+  } else if (TraverseSpace::Direction::XZ == tSpace.dir) {// iterate XZ plane
+    box[0].x = box[3].x = box[4].x = box[7].x = blockIdx.x * blockDim.x - constants.cBlobRadius;
+    box[1].x = box[2].x = box[5].x = box[6].x =
+      (blockIdx.x + 1) * blockDim.x + constants.cBlobRadius - 1.f;
+
+    box[2].z = box[3].z = box[6].z = box[7].z =
+      (blockIdx.y + 1) * blockDim.y + constants.cBlobRadius - 1.f;
+    box[0].z = box[1].z = box[4].z = box[5].z = blockIdx.y * blockDim.y - constants.cBlobRadius;
+
+    box[0].y = getY(box[0].x, box[0].z, tSpace.unitNormal, tSpace.bottomOrigin);
+    box[4].y = getY(box[4].x, box[4].z, tSpace.unitNormal, tSpace.topOrigin);
+
+    box[3].y = getY(box[3].x, box[3].z, tSpace.unitNormal, tSpace.bottomOrigin);
+    box[7].y = getY(box[7].x, box[7].z, tSpace.unitNormal, tSpace.topOrigin);
+
+    box[2].y = getY(box[2].x, box[2].z, tSpace.unitNormal, tSpace.bottomOrigin);
+    box[6].y = getY(box[6].x, box[6].z, tSpace.unitNormal, tSpace.topOrigin);
+
+    box[1].y = getY(box[1].x, box[1].z, tSpace.unitNormal, tSpace.bottomOrigin);
+    box[5].y = getY(box[5].x, box[5].z, tSpace.unitNormal, tSpace.topOrigin);
+  } else {// iterate YZ plane
+    box[0].y = box[3].y = box[4].y = box[7].y = blockIdx.x * blockDim.x - constants.cBlobRadius;
+    box[1].y = box[2].y = box[5].y = box[6].y =
+      (blockIdx.x + 1) * blockDim.x + constants.cBlobRadius - 1.f;
+
+    box[2].z = box[3].z = box[6].z = box[7].z =
+      (blockIdx.y + 1) * blockDim.y + constants.cBlobRadius - 1.f;
+    box[0].z = box[1].z = box[4].z = box[5].z = blockIdx.y * blockDim.y - constants.cBlobRadius;
+
+    box[0].x = getX(box[0].y, box[0].z, tSpace.unitNormal, tSpace.bottomOrigin);
+    box[4].x = getX(box[4].y, box[4].z, tSpace.unitNormal, tSpace.topOrigin);
+
+    box[3].x = getX(box[3].y, box[3].z, tSpace.unitNormal, tSpace.bottomOrigin);
+    box[7].x = getX(box[7].y, box[7].z, tSpace.unitNormal, tSpace.topOrigin);
+
+    box[2].x = getX(box[2].y, box[2].z, tSpace.unitNormal, tSpace.bottomOrigin);
+    box[6].x = getX(box[6].y, box[6].z, tSpace.unitNormal, tSpace.topOrigin);
+
+    box[1].x = getX(box[1].y, box[1].z, tSpace.unitNormal, tSpace.bottomOrigin);
+    box[5].x = getX(box[5].y, box[5].z, tSpace.unitNormal, tSpace.topOrigin);
+  }
+  // transform AABB to the image domain
+  rotate(box, tSpace.transformInv);
+  // AABB is projected on image. Create new AABB that will encompass all vertices
+  computeAABB(dest, box);
+}
+
+/** Method returns true if AABB lies within the image boundaries */
+__device__ bool isWithin(float3 AABB[2], int imgXSize, int imgYSize)
+{
+  return (AABB[0].x < imgXSize) && (AABB[1].x >= 0) && (AABB[0].y < imgYSize) && (AABB[1].y >= 0);
+}
+#endif
 
 /**
  * Method will map one voxel from the temporal
@@ -92,9 +273,8 @@ __device__ void processVoxelBlob(float2 *tempVolumeGPU,
   const int ySize,
   const float2 *__restrict__ FFT,
   const TraverseSpace &space,
-  const float *blobTableSqrt
-  // const int imgCacheDim FIXME add
-)
+  const float *blobTableSqrt,
+  const int imgCacheDim)
 {
   Point3D<float> imgPos;
   // transform current point to center
@@ -163,7 +343,8 @@ __device__ void processVoxelBlob(float2 *tempVolumeGPU,
       if (useFastKaiser) {
         wBlob = kaiserValueFast(distanceSqr, constants);
       } else {
-        wBlob = kaiserValue<blobOrder>(sqrtf(distanceSqr), constants.cBlobRadius, constants) * constants.cIw0;
+        wBlob = kaiserValue<blobOrder>(sqrtf(distanceSqr), constants.cBlobRadius, constants)
+                * constants.cIw0;
       }
 #endif
       float weight = wBlob * dataWeight;
@@ -194,9 +375,8 @@ __device__ void processProjection(float2 *volume,
   umpalumpa::data::Size size,
   const TraverseSpace &tSpace,
   const float2 *__restrict__ FFT,
-  const float *blobTableSqrt
-  //   const int imgCacheDim // FIXME add
-)
+  const float *blobTableSqrt,
+  const int imgCacheDim)
 {
   const int xSize = size.x;
   const int ySize = size.y;
@@ -230,7 +410,7 @@ __device__ void processProjection(float2 *volume,
           int upper = static_cast<int>(ceilf(fmaxf(z1, z2)));
           for (int z = lower; z <= upper; z++) {
             processVoxelBlob<blobOrder, useFastKaiser>(
-              volume, weights, idx, idy, z, xSize, ySize, FFT, tSpace, blobTableSqrt);
+              volume, weights, idx, idy, z, xSize, ySize, FFT, tSpace, blobTableSqrt, imgCacheDim);
           }
         }
       }
@@ -253,7 +433,7 @@ __device__ void processProjection(float2 *volume,
           int upper = static_cast<int>(ceilf(fmaxf(y1, y2)));
           for (int y = lower; y <= upper; y++) {
             processVoxelBlob<blobOrder, useFastKaiser>(
-              volume, weights, idx, y, idy, xSize, ySize, FFT, tSpace, blobTableSqrt);
+              volume, weights, idx, y, idy, xSize, ySize, FFT, tSpace, blobTableSqrt, imgCacheDim);
           }
         }
       }
@@ -276,7 +456,7 @@ __device__ void processProjection(float2 *volume,
           int upper = static_cast<int>(ceilf(fmaxf(x1, x2)));
           for (int x = lower; x <= upper; x++) {
             processVoxelBlob<blobOrder, useFastKaiser>(
-              volume, weights, x, idx, idy, xSize, ySize, FFT, tSpace, blobTableSqrt);
+              volume, weights, x, idx, idy, xSize, ySize, FFT, tSpace, blobTableSqrt, imgCacheDim);
           }
         }
       }
@@ -292,9 +472,8 @@ __global__ void ProcessKernel(float2 *outVolumeBuffer,
   const int traverseSpaceCount,
   const TraverseSpace *traverseSpaces,
   const float2 *FFTs,
-  const float *blobTableSqrt
-  // int imgCacheDim FIXME add
-)
+  const float *blobTableSqrt,
+  int imgCacheDim)
 {
 
 #if SHARED_BLOB_TABLE
@@ -317,14 +496,13 @@ __global__ void ProcessKernel(float2 *outVolumeBuffer,
       __syncthreads();
       if ((threadIdx.x == 0) && (threadIdx.y == 0)) {
         // first thread calculates which part of the image should be shared
-        calculateAABB(&space, SHARED_AABB);
+        calculateAABB(space, SHARED_AABB);
       }
       __syncthreads();
       // check if the block will have to copy data from image
-      if (isWithin(SHARED_AABB, fftSizeX, fftSizeY)) {
+      if (isWithin(SHARED_AABB, size.x, size.y)) {
         // all threads copy image data to shared memory
-        copyImgToCache(
-          IMG, SHARED_AABB, FFTs, fftSizeX, fftSizeY, space.projectionIndex, imgCacheDim);
+        copyImgToCache(IMG, SHARED_AABB, FFTs, size.x, size.y, space.projectionIndex, imgCacheDim);
         __syncthreads();
       } else {
         continue;// whole block can exit, as it's not reading from image
@@ -338,9 +516,8 @@ __global__ void ProcessKernel(float2 *outVolumeBuffer,
       size,
       space,
       FFTs + size.single * space.projectionIndex,
-      blobTableSqrt
-      // imgCacheDim
-    );
+      blobTableSqrt,
+      imgCacheDim);
     __syncthreads();// sync threads to avoid write after read problems
   }
 }
