@@ -52,14 +52,14 @@ namespace {// to avoid poluting
       auto kernelId = GetKernelId();
 
       // FIXME add more values, probably from the old branch or the paper
-      tuner.AddParameter(kernelId, "BLOCK_DIM", std::vector<uint64_t>{ 8, 16 });
+      tuner.AddParameter(kernelId, "BLOCK_DIM", std::vector<uint64_t>{ 8, 12, 16, 20, 24, 28, 32 });
       tuner.AddParameter(kernelId, "SHARED_BLOB_TABLE", std::vector<uint64_t>{ 0, 1 });
       tuner.AddParameter(kernelId, "SHARED_IMG", std::vector<uint64_t>{ 0, 1 });
       tuner.AddParameter(kernelId,
         "PRECOMPUTE_BLOB_VAL",
         std::vector<uint64_t>{ s.GetInterpolation() == Settings::Interpolation::kLookup });
-      tuner.AddParameter(kernelId, "TILE", std::vector<uint64_t>{ 2, 4, 8 });
-      tuner.AddParameter(kernelId, "GRID_DIM_Z", std::vector<uint64_t>{ 1, 8 });
+      tuner.AddParameter(kernelId, "TILE", std::vector<uint64_t>{ 1, 2, 4, 8 });
+      tuner.AddParameter(kernelId, "GRID_DIM_Z", std::vector<uint64_t>{ 1, 2, 4, 8, 16 });
       tuner.AddParameter(kernelId,
         "BLOB_TABLE_SIZE_SQRT",
         std::vector<uint64_t>{ in.GetBlobTable().info.GetSize().total });
@@ -68,6 +68,31 @@ namespace {// to avoid poluting
       tuner.AddConstraint(
         kernelId, { "BLOCK_DIM", "BLOCK_DIM" }, [&tuner](const std::vector<uint64_t> &params) {
           return params[0] * params[1] <= tuner.GetCurrentDeviceInfo().GetMaxWorkGroupSize();
+        });
+
+      tuner.AddConstraint(
+        kernelId, { "BLOCK_DIM", "TILE" }, [](const std::vector<uint64_t> &params) {
+          return params.at(1) == 1 || (params.at(0) % params.at(1) == 0);
+        });
+
+      tuner.AddConstraint(kernelId,
+        { "SHARED_IMG", "TILE" },
+        [](const std::vector<uint64_t> &params) { return params.at(0) == 0 || params.at(1) == 1; });
+
+      tuner.AddConstraint(kernelId,
+        { "BLOCK_DIM", "TILE" },
+        [](const std::vector<uint64_t> &params) { return params.at(0) > params.at(1); });
+
+      // TODO if / when KTT supports reporting of the used shared memory, we can enhance this check
+      tuner.AddConstraint(
+        kernelId, { "SHARED_BLOB_TABLE", "SHARED_IMG" }, [](const std::vector<uint64_t> &params) {
+          return !(params.at(0) == 1 && params.at(1) == 1);
+        });
+
+      tuner.AddConstraint(kernelId,
+        { "SHARED_BLOB_TABLE", "PRECOMPUTE_BLOB_VAL" },
+        [](const std::vector<uint64_t> &params) {
+          return params.at(0) == 0 || (params.at(0) == 1 && params.at(1) == 1);
         });
 
       // multiply blocksize in specified dimension by 'BLOCK_DIM'
@@ -83,20 +108,6 @@ namespace {// to avoid poluting
         ktt::ModifierDimension::Y,
         "BLOCK_DIM",
         ktt::ModifierAction::Multiply);
-
-      // divide gridsize in specified dimension by 'BLOCK_DIM' so that it's multiple of blocksize
-      tuner.AddThreadModifier(kernelId,
-        { definitionId },
-        ktt::ModifierType::Global,
-        ktt::ModifierDimension::X,
-        "BLOCK_DIM",
-        ktt::ModifierAction::DivideCeil);
-      tuner.AddThreadModifier(kernelId,
-        { definitionId },
-        ktt::ModifierType::Global,
-        ktt::ModifierDimension::Y,
-        "BLOCK_DIM",
-        ktt::ModifierAction::DivideCeil);
 
       tuner.SetSearcher(kernelId, std::make_unique<ktt::RandomSearcher>());
       return true;
@@ -153,12 +164,12 @@ namespace {// to avoid poluting
       tuner.SetLauncher(kernelId,
         [definitionId, &size, &argSharedMemSize, &argImgCacheDim, &s](
           ktt::ComputeInterface &interface) {
+          auto &pairs = interface.GetCurrentConfiguration().GetPairs();
           auto blockDim = interface.GetCurrentLocalSize(definitionId);
-          // FIXME check sizes
-          ktt::DimensionVector gridDim(size.x, size.y, size.z);
+          ktt::DimensionVector gridDim(size.x, size.y);
           gridDim.RoundUp(blockDim);
           gridDim.Divide(blockDim);
-          auto &pairs = interface.GetCurrentConfiguration().GetPairs();
+          gridDim.SetSizeZ(ktt::ParameterPair::GetParameterValue<uint64_t>(pairs, "GRID_DIM_Z"));
           bool useSharedImg = ktt::ParameterPair::GetParameterValue<uint64_t>(pairs, "SHARED_IMG");
           if (useSharedImg) {
             auto imgCacheDim = size_t(
