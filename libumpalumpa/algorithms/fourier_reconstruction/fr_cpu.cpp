@@ -37,6 +37,7 @@ namespace {// to avoid poluting
         static_cast<int>(in.GetFFT().info.GetSize().y),// TODO maybe we can use unsigned?
         reinterpret_cast<std::complex<float> *>(in.GetFFT().GetPtr()),
         reinterpret_cast<TraverseSpace *>(in.GetTraverseSpace().GetPtr()),
+        in.GetTraverseSpace().info.GetSize().total,
         reinterpret_cast<float *>(in.GetBlobTable().GetPtr()),
         AFR::CreateConstants(in, s));
       return true;

@@ -247,22 +247,25 @@ public:
     const int ySize,
     const std::complex<T> *__restrict__ FFT,
     const TraverseSpace *const __restrict__ tSpace,
+    size_t noOfSpaces,
     const T *__restrict__ blobTableSqrt,
     const Constants &constants)
   {
-    switch (order) {
-    case BlobOrder::k0:
-      return Execute<0>(volume, weights, xSize, ySize, FFT, tSpace, blobTableSqrt, constants);
-    case BlobOrder::k1:
-      return Execute<1>(volume, weights, xSize, ySize, FFT, tSpace, blobTableSqrt, constants);
-    case BlobOrder::k2:
-      return Execute<2>(volume, weights, xSize, ySize, FFT, tSpace, blobTableSqrt, constants);
-    case BlobOrder::k3:
-      return Execute<3>(volume, weights, xSize, ySize, FFT, tSpace, blobTableSqrt, constants);
-    case BlobOrder::k4:
-      return Execute<4>(volume, weights, xSize, ySize, FFT, tSpace, blobTableSqrt, constants);
-    default:
-      return;// not supported
+    for (size_t i = 0; i < noOfSpaces; ++i) {
+      switch (order) {
+      case BlobOrder::k0:
+        return Execute<0>(volume, weights, xSize, ySize, FFT, tSpace, blobTableSqrt, constants);
+      case BlobOrder::k1:
+        return Execute<1>(volume, weights, xSize, ySize, FFT, tSpace, blobTableSqrt, constants);
+      case BlobOrder::k2:
+        return Execute<2>(volume, weights, xSize, ySize, FFT, tSpace, blobTableSqrt, constants);
+      case BlobOrder::k3:
+        return Execute<3>(volume, weights, xSize, ySize, FFT, tSpace, blobTableSqrt, constants);
+      case BlobOrder::k4:
+        return Execute<4>(volume, weights, xSize, ySize, FFT, tSpace, blobTableSqrt, constants);
+      default:
+        return;// not supported
+      }
     }
   }
 };
