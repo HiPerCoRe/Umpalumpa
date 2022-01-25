@@ -124,20 +124,47 @@ namespace {// to avoid poluting
 
       auto argSize = tuner.AddArgumentScalar(in.GetFFT().info.GetSize());
       auto argSpaceCount = tuner.AddArgumentScalar(in.GetTraverseSpace().info.GetSize());
+
+      auto argSharedMemSize = tuner.AddArgumentLocal<uint64_t>(1); //must be non-zero value because KTT
+
+      auto argConstConstants =
+        tuner.AddArgumentSymbol<Constants>(AFR::CreateConstants(in, alg.GetSettings()), "constants");
+
+
       auto definitionId = GetDefinitionId();
       auto kernelId = GetKernelId();
 
       tuner.SetArguments(definitionId,
-        { argVolume, argWeight, argSize, argSpaceCount, argSpace, argFFT, argTable, argConstants });
+        { argVolume,
+          argWeight,
+          argSize,
+          argSpaceCount,
+          argSpace,
+          argFFT,
+          argTable,
+          argConstants,
+          argSharedMemSize,
+          argConstConstants 
+          });
 
       auto &size = in.GetVolume().info.GetSize();
-      tuner.SetLauncher(kernelId, [definitionId, &size](ktt::ComputeInterface &interface) {
-        auto blockDim = interface.GetCurrentLocalSize(definitionId);
-        ktt::DimensionVector gridDim(size.x, size.y, size.z);
-        gridDim.RoundUp(blockDim);
-        gridDim.Divide(blockDim);
-        interface.RunKernelAsync(definitionId, interface.GetAllQueues().at(0), gridDim, blockDim);
-      });
+      tuner.SetLauncher(
+        kernelId, [definitionId, &size, &argSharedMemSize](ktt::ComputeInterface &interface) {
+          auto blockDim = interface.GetCurrentLocalSize(definitionId);
+          // FIXME check sizes
+          ktt::DimensionVector gridDim(size.x, size.y, size.z);
+          gridDim.RoundUp(blockDim);
+          gridDim.Divide(blockDim);
+          auto &pairs = interface.GetCurrentConfiguration().GetPairs();
+          bool useSharedImg = ktt::ParameterPair::GetParameterValue<uint64_t>(pairs, "SHARED_IMG");
+          if (!useSharedImg) {
+            // const int imgCacheDim = static_cast<int>(ceil(sqrt(2.f) * sqrt(3.f) * (BLOCK_DIM + 2
+            // * blobRadius))); SHARED_IMG ? (imgCacheDim*imgCacheDim*sizeof(float2)) : 0;
+            // size_t dataSize = 0;
+            // interface.UpdateLocalArgument(argSharedMemSize, dataSize);
+          }
+          interface.RunKernelAsync(definitionId, interface.GetAllQueues().at(0), gridDim, blockDim);
+        });
 
       if (ShouldTune()) {
         tuner.TuneIteration(kernelId, {});

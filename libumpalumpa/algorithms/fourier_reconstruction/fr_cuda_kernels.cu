@@ -26,6 +26,8 @@ __shared__ Point3D<float> SHARED_AABB[2];
 extern __shared__ float2 IMG[];
 #endif
 
+__device__ __constant__ Constants constants;
+
 /**
  * Method will map one voxel from the temporal
  * spaces to the given projection and update temporal spaces
@@ -39,17 +41,16 @@ __device__ void processVoxel(float2 *volume,
   int xSize,
   int ySize,
   const float2 *__restrict__ FFT,
-  const TraverseSpace &space,
-  const Constants &gpuC)
+  const TraverseSpace &space)
 {
   Point3D<float> imgPos;
   float wBlob = 1.f;
   float dataWeight = space.weight;
 
   // transform current point to center
-  imgPos.x = x - gpuC.cMaxVolumeIndexX / 2;
-  imgPos.y = y - gpuC.cMaxVolumeIndexYZ / 2;
-  imgPos.z = z - gpuC.cMaxVolumeIndexYZ / 2;
+  imgPos.x = x - constants.cMaxVolumeIndexX / 2;
+  imgPos.y = y - constants.cMaxVolumeIndexYZ / 2;
+  imgPos.z = z - constants.cMaxVolumeIndexYZ / 2;
   if (imgPos.x * imgPos.x + imgPos.y * imgPos.y + imgPos.z * imgPos.z > space.maxDistanceSqr) {
     return;// discard iterations that would access pixel with too high frequency
   }
@@ -62,10 +63,10 @@ __device__ void processVoxel(float2 *volume,
   // transform back and round
   // just Y coordinate needs adjusting, since X now matches to picture and Z is irrelevant
   int imgX = clamp((int)(imgPos.x + 0.5f), 0, xSize - 1);
-  int imgY = clamp((int)(imgPos.y + 0.5f + gpuC.cMaxVolumeIndexYZ / 2), 0, ySize - 1);
+  int imgY = clamp((int)(imgPos.y + 0.5f + constants.cMaxVolumeIndexYZ / 2), 0, ySize - 1);
 
-  int index3D = z * (gpuC.cMaxVolumeIndexYZ + 1) * (gpuC.cMaxVolumeIndexX + 1)
-                + y * (gpuC.cMaxVolumeIndexX + 1) + x;
+  int index3D = z * (constants.cMaxVolumeIndexYZ + 1) * (constants.cMaxVolumeIndexX + 1)
+                + y * (constants.cMaxVolumeIndexX + 1) + x;
   int index2D = imgY * xSize + imgX;
 
   float weight = wBlob * dataWeight;
@@ -91,43 +92,43 @@ __device__ void processVoxelBlob(float2 *tempVolumeGPU,
   const int ySize,
   const float2 *__restrict__ FFT,
   const TraverseSpace &space,
-  const float *blobTableSqrt,
+  const float *blobTableSqrt
   // const int imgCacheDim FIXME add
-  const Constants &gpuC)
+)
 {
   Point3D<float> imgPos;
   // transform current point to center
-  imgPos.x = x - gpuC.cMaxVolumeIndexX / 2;
-  imgPos.y = y - gpuC.cMaxVolumeIndexYZ / 2;
-  imgPos.z = z - gpuC.cMaxVolumeIndexYZ / 2;
+  imgPos.x = x - constants.cMaxVolumeIndexX / 2;
+  imgPos.y = y - constants.cMaxVolumeIndexYZ / 2;
+  imgPos.z = z - constants.cMaxVolumeIndexYZ / 2;
   if ((imgPos.x * imgPos.x + imgPos.y * imgPos.y + imgPos.z * imgPos.z) > space.maxDistanceSqr) {
     return;// discard iterations that would access pixel with too high frequency
   }
   // rotate around center
   multiply(space.transformInv, imgPos);
-  if (imgPos.x < -gpuC.cBlobRadius)
+  if (imgPos.x < -constants.cBlobRadius)
     return;// reading outside of the image boundary. Z is always correct and Y is checked by the
            // condition above
   // transform back just Y coordinate, since X now matches to picture and Z is irrelevant
-  imgPos.y += gpuC.cMaxVolumeIndexYZ / 2;
+  imgPos.y += constants.cMaxVolumeIndexYZ / 2;
 
   // check that we don't want to collect data from far far away ...
-  float radiusSqr = gpuC.cBlobRadius * gpuC.cBlobRadius;
+  float radiusSqr = constants.cBlobRadius * constants.cBlobRadius;
   float zSqr = imgPos.z * imgPos.z;
   if (zSqr > radiusSqr) return;
 
   // create blob bounding box
-  int minX = ceilf(imgPos.x - gpuC.cBlobRadius);
-  int maxX = floorf(imgPos.x + gpuC.cBlobRadius);
-  int minY = ceilf(imgPos.y - gpuC.cBlobRadius);
-  int maxY = floorf(imgPos.y + gpuC.cBlobRadius);
+  int minX = ceilf(imgPos.x - constants.cBlobRadius);
+  int maxX = floorf(imgPos.x + constants.cBlobRadius);
+  int minY = ceilf(imgPos.y - constants.cBlobRadius);
+  int maxY = floorf(imgPos.y + constants.cBlobRadius);
   minX = fmaxf(minX, 0);
   minY = fmaxf(minY, 0);
   maxX = fminf(maxX, xSize - 1);
   maxY = fminf(maxY, ySize - 1);
 
-  int index3D = z * (gpuC.cMaxVolumeIndexYZ + 1) * (gpuC.cMaxVolumeIndexX + 1)
-                + y * (gpuC.cMaxVolumeIndexX + 1) + x;
+  int index3D = z * (constants.cMaxVolumeIndexYZ + 1) * (constants.cMaxVolumeIndexX + 1)
+                + y * (constants.cMaxVolumeIndexX + 1) + x;
   float2 vol;
   float w;
   vol.x = vol.y = w = 0.f;
@@ -151,7 +152,7 @@ __device__ void processVoxelBlob(float2 *tempVolumeGPU,
 #endif
 
 #if PRECOMPUTE_BLOB_VAL
-      int aux = (int)((distanceSqr * gpuC.cIDeltaSqrt + 0.5f));
+      int aux = (int)((distanceSqr * constants.cIDeltaSqrt + 0.5f));
 #if SHARED_BLOB_TABLE
       float wBlob = BLOB_TABLE[aux];
 #else
@@ -160,9 +161,9 @@ __device__ void processVoxelBlob(float2 *tempVolumeGPU,
 #else
       float wBlob;
       if (useFastKaiser) {
-        wBlob = kaiserValueFast(distanceSqr, gpuC);
+        wBlob = kaiserValueFast(distanceSqr, constants);
       } else {
-        wBlob = kaiserValue<blobOrder>(sqrtf(distanceSqr), gpuC.cBlobRadius, gpuC) * gpuC.cIw0;
+        wBlob = kaiserValue<blobOrder>(sqrtf(distanceSqr), constants.cBlobRadius, constants) * constants.cIw0;
       }
 #endif
       float weight = wBlob * dataWeight;
@@ -193,8 +194,7 @@ __device__ void processProjection(float2 *volume,
   umpalumpa::data::Size size,
   const TraverseSpace &tSpace,
   const float2 *__restrict__ FFT,
-  const float *blobTableSqrt,
-  const Constants &gpuC
+  const float *blobTableSqrt
   //   const int imgCacheDim // FIXME add
 )
 {
@@ -218,19 +218,19 @@ __device__ void processProjection(float2 *volume,
         if (useFast) {
           float hitZ = getZ(float(idx), float(idy), tSpace.unitNormal, tSpace.bottomOrigin);
           int z = (int)(hitZ + 0.5f);// rounding
-          processVoxel(volume, weights, idx, idy, z, xSize, ySize, FFT, tSpace, gpuC);
+          processVoxel(volume, weights, idx, idy, z, xSize, ySize, FFT, tSpace);
         } else {
           float z1 =
             getZ(float(idx), float(idy), tSpace.unitNormal, tSpace.bottomOrigin);// lower plane
           float z2 =
             getZ(float(idx), float(idy), tSpace.unitNormal, tSpace.topOrigin);// upper plane
-          z1 = clamp(z1, 0, gpuC.cMaxVolumeIndexYZ);
-          z2 = clamp(z2, 0, gpuC.cMaxVolumeIndexYZ);
+          z1 = clamp(z1, 0, constants.cMaxVolumeIndexYZ);
+          z2 = clamp(z2, 0, constants.cMaxVolumeIndexYZ);
           int lower = static_cast<int>(floorf(fminf(z1, z2)));
           int upper = static_cast<int>(ceilf(fmaxf(z1, z2)));
           for (int z = lower; z <= upper; z++) {
             processVoxelBlob<blobOrder, useFastKaiser>(
-              volume, weights, idx, idy, z, xSize, ySize, FFT, tSpace, blobTableSqrt, gpuC);
+              volume, weights, idx, idy, z, xSize, ySize, FFT, tSpace, blobTableSqrt);
           }
         }
       }
@@ -241,19 +241,19 @@ __device__ void processProjection(float2 *volume,
         if (useFast) {
           float hitY = getY(float(idx), float(idy), tSpace.unitNormal, tSpace.bottomOrigin);
           int y = (int)(hitY + 0.5f);// rounding
-          processVoxel(volume, weights, idx, y, idy, xSize, ySize, FFT, tSpace, gpuC);
+          processVoxel(volume, weights, idx, y, idy, xSize, ySize, FFT, tSpace);
         } else {
           float y1 =
             getY(float(idx), float(idy), tSpace.unitNormal, tSpace.bottomOrigin);// lower plane
           float y2 =
             getY(float(idx), float(idy), tSpace.unitNormal, tSpace.topOrigin);// upper plane
-          y1 = clamp(y1, 0, gpuC.cMaxVolumeIndexYZ);
-          y2 = clamp(y2, 0, gpuC.cMaxVolumeIndexYZ);
+          y1 = clamp(y1, 0, constants.cMaxVolumeIndexYZ);
+          y2 = clamp(y2, 0, constants.cMaxVolumeIndexYZ);
           int lower = static_cast<int>(floorf(fminf(y1, y2)));
           int upper = static_cast<int>(ceilf(fmaxf(y1, y2)));
           for (int y = lower; y <= upper; y++) {
             processVoxelBlob<blobOrder, useFastKaiser>(
-              volume, weights, idx, y, idy, xSize, ySize, FFT, tSpace, blobTableSqrt, gpuC);
+              volume, weights, idx, y, idy, xSize, ySize, FFT, tSpace, blobTableSqrt);
           }
         }
       }
@@ -264,19 +264,19 @@ __device__ void processProjection(float2 *volume,
         if (useFast) {
           float hitX = getX(float(idx), float(idy), tSpace.unitNormal, tSpace.bottomOrigin);
           int x = (int)(hitX + 0.5f);// rounding
-          processVoxel(volume, weights, x, idx, idy, xSize, ySize, FFT, tSpace, gpuC);
+          processVoxel(volume, weights, x, idx, idy, xSize, ySize, FFT, tSpace);
         } else {
           float x1 =
             getX(float(idx), float(idy), tSpace.unitNormal, tSpace.bottomOrigin);// lower plane
           float x2 =
             getX(float(idx), float(idy), tSpace.unitNormal, tSpace.topOrigin);// upper plane
-          x1 = clamp(x1, 0, gpuC.cMaxVolumeIndexX);
-          x2 = clamp(x2, 0, gpuC.cMaxVolumeIndexX);
+          x1 = clamp(x1, 0, constants.cMaxVolumeIndexX);
+          x2 = clamp(x2, 0, constants.cMaxVolumeIndexX);
           int lower = static_cast<int>(floorf(fminf(x1, x2)));
           int upper = static_cast<int>(ceilf(fmaxf(x1, x2)));
           for (int x = lower; x <= upper; x++) {
             processVoxelBlob<blobOrder, useFastKaiser>(
-              volume, weights, x, idx, idy, xSize, ySize, FFT, tSpace, blobTableSqrt, gpuC);
+              volume, weights, x, idx, idy, xSize, ySize, FFT, tSpace, blobTableSqrt);
           }
         }
       }
@@ -292,8 +292,7 @@ __global__ void ProcessKernel(float2 *outVolumeBuffer,
   const int traverseSpaceCount,
   const TraverseSpace *traverseSpaces,
   const float2 *FFTs,
-  const float *blobTableSqrt,
-  Constants gpuC
+  const float *blobTableSqrt
   // int imgCacheDim FIXME add
 )
 {
@@ -339,8 +338,7 @@ __global__ void ProcessKernel(float2 *outVolumeBuffer,
       size,
       space,
       FFTs + size.single * space.projectionIndex,
-      blobTableSqrt,
-      gpuC
+      blobTableSqrt
       // imgCacheDim
     );
     __syncthreads();// sync threads to avoid write after read problems
