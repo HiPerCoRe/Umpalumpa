@@ -34,6 +34,7 @@ if(USE_STARPU)
     algorithms/extrema_finder/single_extrema_finder_starpu.cpp
     algorithms/correlation/correlation_starpu.cpp
     algorithms/fourier_processing/fp_starpu.cpp
+    algorithms/fourier_reconstruction/fr_starpu.cpp
     algorithms/fourier_transformation/fft_starpu.cpp
     utils/starpu.cpp)
 endif()
