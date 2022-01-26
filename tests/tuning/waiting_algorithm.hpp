@@ -100,6 +100,7 @@ namespace {
       tuner.AddParameter(
         kernelId, "MILLISECONDS", std::vector<uint64_t>{ 2, 4, 6, 8, 10, 12, 14, 16, 18, 20 });
       tuner.SetSearcher(kernelId, std::make_unique<ktt::RandomSearcher>());
+      SetKttLogging(true);
       return true;
     }
 
