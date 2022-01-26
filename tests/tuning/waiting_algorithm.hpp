@@ -32,7 +32,7 @@ public:
   using BasicAlgorithm::Strategy;
   using KTTStrategy = tuning::KTTStrategyBase<OutputData, InputData, Settings>;
 
-  void Synchronize() override { GetHelper().GetTuner().Synchronize(); }
+  void Synchronize() override { GetHelper().GetTuner().SynchronizeDevice(); }
   bool IsValid(const OutputData &, const InputData &, const Settings &) const override
   {
     return true;
