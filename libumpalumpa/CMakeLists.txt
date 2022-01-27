@@ -23,6 +23,8 @@ set(umpalumpa_sources
     algorithms/fourier_reconstruction/fr_cpu.cpp
     algorithms/correlation/correlation_cuda.cpp
     algorithms/correlation/correlation_cpu.cpp
+    algorithms/reduction/cpu.cpp
+    algorithms/reduction/cuda.cpp
     tuning/ktt_provider.cpp
     tuning/algorithm_manager.cpp
     tuning/ktt_base.cpp)
@@ -36,6 +38,7 @@ if(USE_STARPU)
     algorithms/fourier_processing/fp_starpu.cpp
     algorithms/fourier_reconstruction/fr_starpu.cpp
     algorithms/fourier_transformation/fft_starpu.cpp
+    algorithms/reduction/starpu.cpp
     utils/starpu.cpp)
 endif()
 

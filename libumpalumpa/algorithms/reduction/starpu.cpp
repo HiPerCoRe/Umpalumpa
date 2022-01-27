@@ -1,10 +1,10 @@
-#include <libumpalumpa/algorithms/extrema_finder/single_extrema_finder_starpu.hpp>
-#include <libumpalumpa/algorithms/extrema_finder/single_extrema_finder_cpu.hpp>
-#include <libumpalumpa/algorithms/extrema_finder/single_extrema_finder_cuda.hpp>
+#include <libumpalumpa/algorithms/reduction/starpu.hpp>
+#include <libumpalumpa/algorithms/reduction/cpu.hpp>
+#include <libumpalumpa/algorithms/reduction/cuda.hpp>
 #include <libumpalumpa/utils/starpu.hpp>
 #include <libumpalumpa/system_includes/spdlog.hpp>
 
-namespace umpalumpa::extrema_finder {
+namespace umpalumpa::reduction {
 
 namespace {// to avoid poluting
   struct Args
@@ -12,18 +12,17 @@ namespace {// to avoid poluting
     // we need to store local copies of the wrappers
     // as references might not be valid by the time the codelet is executed
     // FIXME this has to be refactored properly to work with MPI
-    const AExtremaFinder::OutputData out;
-    const AExtremaFinder::InputData in;
+    const Abstract::OutputData out;
+    const Abstract::InputData in;
     const Settings settings;
-    std::vector<AExtremaFinder *> &algs;
+    std::vector<Abstract *> &algs;
   };
 
   struct CodeletArgs
   {
-    data::Payload<data::LogicalDescriptor> vals;
-    data::Payload<data::LogicalDescriptor> locs;
+    data::Payload<data::LogicalDescriptor> out;
     data::Payload<data::LogicalDescriptor> in;
-    std::vector<AExtremaFinder *> *algs;
+    std::vector<Abstract *> *algs;
   };
 
   void Codelet(void *buffers[], void *func_arg)
@@ -31,12 +30,11 @@ namespace {// to avoid poluting
     using umpalumpa::utils::StarPUUtils;
     auto *args = reinterpret_cast<CodeletArgs *>(func_arg);
 
-    auto pVals = StarPUUtils::Assemble(args->vals, buffers[0]);
-    auto pLocs = StarPUUtils::Assemble(args->locs, buffers[1]);
-    auto out = AExtremaFinder::OutputData(pVals, pLocs);
+    auto pOut = StarPUUtils::Assemble(args->out, buffers[0]);
+    auto out = Abstract::OutputData(pOut);
 
-    auto pIn = StarPUUtils::Assemble(args->in, buffers[2]);
-    auto in = AExtremaFinder::InputData(pIn);
+    auto pIn = StarPUUtils::Assemble(args->in, buffers[1]);
+    auto in = Abstract::InputData(pIn);
 
     auto &alg = args->algs->at(static_cast<size_t>(starpu_worker_get_id()));
     std::ignore = alg->Execute(out, in);// we have no way of comunicate the result
@@ -47,8 +45,8 @@ namespace {// to avoid poluting
   {
     auto *a = reinterpret_cast<Args *>(args);
     auto id = static_cast<size_t>(starpu_worker_get_id());
-    auto *alg = reinterpret_cast<SingleExtremaFinderCPU *>(a->algs.at(id));
-    if (nullptr == alg) { alg = new SingleExtremaFinderCPU(); }
+    auto *alg = reinterpret_cast<CPU *>(a->algs.at(id));
+    if (nullptr == alg) { alg = new CPU(); }
     if (!alg->Init(a->out, a->in, a->settings)) {
       delete alg;
       alg = nullptr;
@@ -61,10 +59,10 @@ namespace {// to avoid poluting
   {
     auto *a = reinterpret_cast<Args *>(args);
     auto id = static_cast<size_t>(starpu_worker_get_id());
-    auto *alg = reinterpret_cast<SingleExtremaFinderCUDA *>(a->algs.at(id));
+    auto *alg = reinterpret_cast<CUDA *>(a->algs.at(id));
     if (nullptr == alg) {
       std::vector<CUstream> stream = { starpu_cuda_get_local_stream() };
-      alg = new SingleExtremaFinderCUDA(static_cast<int>(id), stream);
+      alg = new CUDA(static_cast<int>(id), stream);
     }
     if (!alg->Init(a->out, a->in, a->settings)) {
       delete alg;
@@ -76,7 +74,7 @@ namespace {// to avoid poluting
 
   template<typename T> void UniversalCleanup(void *args)
   {
-    auto *vec = reinterpret_cast<std::vector<AExtremaFinder *> *>(args);
+    auto *vec = reinterpret_cast<std::vector<Abstract *> *>(args);
     auto id = static_cast<size_t>(starpu_worker_get_id());
     auto *alg = reinterpret_cast<T *>(vec->at(id));
     if (nullptr != alg) { alg->Cleanup(); }
@@ -84,30 +82,30 @@ namespace {// to avoid poluting
 
   template<typename T> void DeleteAlg(void *args)
   {
-    auto *vec = reinterpret_cast<std::vector<AExtremaFinder *> *>(args);
+    auto *vec = reinterpret_cast<std::vector<Abstract *> *>(args);
     auto id = static_cast<size_t>(starpu_worker_get_id());
     auto *alg = reinterpret_cast<T *>(vec->at(id));
     delete alg;
   }
 }// namespace
 
-SingleExtremaFinderStarPU::~SingleExtremaFinderStarPU()
+StarPU::~StarPU()
 {
   if (!this->IsInitialized()) return;
   Synchronize();
-  starpu_execute_on_each_worker(DeleteAlg<SingleExtremaFinderCPU>, &algs, STARPU_CPU);
-  starpu_execute_on_each_worker(DeleteAlg<SingleExtremaFinderCUDA>, &algs, STARPU_CUDA);
+  starpu_execute_on_each_worker(DeleteAlg<CPU>, &algs, STARPU_CPU);
+  starpu_execute_on_each_worker(DeleteAlg<CUDA>, &algs, STARPU_CUDA);
 }
 
-void SingleExtremaFinderStarPU::Cleanup()
+void StarPU::Cleanup()
 {
   if (!this->IsInitialized()) return;
   Synchronize();
-  starpu_execute_on_each_worker(UniversalCleanup<SingleExtremaFinderCPU>, &algs, STARPU_CPU);
-  starpu_execute_on_each_worker(UniversalCleanup<SingleExtremaFinderCUDA>, &algs, STARPU_CUDA);
+  starpu_execute_on_each_worker(UniversalCleanup<CPU>, &algs, STARPU_CPU);
+  starpu_execute_on_each_worker(UniversalCleanup<CUDA>, &algs, STARPU_CUDA);
 }
 
-void SingleExtremaFinderStarPU::Synchronize()
+void StarPU::Synchronize()
 {
   while (!taskQueue.empty()) {
     std::ignore = starpu_task_wait(taskQueue.front());
@@ -115,7 +113,7 @@ void SingleExtremaFinderStarPU::Synchronize()
   }
 }
 
-bool SingleExtremaFinderStarPU::InitImpl()
+bool StarPU::InitImpl()
 {
   if (0 == starpu_worker_get_count()) {
     spdlog::warn("No workers available. Is StarPU properly initialized?");
@@ -135,7 +133,7 @@ bool SingleExtremaFinderStarPU::InitImpl()
   return noOfInitWorkers > 0;
 }
 
-bool SingleExtremaFinderStarPU::ExecuteImpl(const OutputData &out, const InputData &in)
+bool StarPU::ExecuteImpl(const OutputData &out, const InputData &in)
 {
   using utils::StarPUUtils;
   // we need at least one initialized worker, otherwise mask would be 0 and all workers
@@ -145,16 +143,14 @@ bool SingleExtremaFinderStarPU::ExecuteImpl(const OutputData &out, const InputDa
   auto CreateArgs = [this, &out, &in]() {
     auto *a = reinterpret_cast<CodeletArgs *>(malloc(sizeof(CodeletArgs)));
     a->algs = &this->algs;
-    memcpy(reinterpret_cast<void *>(&a->vals), &out.GetValues(), sizeof(a->vals));
-    memcpy(reinterpret_cast<void *>(&a->locs), &out.GetLocations(), sizeof(a->locs));
+    memcpy(reinterpret_cast<void *>(&a->out), &out.GetData(), sizeof(a->out));
     memcpy(reinterpret_cast<void *>(&a->in), &in.GetData(), sizeof(a->in));
     return a;
   };
 
   auto *task = taskQueue.emplace(starpu_task_create());
-  task->handles[0] = *StarPUUtils::GetHandle(out.GetValues().dataInfo);
-  task->handles[1] = *StarPUUtils::GetHandle(out.GetLocations().dataInfo);
-  task->handles[2] = *StarPUUtils::GetHandle(in.GetData().dataInfo);
+  task->handles[0] = *StarPUUtils::GetHandle(out.GetData().dataInfo);
+  task->handles[1] = *StarPUUtils::GetHandle(in.GetData().dataInfo);
   task->workerids = utils::StarPUUtils::CreateWorkerMask(task->workerids_len, algs);
   task->cl_arg = CreateArgs();
   task->cl_arg_size = sizeof(CodeletArgs);
@@ -170,14 +166,13 @@ bool SingleExtremaFinderStarPU::ExecuteImpl(const OutputData &out, const InputDa
     c.cpu_funcs[0] = Codelet;
     c.cuda_funcs[0] = Codelet;
     c.cuda_flags[0] = STARPU_CUDA_ASYNC;
-    c.nbuffers = 3;
-    c.modes[0] = STARPU_W;
-    c.modes[1] = STARPU_W;
-    c.modes[2] = STARPU_R;
+    c.nbuffers = 2;
+    c.modes[0] = STARPU_RW;
+    c.modes[1] = STARPU_R;
     c.model = [] {
       static starpu_perfmodel m = {};
       m.type = STARPU_HISTORY_BASED;
-      m.symbol = "SingleExtremaFinder_StarPU";
+      m.symbol = "Reduction_StarPU";
       return &m;
     }();
     return &c;
@@ -187,4 +182,4 @@ bool SingleExtremaFinderStarPU::ExecuteImpl(const OutputData &out, const InputDa
   STARPU_CHECK_RETURN_VALUE(starpu_task_submit(task), "starpu_task_submit %s", this->taskName);
   return true;
 }
-}// namespace umpalumpa::extrema_finder
+}// namespace umpalumpa::reduction
