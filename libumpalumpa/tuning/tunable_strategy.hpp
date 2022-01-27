@@ -105,8 +105,13 @@ public:
    */
   void SetTuningFor(ktt::KernelId kernelId, bool val)
   {
-    kernelIds.at(GetKernelIndex(kernelId)).tune = val;
+    SetTuningForIdx(GetKernelIndex(kernelId), val);
   }
+
+  /**
+   * TODO
+   */
+  void SetTuningForIdx(size_t idx, bool val) { kernelIds.at(idx).tune = val; }
 
   // FIXME find better name
   /**

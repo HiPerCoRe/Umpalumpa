@@ -21,6 +21,8 @@ struct Settings
   // serves for grouping equal/similar strategies together during tuning
   int equalityGroup = 0;
   int similarityGroup = 0;
+  // serves for advanced testing
+  int numberOfKernels = 1;
 };
 
 class WaitingAlgorithm
@@ -60,8 +62,14 @@ namespace {
 
     std::vector<ktt::KernelConfiguration> GetDefaultConfigurations() const override
     {
-      return { kttHelper.GetTuner().CreateConfiguration(
-        GetKernelId(), { { "MILLISECONDS", static_cast<uint64_t>(5) } }) };
+      std::vector<ktt::KernelConfiguration> confs;
+      for (int i = 0; i < GetSettings().numberOfKernels; i++) {
+        confs.push_back(kttHelper.GetTuner().CreateConfiguration(
+          GetKernelId(i), { { "MILLISECONDS", static_cast<uint64_t>(5) } }));
+      }
+      return confs;
+      // return { kttHelper.GetTuner().CreateConfiguration(
+      //   GetKernelId(), { { "MILLISECONDS", static_cast<uint64_t>(5) } }) };
     }
 
     bool IsEqualTo(const TunableStrategy &ref) const override
@@ -94,12 +102,24 @@ namespace {
     {
       AddKernelDefinition(kWaitingKernel, kKernelFile, ktt::DimensionVector{});
       auto definitionId = GetDefinitionId();
-      AddKernel(kWaitingKernel, definitionId);
-      auto kernelId = GetKernelId();
+      // Adds more kernels to the strategy
+      for (int i = 0; i < GetSettings().numberOfKernels; i++) {
+        AddKernel(kWaitingKernel + std::to_string(i), definitionId);
+      }
+
       auto &tuner = kttHelper.GetTuner();
+      auto kernelId = GetKernelId();
       tuner.AddParameter(
         kernelId, "MILLISECONDS", std::vector<uint64_t>{ 2, 4, 6, 8, 10, 12, 14, 16, 18, 20 });
       tuner.SetSearcher(kernelId, std::make_unique<ktt::RandomSearcher>());
+
+      // Sets up the rest of the kernels
+      for (int i = 1; i < GetSettings().numberOfKernels; i++) {
+        auto kId = GetKernelId(i);
+        tuner.AddParameter(kId, "MILLISECONDS", std::vector<uint64_t>{ 4, 8, 12, 16, 20 });
+        tuner.SetSearcher(kId, std::make_unique<ktt::RandomSearcher>());
+      }
+
       SetKttLogging(true);
       return true;
     }
@@ -107,14 +127,18 @@ namespace {
     bool Execute(const WaitingAlgorithm::OutputData &,
       const WaitingAlgorithm::InputData &) override final
     {
-      kttHelper.GetTuner().SetLauncher(GetKernelId(), [this](ktt::ComputeInterface &interface) {
-        if (ShouldBeTuned(GetKernelId())) {
-          interface.RunKernel(GetDefinitionId());
-        } else {
-          interface.RunKernelAsync(GetDefinitionId(), interface.GetAllQueues().at(0));
-        }
-      });
-      ExecuteKernel(GetKernelId());
+      for (int i = 0; i < GetSettings().numberOfKernels; i++) {
+        kttHelper.GetTuner().SetLauncher(
+          GetKernelId(i), [this, i](ktt::ComputeInterface &interface) {
+            if (ShouldBeTuned(GetKernelId(i))) {
+              interface.RunKernel(GetDefinitionId());
+            } else {
+              interface.RunKernelAsync(GetDefinitionId(), interface.GetAllQueues().at(0));
+            }
+          });
+      }
+
+      for (int i = 0; i < GetSettings().numberOfKernels; i++) { ExecuteKernel(GetKernelId(i)); }
       return true;
     }
   };

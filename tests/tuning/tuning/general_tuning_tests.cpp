@@ -15,8 +15,6 @@ public:
       in(pData), out(pData)
   {}
 
-  // void TearDown() override { StrategyManager::Get().Cleanup(); }
-
 protected:
   Settings settings{ 0, 0 };// { equalityGroup, similarityGroup }
   Payload<LogicalDescriptor> pData;
@@ -28,7 +26,7 @@ protected:
   constexpr static auto manualCheckMsg = "\n\t## Manual check -- ";
 };
 
-TEST_F(GeneralTuningTests, no_tuning_should_run_default_config)
+TEST_F(GeneralTuningTests, OneStrategy_NotTuned_RunsDefault)
 {
   settings = { 1, 1 };
 
@@ -37,7 +35,7 @@ TEST_F(GeneralTuningTests, no_tuning_should_run_default_config)
   ASSERT_TRUE(alg.Execute(out, in));
 }
 
-TEST_F(GeneralTuningTests, no_tuning_should_run_default_config_multiple_times)
+TEST_F(GeneralTuningTests, OneStrategy_NotTuned_RunsDefault_3Times)
 {
   settings = { 2, 2 };
 
@@ -48,7 +46,7 @@ TEST_F(GeneralTuningTests, no_tuning_should_run_default_config_multiple_times)
   ASSERT_TRUE(alg.Execute(out, in));
 }
 
-TEST_F(GeneralTuningTests, tuning_is_on_various_configs_should_be_tried)
+TEST_F(GeneralTuningTests, OneStrategy_Tuning)
 {
   settings = { 3, 3 };
 
@@ -64,7 +62,7 @@ TEST_F(GeneralTuningTests, tuning_is_on_various_configs_should_be_tried)
   ASSERT_TRUE(alg.Execute(out, in));
 }
 
-TEST_F(GeneralTuningTests, tune_strategy_then_run_best_found_config)
+TEST_F(GeneralTuningTests, OneStrategy_Tune_ThenRunBestFound)
 {
   settings = { 4, 4 };
 
@@ -88,7 +86,7 @@ TEST_F(GeneralTuningTests, tune_strategy_then_run_best_found_config)
   ASSERT_TRUE(alg.Execute(out, in));
 }
 
-TEST_F(GeneralTuningTests, tune_then_run_best_tune_again_then_run_best)
+TEST_F(GeneralTuningTests, OneStrategy_Tune_ThenRunBestFound_ThenRetune_ThenRunBestFound)
 {
   settings = { 5, 5 };
 
@@ -128,7 +126,7 @@ TEST_F(GeneralTuningTests, tune_then_run_best_tune_again_then_run_best)
   ASSERT_TRUE(alg.Execute(out, in));
 }
 
-TEST_F(GeneralTuningTests, two_equal_strategies_both_should_tune)
+TEST_F(GeneralTuningTests, TwoEqualStrategies_BothTune)
 {
   // Set Settings
   // We want equal strategies, therefore we use the same settings
@@ -167,7 +165,7 @@ TEST_F(GeneralTuningTests, two_equal_strategies_both_should_tune)
   ASSERT_TRUE(alg2.Execute(out, in));
 }
 
-TEST_F(GeneralTuningTests, two_similar_strategies_only_leader_can_tune)
+TEST_F(GeneralTuningTests, TwoSimilarStrategies_OnlyLeaderCanTune)
 {
   // Set Settings
   // We want similar strategies, therefore we change equalityGroup
@@ -199,7 +197,7 @@ TEST_F(GeneralTuningTests, two_similar_strategies_only_leader_can_tune)
   ASSERT_TRUE(alg2.Execute(out, in));
 }
 
-TEST_F(GeneralTuningTests, two_similar_strategies_reuse_tuned_config)
+TEST_F(GeneralTuningTests, TwoSimilarStrategies_UseLeadersConfig)
 {
   // Set Settings
   // We want similar strategies, therefore we change equalityGroup
@@ -236,7 +234,7 @@ TEST_F(GeneralTuningTests, two_similar_strategies_reuse_tuned_config)
   ASSERT_TRUE(alg2.Execute(out, in));
 }
 
-TEST_F(GeneralTuningTests, same_strategies_different_settings_do_not_interfere)
+TEST_F(GeneralTuningTests, TwoStrategies_TuningNotInterfering)
 {
   // Set Settings
   // We want different strategies, therefore we use different settings
@@ -275,25 +273,72 @@ TEST_F(GeneralTuningTests, same_strategies_different_settings_do_not_interfere)
   ASSERT_TRUE(alg2.Execute(out, in));
 }
 
-// tests:
-// multiple different strategies (should not interfere, can tune just specified
-// subset)
-
-/*
-TEST_F(GeneralTuningTests, TODOname)
+TEST_F(GeneralTuningTests, OneStrategy_MultipleKernels_AllTuning)
 {
   // Set Settings
-  // settings.equalityGroup = ...;
+  settings = Settings{ 200, 200, 3 };// { equalityGroup, similarityGroup, numberOfKernels }
 
   ASSERT_TRUE(alg.Init(out, in, settings));
   // After successful Init there is a strategy to work with!
 
-  // auto &strat = dynamic_cast<TunableStrategy &>(alg.GetStrategy());
-  // strat.SetTuningApproach(TuningApproach::kEntireStrategy);
+  // Turn on tuning for all kernels
+  auto &strat = dynamic_cast<TunableStrategy &>(alg.GetStrategy());
+  strat.SetTuningApproach(TuningApproach::kEntireStrategy);
 
+  std::cout << manualCheckMsg << "Expecting tuning of " << settings.numberOfKernels
+            << " kernels (2 times):" << std::endl;
+  ASSERT_TRUE(alg.Execute(out, in));
+  ASSERT_TRUE(alg.Execute(out, in));
+}
+
+TEST_F(GeneralTuningTests, OneStrategy_MultipleKernels_SelectedTuning)
+{
+  // Set Settings
+  settings = Settings{ 201, 201, 3 };
+
+  ASSERT_TRUE(alg.Init(out, in, settings));
+  // After successful Init there is a strategy to work with!
+
+  // Turn on tuning for kernels: 0, 2
+  auto &strat = dynamic_cast<TunableStrategy &>(alg.GetStrategy());
+  strat.SetTuningApproach(TuningApproach::kSelectedKernels);
+  strat.SetTuningForIdx(0, true);
+  strat.SetTuningForIdx(2, true);
+
+  std::cout << manualCheckMsg
+            << "Expecting tuning of kernels 0,2 and default config of kernel 1 (2 times):"
+            << std::endl;
+  ASSERT_TRUE(alg.Execute(out, in));
+  ASSERT_TRUE(alg.Execute(out, in));
+}
+
+TEST_F(GeneralTuningTests, OneStrategy_MultipleKernels_NotInterferingWithEachOther)
+{
+  // Set Settings
+  settings = Settings{ 202, 202, 3 };
+
+  ASSERT_TRUE(alg.Init(out, in, settings));
+  // After successful Init there is a strategy to work with!
+
+  // Turn on tuning for kernels: 0, 2
+  auto &strat = dynamic_cast<TunableStrategy &>(alg.GetStrategy());
+  strat.SetTuningApproach(TuningApproach::kSelectedKernels);
+  strat.SetTuningForIdx(0, true);
+  strat.SetTuningForIdx(2, true);
+
+  std::cout << manualCheckMsg
+            << "Expecting tuning of kernels 0,2 and default config of kernel 1 (2 times):"
+            << std::endl;
+  ASSERT_TRUE(alg.Execute(out, in));
   ASSERT_TRUE(alg.Execute(out, in));
 
-  // TODO checks
+  // Turn tuning off
+  strat.SetTuningApproach(TuningApproach::kNoTuning);
+
+  std::cout << manualCheckMsg
+            << "Expecting best configs of kernels 0,2 and default config of kernel 1 (2 times):"
+            << std::endl;
+  ASSERT_TRUE(alg.Execute(out, in));
+  ASSERT_TRUE(alg.Execute(out, in));
 }
-*/
 
