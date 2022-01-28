@@ -86,13 +86,6 @@ public:
 
   typedef T LDType;
 
-  /**
-   * Use this with utmost causion and only when you have a very good reason,
-   * e.g. you get existing Payload and you cannot change it.
-   * Otherwise prefer to create a new Payload.
-   **/
-  void Set(const PhysicalDescriptor pd) { this->dataInfo = pd; }
-
 private:
   static auto constexpr suffixEmpty = " [empty]";
 };

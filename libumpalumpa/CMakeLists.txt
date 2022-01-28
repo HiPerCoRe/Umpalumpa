@@ -39,6 +39,7 @@ if(USE_STARPU)
     algorithms/correlation/correlation_starpu.cpp
     algorithms/fourier_processing/fp_starpu.cpp
     algorithms/fourier_reconstruction/fr_starpu.cpp
+    algorithms/fourier_reconstruction/fr_starpu_kernels.cu
     algorithms/fourier_transformation/fft_starpu.cpp
     algorithms/reduction/starpu.cpp
     algorithms/initialization/starpu.cpp

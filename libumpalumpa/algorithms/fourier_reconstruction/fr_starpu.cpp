@@ -1,6 +1,7 @@
 #include <libumpalumpa/algorithms/fourier_reconstruction/fr_starpu.hpp>
 #include <libumpalumpa/algorithms/fourier_reconstruction/fr_cuda.hpp>
 #include <libumpalumpa/algorithms/fourier_reconstruction/fr_cpu.hpp>
+#include <libumpalumpa/algorithms/fourier_reconstruction/fr_starpu_kernels.hpp>
 #include <libumpalumpa/utils/starpu.hpp>
 #include <libumpalumpa/system_includes/spdlog.hpp>
 
@@ -28,6 +29,72 @@ namespace {// to avoid poluting
     std::vector<AFR *> *algs;
   };
 
+  static starpu_codelet *GetInitCodelet()
+  {
+    static starpu_codelet c = {};
+    c.where = STARPU_CPU | STARPU_CUDA;
+    c.cpu_funcs[0] = InitCodeletCPU;
+    c.cuda_funcs[0] = InitCodeletCUDA;
+    c.cuda_flags[0] = STARPU_CUDA_ASYNC;
+    c.nbuffers = 1;
+    c.modes[0] = STARPU_W;
+    c.name = "FourierReconstruction_Init";
+    c.model = [] {
+      static starpu_perfmodel m = {};
+      m.type = STARPU_HISTORY_BASED;
+      m.symbol = "FourierReconstruction_Init";
+      return &m;
+    }();
+    return &c;
+  }
+
+  static starpu_codelet *GetSumCodelet()
+  {
+    static starpu_codelet c = {};
+    c.where = STARPU_CPU | STARPU_CUDA;
+    c.cpu_funcs[0] = SumCodeletCPU;
+    c.cuda_funcs[0] = SumCodeletCUDA;
+    c.cuda_flags[0] = STARPU_CUDA_ASYNC;
+    c.nbuffers = 2;
+    c.modes[0] = STARPU_RW;
+    c.modes[1] = STARPU_R;
+    c.name = "FourierReconstruction_Sum";
+    c.model = [] {
+      static starpu_perfmodel m = {};
+      m.type = STARPU_HISTORY_BASED;
+      m.symbol = "FourierReconstruction_Sum";
+      return &m;
+    }();
+    return &c;
+  }
+
+  /*
+     // Init weight
+     redux_init_weights.where = STARPU_CPU | STARPU_CUDA;
+     redux_init_weights.cpu_funcs[0] = func_redux_init_weights_cpu;
+     redux_init_weights.cpu_funcs_name[0] = "func_redux_init_weights_cpu";
+     redux_init_weights.cuda_funcs[0] = func_redux_init_weights_cuda;
+     redux_init_weights.cuda_flags[0] = STARPU_CUDA_ASYNC;
+     redux_init_weights.nbuffers = 1;
+     redux_init_weights.modes[0] = STARPU_W;
+     redux_init_weights.name = "redux_init_weights";
+     static struct starpu_perfmodel redux_init_weights_model =
+     create_common_perfmodel("redux_init_weights_model"); redux_init_weights.model =
+     &redux_init_weights_model;
+     // Sum weight
+     redux_sum_weights.where = STARPU_CPU | STARPU_CUDA;
+     redux_sum_weights.cpu_funcs[0] = func_redux_sum_weights_cpu;
+     redux_sum_weights.cpu_funcs_name[0] = "func_redux_sum_weights_cpu";
+     redux_sum_weights.cuda_funcs[0] = func_redux_sum_weights_cuda;
+     redux_sum_weights.cuda_flags[0] = STARPU_CUDA_ASYNC;
+     redux_sum_weights.nbuffers = 2;
+     redux_sum_weights.modes[0] = STARPU_RW;
+     redux_sum_weights.modes[1] = STARPU_R;
+     redux_sum_weights.name = "redux_sum_weights";
+     static struct starpu_perfmodel redux_sum_weights_model =
+     create_common_perfmodel("redux_sum_weights_model"); redux_sum_weights.model =
+     &redux_sum_weights_model;
+ */
   void Codelet(void *buffers[], void *func_arg)
   {
     using umpalumpa::utils::StarPUUtils;
@@ -94,7 +161,6 @@ namespace {// to avoid poluting
     auto *alg = reinterpret_cast<T *>(vec->at(id));
     delete alg;
   }
-
 
 
 }// namespace
@@ -164,10 +230,13 @@ bool FRStarPU::ExecuteImpl(const OutputData &out, const InputData &in)
     return a;
   };
 
+
   auto *task = taskQueue.emplace(starpu_task_create());
   task->handles[0] = *StarPUUtils::GetHandle(in.GetFFT().dataInfo);
   task->handles[1] = *StarPUUtils::GetHandle(in.GetVolume().dataInfo);
+  starpu_data_set_reduction_methods(task->handles[1], GetSumCodelet(), GetInitCodelet());
   task->handles[2] = *StarPUUtils::GetHandle(in.GetWeight().dataInfo);
+  starpu_data_set_reduction_methods(task->handles[2], GetSumCodelet(), GetInitCodelet());
   task->handles[3] = *StarPUUtils::GetHandle(in.GetTraverseSpace().dataInfo);
   task->handles[4] = *StarPUUtils::GetHandle(in.GetBlobTable().dataInfo);
   task->workerids = utils::StarPUUtils::CreateWorkerMask(task->workerids_len, algs);
@@ -200,6 +269,8 @@ bool FRStarPU::ExecuteImpl(const OutputData &out, const InputData &in)
     return &c;
   }();
   task->name = this->taskName.c_str();
+
+
   STARPU_CHECK_RETURN_VALUE(starpu_task_submit(task), "starpu_task_submit %s", this->taskName);
   return true;
 }
