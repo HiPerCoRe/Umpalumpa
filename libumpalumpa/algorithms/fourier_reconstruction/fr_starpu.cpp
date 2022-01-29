@@ -68,33 +68,6 @@ namespace {// to avoid poluting
     return &c;
   }
 
-  /*
-     // Init weight
-     redux_init_weights.where = STARPU_CPU | STARPU_CUDA;
-     redux_init_weights.cpu_funcs[0] = func_redux_init_weights_cpu;
-     redux_init_weights.cpu_funcs_name[0] = "func_redux_init_weights_cpu";
-     redux_init_weights.cuda_funcs[0] = func_redux_init_weights_cuda;
-     redux_init_weights.cuda_flags[0] = STARPU_CUDA_ASYNC;
-     redux_init_weights.nbuffers = 1;
-     redux_init_weights.modes[0] = STARPU_W;
-     redux_init_weights.name = "redux_init_weights";
-     static struct starpu_perfmodel redux_init_weights_model =
-     create_common_perfmodel("redux_init_weights_model"); redux_init_weights.model =
-     &redux_init_weights_model;
-     // Sum weight
-     redux_sum_weights.where = STARPU_CPU | STARPU_CUDA;
-     redux_sum_weights.cpu_funcs[0] = func_redux_sum_weights_cpu;
-     redux_sum_weights.cpu_funcs_name[0] = "func_redux_sum_weights_cpu";
-     redux_sum_weights.cuda_funcs[0] = func_redux_sum_weights_cuda;
-     redux_sum_weights.cuda_flags[0] = STARPU_CUDA_ASYNC;
-     redux_sum_weights.nbuffers = 2;
-     redux_sum_weights.modes[0] = STARPU_RW;
-     redux_sum_weights.modes[1] = STARPU_R;
-     redux_sum_weights.name = "redux_sum_weights";
-     static struct starpu_perfmodel redux_sum_weights_model =
-     create_common_perfmodel("redux_sum_weights_model"); redux_sum_weights.model =
-     &redux_sum_weights_model;
- */
   void Codelet(void *buffers[], void *func_arg)
   {
     using umpalumpa::utils::StarPUUtils;
