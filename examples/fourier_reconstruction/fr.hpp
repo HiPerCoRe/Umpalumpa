@@ -77,6 +77,7 @@ private:
    * Generate traverse spaces
    **/
   void GenerateTraverseSpaces(const umpalumpa::data::Size &imgBatchSize,
+    const umpalumpa::data::Size &volumeSize,
     const Payload<LogicalDescriptor> &p,
     const std::vector<Matrix3x3> &symmetries,
     const umpalumpa::fourier_reconstruction::Settings &settings);
@@ -176,10 +177,10 @@ private:
   //     return res;
   //   }
 
-  //   /**
-  //    * Create Payload representing a filter applied to the data
-  //    **/
-  //   Payload<LogicalDescriptor> CreatePayloadFilter(const Size &size);
+  /**
+   * Create Payload representing a filter applied to the data
+   **/
+  Payload<LogicalDescriptor> CreatePayloadFilter(const Size &size);
 
   /**
    * Generate Payload representing (multiple) image(s) of given size.
@@ -191,13 +192,34 @@ private:
    **/
   Payload<LogicalDescriptor> CreatePayloadTraverseSpace(const Size &size, const std::string &name);
 
+  /**
+   * Generate Payload representing a 3D volume holding the inserted projections
+   **/
+  auto CreatePayloadVolume(const Size &size);
 
-  //   Payload<FourierDescriptor> ConvertToFFT(const Payload<LogicalDescriptor> &img,
-  //     const std::string &name);
+  /**
+   * Generate Payload representing a 3D volume holding weigths for inserted projections
+   **/
+  auto CreatePayloadWeight(const Size &size);
 
-  //   Payload<FourierDescriptor> Crop(const Payload<FourierDescriptor> &fft,
-  //     Payload<LogicalDescriptor> &filter,
-  //     const std::string &name);
+  /**
+   * Generate Payload representing a table with interpolation values
+   **/
+  auto CreatePayloadBlobTable(const umpalumpa::fourier_reconstruction::Settings &settings);
+
+  Payload<FourierDescriptor> ConvertToFFT(const Payload<LogicalDescriptor> &img,
+    const std::string &name);
+
+  Payload<FourierDescriptor> Crop(const Payload<FourierDescriptor> &fft,
+    Payload<LogicalDescriptor> &filter,
+    const std::string &name);
+
+  void InsertToVolume(Payload<FourierDescriptor> &fft,
+    Payload<FourierDescriptor> &volume,
+    Payload<LogicalDescriptor> &weight,
+    Payload<LogicalDescriptor> &traverseSpace,
+    Payload<LogicalDescriptor> &table,
+    const umpalumpa::fourier_reconstruction::Settings &settings);
 
   //   Payload<FourierDescriptor> Correlate(Payload<FourierDescriptor> &first,
   //     Payload<FourierDescriptor> &second,
@@ -225,5 +247,5 @@ private:
   //     return ((s.n / batch + 1) * (s.n / batch)) / 2;
   //   }
 
-  //   size_t GetAvailableCores() const;
+  size_t GetAvailableCores() const;
 };

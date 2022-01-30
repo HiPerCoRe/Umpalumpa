@@ -10,13 +10,30 @@ void FourierReconstruction<T>::Execute(const umpalumpa::data::Size &imgSize,
   size_t noOfSymmetries,
   size_t batchSize)
 {
-  printf("input symmetries: %lu, images %lu\n", noOfSymmetries, batchSize);
-  auto symmetries = GenerateSymmetries(noOfSymmetries);
-  auto imgBatchSize = umpalumpa::data::Size(imgSize.x, imgSize.y, 1, batchSize);
-  auto traverseSpaceBatchSize = umpalumpa::data::Size(1, 1, 1, batchSize * noOfSymmetries);
-  // create payloads for weight, volume, table
+  assert(imgSize.x % 2 == 0);// we can process only odd size of the images
 
+  auto imgBatchSize = umpalumpa::data::Size(imgSize.x, imgSize.y, 1, batchSize);
+  auto volumeSize = umpalumpa::data::Size(imgSize.x + 1, imgSize.y + 1, imgSize.y + 1, 1);
+  auto imgCroppedBatchSize = umpalumpa::data::Size(
+    imgSize.x / 2, imgSize.y, 1, batchSize);// This should probably be .x / 2 + 1 (i.e. normal FFT
+                                            // size), but in Xmipp it's like that
+  auto traverseSpaceBatchSize = umpalumpa::data::Size(1, 1, 1, batchSize * noOfSymmetries);
+
+  spdlog::info(
+    "\nRunning Fourier Reconstruction.\nImage size: {}*{} ({})\nBatch: {}\nSymmetries: {}",
+    imgSize.x,
+    imgSize.y,
+    imgSize.n,
+    batchSize,
+    noOfSymmetries);
+
+  auto symmetries = GenerateSymmetries(noOfSymmetries);
+  auto filter = CreatePayloadFilter(imgCroppedBatchSize);
   auto settings = umpalumpa::fourier_reconstruction::Settings{};
+  settings.SetType(umpalumpa::fourier_reconstruction::Settings::Type::kPrecise);
+  auto volume = CreatePayloadVolume(volumeSize);
+  auto weight = CreatePayloadWeight(volumeSize);
+  auto table = CreatePayloadBlobTable(settings);
 
   for (size_t i = 0; i < imgSize.n; i += batchSize) {
     auto name = std::to_string(i) + "-" + std::to_string(i + batchSize - 1);
@@ -24,14 +41,25 @@ void FourierReconstruction<T>::Execute(const umpalumpa::data::Size &imgSize,
     auto img = CreatePayloadImage(imgBatchSize, name);
     GenerateData(i, img);
     auto space = CreatePayloadTraverseSpace(traverseSpaceBatchSize, name);
-    GenerateTraverseSpaces(imgBatchSize, space, symmetries, settings);
-    // convert to fft
+    GenerateTraverseSpaces(imgCroppedBatchSize, volumeSize, space, symmetries, settings);
+    auto fft = ConvertToFFT(img, name);
     RemovePD(img.dataInfo, true);
-    // crop fft
-    // call reconstruction
+    auto croppedFFT = Crop(fft, filter, name);
+    RemovePD(fft.dataInfo, true);
+    InsertToVolume(croppedFFT, volume, weight, space, table, settings);
     RemovePD(space.dataInfo, true);
+    RemovePD(croppedFFT.dataInfo, true);
   }
-  // fetch volume, weigths back to CPU
+  Acquire(volume.dataInfo);
+  Acquire(weight.dataInfo);
+  umpalumpa::utils::PrintData(std::cout , volume);
+  Release(weight.dataInfo);
+  Release(volume.dataInfo);
+
+  RemovePD(table.dataInfo, true);
+  RemovePD(weight.dataInfo, true);
+  RemovePD(volume.dataInfo, true);
+  RemovePD(filter.dataInfo, true);
 }
 
 template<typename T> auto FourierReconstruction<T>::GenerateSymmetries(size_t count)
@@ -42,6 +70,36 @@ template<typename T> auto FourierReconstruction<T>::GenerateSymmetries(size_t co
   for (size_t i = 0; i < count; ++i) { res.emplace_back(GenerateMatrix()); }
   spdlog::info("{} symmetries generated", res.size());
   return res;
+}
+
+template<typename T> auto FourierReconstruction<T>::CreatePayloadVolume(const Size &size)
+{
+  auto fd = FourierDescriptor::FourierSpaceDescriptor{};
+  fd.hasSymetry = true;
+  auto ld = FourierDescriptor(size, umpalumpa::data::PaddingDescriptor(), fd);
+  auto type = DataType::Get<std::complex<T>>();
+  auto bytes = ld.Elems() * type.GetSize();
+  return umpalumpa::data::Payload(ld, CreatePD(bytes, type, true, true), "Volume in FD");
+}
+
+template<typename T> auto FourierReconstruction<T>::CreatePayloadWeight(const Size &size)
+{
+  auto ld = LogicalDescriptor(size);
+  auto type = DataType::Get<T>();
+  auto bytes = ld.Elems() * type.GetSize();
+  return umpalumpa::data::Payload(ld, CreatePD(bytes, type, true, true), "Weight in FD");
+}
+
+template<typename T>
+auto FourierReconstruction<T>::CreatePayloadBlobTable(
+  const umpalumpa::fourier_reconstruction::Settings &settings)
+{
+  using umpalumpa::fourier_reconstruction::Settings;
+  auto count = settings.GetInterpolation() == Settings::Interpolation::kLookup ? 10000 : 0;
+  auto ld = LogicalDescriptor(Size(count, 1, 1, 1));
+  auto type = DataType::Get<T>();
+  auto bytes = ld.Elems() * type.GetSize();
+  return umpalumpa::data::Payload(ld, CreatePD(bytes, type, true, true), "Interpolation table");
 }
 
 //   assert(sizeAll.x > 5);
@@ -114,10 +172,10 @@ template<typename T> auto FourierReconstruction<T>::GenerateSymmetries(size_t co
 //   RemovePD(filter.dataInfo, true);
 // }
 
-// template<typename T> size_t FlexAlign<T>::GetAvailableCores() const
-// {
-//   return std::thread::hardware_concurrency() / 2;// assuming HT is available
-// }
+template<typename T> size_t FourierReconstruction<T>::GetAvailableCores() const
+{
+  return std::thread::hardware_concurrency() / 2;// assuming HT is available
+}
 
 // template<typename T>
 // std::vector<typename FlexAlign<T>::Shift> FlexAlign<T>::ExtractShift(
@@ -168,95 +226,101 @@ template<typename T> auto FourierReconstruction<T>::GenerateSymmetries(size_t co
 //   }
 // }
 
-// template<typename T>
-// Payload<FourierDescriptor> FlexAlign<T>::ConvertToFFT(const Payload<LogicalDescriptor> &img,
-//   const std::string &name)
-// {
-//   auto inFFT = [&img, &name]() {
-//     auto ld = FourierDescriptor(img.info.GetSize(), img.info.GetPadding());
-//     return Payload(ld, img.dataInfo.CopyWithPtr(img.GetPtr()), "FFT (in) " + name);
-//   }();
-//   auto outFFT = [&inFFT, &name, this]() {
-//     auto ld = FourierDescriptor(inFFT.info.GetSize(),
-//       inFFT.info.GetPadding(),
-//       umpalumpa::data::FourierDescriptor::FourierSpaceDescriptor());
-//     auto type = DataType::Get<std::complex<T>>();
-//     auto bytes = ld.Elems() * type.GetSize();
-//     return Payload(ld, CreatePD(bytes, type, false, false), "FFT (out) " + name);
-//   }();
-//   using namespace umpalumpa::fourier_transformation;
-//   auto &alg = this->GetForwardFFTAlg();
-//   auto in = AFFT::InputData(inFFT);
-//   auto out = AFFT::OutputData(outFFT);
-//   if (!alg.IsInitialized()) {
-//     auto settings =
-//       Settings(Locality::kOutOfPlace, Direction::kForward, std::min(8ul, GetAvailableCores()));
-//     if (!alg.Init(out, in, settings)) {
-//       spdlog::error("Initialization of the FFT algorithm failed");
-//     }
-//   }
-//   if (!alg.Execute(out, in)) { spdlog::error("Execution of the FFT algorithm failed"); }
-//   return outFFT;
-// }
+template<typename T>
+Payload<FourierDescriptor> FourierReconstruction<T>::ConvertToFFT(
+  const Payload<LogicalDescriptor> &img,
+  const std::string &name)
+{
+  auto inFFT = [&img, &name]() {
+    auto ld = FourierDescriptor(img.info.GetSize(), img.info.GetPadding());
+    return Payload(ld, img.dataInfo.CopyWithPtr(img.GetPtr()), "FFT (in) " + name);
+  }();
+  auto outFFT = [&inFFT, &name, this]() {
+    auto ld = FourierDescriptor(inFFT.info.GetSize(),
+      inFFT.info.GetPadding(),
+      umpalumpa::data::FourierDescriptor::FourierSpaceDescriptor());
+    auto type = DataType::Get<std::complex<T>>();
+    auto bytes = ld.Elems() * type.GetSize();
+    return Payload(ld, CreatePD(bytes, type, false, false), "FFT (out) " + name);
+  }();
+  using namespace umpalumpa::fourier_transformation;
+  auto &alg = this->GetFFTAlg();
+  auto in = AFFT::InputData(inFFT);
+  auto out = AFFT::OutputData(outFFT);
+  if (!alg.IsInitialized()) {
+    auto settings =
+      Settings(Locality::kOutOfPlace, Direction::kForward, std::min(8ul, GetAvailableCores()));
+    if (!alg.Init(out, in, settings)) {
+      spdlog::error("Initialization of the FFT algorithm failed");
+    }
+  }
+  if (!alg.Execute(out, in)) { spdlog::error("Execution of the FFT algorithm failed"); }
+  return outFFT;
+}
 
+template<typename T>
+Payload<FourierDescriptor> FourierReconstruction<T>::Crop(const Payload<FourierDescriptor> &fft,
+  Payload<LogicalDescriptor> &filter,
+  const std::string &name)
+{
+  auto inCrop = [&fft, &name]() {
+    return Payload(fft.info, fft.dataInfo.CopyWithPtr(fft.GetPtr()), "Crop (in) " + name);
+  }();
+  auto outCrop = [&filter, &fft, &name, this]() {
+    const auto &imgSize = fft.info.GetSpatialSize();
+    // croppedSize is selected such as its FFT is x / 2 of the original size. This might be a bug
+    // in Xmipp
+    auto croppedSize = umpalumpa::data::Size(imgSize.x - 2, imgSize.y, 1, imgSize.n);
+    auto ld = FourierDescriptor(croppedSize,
+      umpalumpa::data::PaddingDescriptor(),
+      umpalumpa::data::FourierDescriptor::FourierSpaceDescriptor());
+    auto type = DataType::Get<std::complex<T>>();
+    auto bytes = ld.Elems() * type.GetSize();
+    return Payload(ld, CreatePD(bytes, type, false, false), "Crop (out) " + name);
+  }();
+  using namespace umpalumpa::fourier_processing;
+  using umpalumpa::fourier_transformation::Locality;
+  auto &alg = this->GetCropAlg();
+  auto in = AFP::InputData(inCrop, filter);
+  auto out = AFP::OutputData(outCrop);
+  if (!alg.IsInitialized()) {
+    auto settings = Settings(Locality::kOutOfPlace);
+    settings.SetApplyFilter(false);
+    settings.SetCenter(true);
+    settings.SetNormalize(true);
+    settings.SetShift(true);
+    if (!alg.Init(out, in, settings)) {
+      spdlog::error("Initialization of the Crop algorithm failed");
+    }
+  }
+  if (!alg.Execute(out, in)) { spdlog::error("Execution of the Crop algorithm failed"); }
+  return outCrop;
+}
 
-// template<typename T>
-// Payload<FourierDescriptor> FlexAlign<T>::Crop(const Payload<FourierDescriptor> &fft,
-//   Payload<LogicalDescriptor> &filter,
-//   const std::string &name)
-// {
-//   auto inCrop = [&fft, &name]() {
-//     return Payload(fft.info, fft.dataInfo.CopyWithPtr(fft.GetPtr()), "Crop (in) " + name);
-//   }();
-//   auto outCrop = [&filter, &fft, &name, this]() {
-//     auto ld = FourierDescriptor(filter.info.GetSize().CopyFor(fft.info.GetSize().n),
-//       umpalumpa::data::PaddingDescriptor(),
-//       umpalumpa::data::FourierDescriptor::FourierSpaceDescriptor());
-//     auto type = DataType::Get<std::complex<T>>();
-//     auto bytes = ld.Elems() * type.GetSize();
-//     return Payload(ld, CreatePD(bytes, type, false, false), "Crop (out) " + name);
-//   }();
-//   using namespace umpalumpa::fourier_processing;
-//   using umpalumpa::fourier_transformation::Locality;
-//   auto &alg = this->GetCropAlg();
-//   auto in = AFP::InputData(inCrop, filter);
-//   auto out = AFP::OutputData(outCrop);
-//   if (!alg.IsInitialized()) {
-//     auto settings = Settings(Locality::kOutOfPlace);
-//     settings.SetApplyFilter(true);
-//     settings.SetNormalize(true);
-//     if (!alg.Init(out, in, settings)) {
-//       spdlog::error("Initialization of the Crop algorithm failed");
-//     }
-//   }
-//   if (!alg.Execute(out, in)) { spdlog::error("Execution of the Crop algorithm failed"); }
-//   return outCrop;
-// }
-
-// template<typename T>
-// Payload<FourierDescriptor> FlexAlign<T>::ConvertFromFFT(Payload<FourierDescriptor> &correlation,
-//   const std::string &name)
-// {
-//   auto pOut = [&correlation, &name, this]() {
-//     auto ld = FourierDescriptor(correlation.info.GetSpatialSize(),
-//     correlation.info.GetPadding()); auto type = DataType::Get<T>(); auto bytes = ld.Elems() *
-//     type.GetSize(); return Payload(ld, CreatePD(bytes, type, false, false), "IFFT (out) " +
-//     name);
-//   }();
-//   using namespace umpalumpa::fourier_transformation;
-//   auto &alg = this->GetInverseFFTAlg();
-//   auto in = AFFT::InputData(correlation);
-//   auto out = AFFT::OutputData(pOut);
-//   if (!alg.IsInitialized()) {
-//     auto settings =
-//       Settings(Locality::kOutOfPlace, Direction::kInverse, std::min(4ul, GetAvailableCores()));
-//     if (!alg.Init(out, in, settings)) {
-//       spdlog::error("Initialization of the IFFT algorithm failed");
-//     }
-//   }
-//   if (!alg.Execute(out, in)) { spdlog::error("Execution of the IFFT algorithm failed"); }
-//   return pOut;
-// }
+template<typename T>
+void FourierReconstruction<T>::InsertToVolume(Payload<FourierDescriptor> &fft,
+  Payload<FourierDescriptor> &volume,
+  Payload<LogicalDescriptor> &weight,
+  Payload<LogicalDescriptor> &traverseSpace,
+  Payload<LogicalDescriptor> &table,
+  const umpalumpa::fourier_reconstruction::Settings &settings)
+{
+  using namespace umpalumpa::fourier_reconstruction;
+  auto &alg = this->GetFRAlg();
+  auto in = AFR::InputData(fft, volume, weight, traverseSpace, table);
+  auto out = AFR::OutputData(volume, weight);
+  if (!alg.IsInitialized()) {
+    if (!alg.Init(out, in, settings)) {
+      spdlog::error("Initialization of the Fourier Reconstruction algorithm failed");
+    }
+    if (settings.GetInterpolation() == Settings::Interpolation::kLookup) {
+      AFR::FillBlobTable(in, settings);
+    }
+  }
+  if (!alg.Execute(out, in)) {
+    spdlog::error("Execution of the Fourier Reconstruction algorithm failed");
+  }
+}
 
 // template<typename T>
 // Payload<LogicalDescriptor> FlexAlign<T>::FindMax(Payload<FourierDescriptor> &outCorrelation,
@@ -346,64 +410,63 @@ Payload<LogicalDescriptor> FourierReconstruction<T>::CreatePayloadTraverseSpace(
   return Payload(ld, CreatePD(bytes, type, true, true), "Traverse space(s) " + name);
 };
 
-// template<typename T> Payload<LogicalDescriptor> FlexAlign<T>::CreatePayloadFilter(const Size
-// &size)
-// {
-//   auto ld = LogicalDescriptor(size.CopyFor(1));
-//   auto type = DataType::Get<T>();
-//   auto bytes = ld.Elems() * type.GetSize();
-//   auto payload = Payload(ld, CreatePD(bytes, type, true, true), "Filter");
-//   // fill the filter
-//   Acquire(payload.dataInfo);
-//   auto start = reinterpret_cast<T *>(payload.GetPtr());
-//   std::fill(start, start + ld.GetSize().total, static_cast<T>(1));
-//   Release(payload.dataInfo);
-//   return payload;
-// };
+template<typename T>
+Payload<LogicalDescriptor> FourierReconstruction<T>::CreatePayloadFilter(const Size &size)
+{
+  auto ld = LogicalDescriptor(size.CopyFor(1));
+  auto type = DataType::Get<void>();
+  auto bytes = ld.Elems() * type.GetSize();
+  auto payload = Payload(ld, CreatePD(0, type, false, true), "Filter");
+  return payload;
+};
+
+template<typename T> void FillRandom(T *dst, size_t bytes)
+{
+  std::iota(dst, dst + bytes / sizeof(T), T(1));
+}
 
 template<typename T>
 void FourierReconstruction<T>::GenerateData(size_t, const Payload<LogicalDescriptor> &p)
 {
   assert(p.IsValid() && !p.IsEmpty());
-
   Acquire(p.dataInfo);
   auto *ptr = reinterpret_cast<T *>(p.GetPtr());
-  for (size_t n = 0; n < p.info.GetSize().n; ++n) {
-    for (size_t i = 0; i < p.info.Elems(); ++i) { ptr[i] = 1.f; }
-  }
+  FillRandom(ptr, p.dataInfo.GetBytes());
+  // std::fill(ptr, ptr + p.info.GetSize().total, static_cast<T>(1));
   spdlog::info("Image data generated");
   Release(p.dataInfo);
 }
 
 template<typename T>
-void FourierReconstruction<T>::GenerateTraverseSpaces(const umpalumpa::data::Size &imgBatchSize,
+void FourierReconstruction<T>::GenerateTraverseSpaces(
+  const umpalumpa::data::Size &imgCroppedBatchSize,
+  const umpalumpa::data::Size &volumeSize,
   const Payload<LogicalDescriptor> &p,
   const std::vector<Matrix3x3> &symmetries,
   const umpalumpa::fourier_reconstruction::Settings &settings)
 {
   assert(p.IsValid() && !p.IsEmpty());
-  assert(p.info.Elems() == imgBatchSize.n * symmetries.size());
+  assert(p.info.Elems() == imgCroppedBatchSize.n * symmetries.size());
   using umpalumpa::fourier_reconstruction::TraverseSpace;
   using umpalumpa::fourier_reconstruction::Settings;
 
   Acquire(p.dataInfo);
-  auto *ptr = reinterpret_cast<T *>(p.GetPtr());
   size_t counter = 0;
-  for (size_t img = 0; img < imgBatchSize.n; ++img) {
+  for (size_t img = 0; img < imgCroppedBatchSize.n; ++img) {
     auto m = GenerateMatrix();
     for (const auto &s : symmetries) {
       auto transform = Multiply(m, s);
-      umpalumpa::fourier_reconstruction::computeTraverseSpace(
-        imgBatchSize.x
-          / 2,// FIXME this should be probably .x / 2 + 1, but Xmipp implementation has it like this
-        imgBatchSize.y,
-        transform.data(),
-        reinterpret_cast<TraverseSpace *>(p.GetPtr())[counter++],
-        imgBatchSize.x - 1,
-        imgBatchSize.y - 1,
+      auto &ptr = reinterpret_cast<TraverseSpace *>(p.GetPtr())[counter++];
+      umpalumpa::fourier_reconstruction::ComputeTraverseSpace(imgCroppedBatchSize.x,
+        imgCroppedBatchSize.y,
+        reinterpret_cast<float(*)[3]>(transform.data()),
+        ptr,
+        volumeSize.x - 1,
+        volumeSize.y - 1,
         settings.GetType() == Settings::Type::kFast,
         settings.GetBlobRadius(),
         1.f);
+      ptr.projectionIndex = img;
     }
   }
   Release(p.dataInfo);

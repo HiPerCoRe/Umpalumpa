@@ -54,7 +54,7 @@ protected:
     const Settings &s,
     float weight)
   {
-    return computeTraverseSpace(
+    return ComputeTraverseSpace(
       transformationSize.y
         / 2,// FIXME this should be probably .x, but Xmipp implementation has it like this
       transformationSize.y,
