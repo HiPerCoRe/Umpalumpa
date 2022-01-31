@@ -245,7 +245,7 @@ public:
     T *__restrict__ weights,
     const int xSize,
     const int ySize,
-    const std::complex<T> *__restrict__ FFT,
+    const std::complex<T> *__restrict__ FFTs,
     const TraverseSpace *const __restrict__ spaces,
     size_t noOfSpaces,
     const T *__restrict__ blobTableSqrt,
@@ -253,6 +253,7 @@ public:
   {
     for (size_t i = 0; i < noOfSpaces; ++i) {
       const auto &tSpace = spaces[i];
+      const auto *FFT = FFTs + xSize * ySize * tSpace.projectionIndex;
       switch (order) {
       case BlobOrder::k0:
         Execute<0>(volume, weights, xSize, ySize, FFT, tSpace, blobTableSqrt, constants);

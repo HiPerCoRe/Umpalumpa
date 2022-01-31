@@ -52,6 +52,7 @@ void FourierReconstruction<T>::Execute(const umpalumpa::data::Size &imgSize,
     RemovePD(space.dataInfo, true);
     RemovePD(croppedFFT.dataInfo, true);
   }
+  GetFRAlg().Synchronize(); // wait till the work is done
   Acquire(volume.dataInfo);
   Acquire(weight.dataInfo);
   umpalumpa::utils::PrintData(std::cout , volume);
