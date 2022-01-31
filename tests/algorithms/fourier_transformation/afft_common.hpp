@@ -186,7 +186,6 @@ protected:
     const Settings &settings,
     size_t batchSize = 0)
   {
-    auto *outData = reinterpret_cast<std::complex<float> *>(out.GetData().GetPtr());
     auto inverseIn = AFFT::InputData(out.GetData());
     auto inverseOut = AFFT::OutputData(in.GetData());
 
