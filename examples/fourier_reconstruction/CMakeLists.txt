@@ -6,7 +6,7 @@ set(sources
     fr.cpp
     empty.cu # to link cuda libraries
     fr_cpu.cpp
-    # fourier_reconstruction_cuda.cpp
+    fr_cuda.cpp
 	)
 
 # if(USE_STARPU)

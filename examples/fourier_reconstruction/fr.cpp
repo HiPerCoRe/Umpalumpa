@@ -31,8 +31,10 @@ void FourierReconstruction<T>::Execute(const umpalumpa::data::Size &imgSize,
   auto filter = CreatePayloadFilter(imgCroppedBatchSize);
   auto settings = umpalumpa::fourier_reconstruction::Settings{};
   settings.SetType(umpalumpa::fourier_reconstruction::Settings::Type::kPrecise);
+  settings.SetInterpolation(umpalumpa::fourier_reconstruction::Settings::Interpolation::kDynamic);
   auto volume = CreatePayloadVolume(volumeSize);
   auto weight = CreatePayloadWeight(volumeSize);
+  // FIXME init volume and weight to 0
   auto table = CreatePayloadBlobTable(settings);
 
   for (size_t i = 0; i < imgSize.n; i += batchSize) {
