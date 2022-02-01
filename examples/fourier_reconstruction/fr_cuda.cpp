@@ -22,14 +22,12 @@ PhysicalDescriptor
   return PhysicalDescriptor(ptr, bytes, type, ManagedBy::CUDA, nullptr);
 }
 
-template<typename T>
-void FourierReconstructionCUDA<T>::RemovePD(const PhysicalDescriptor &pd, bool) const
+template<typename T> void FourierReconstructionCUDA<T>::RemovePD(const PhysicalDescriptor &pd, bool)
 {
   CudaErrchk(cudaFree(pd.GetPtr()));
 }
 
-template<typename T>
-void FourierReconstructionCUDA<T>::Acquire(const PhysicalDescriptor &pd) const
+template<typename T> void FourierReconstructionCUDA<T>::Acquire(const PhysicalDescriptor &pd) const
 {
   CudaErrchk(cudaMemPrefetchAsync(pd.GetPtr(), pd.GetBytes(), worker));
 }

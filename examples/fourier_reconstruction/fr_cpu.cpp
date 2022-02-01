@@ -22,8 +22,7 @@ PhysicalDescriptor
   return PhysicalDescriptor(ptr, bytes, type, ManagedBy::Manually, nullptr);
 }
 
-template<typename T>
-void FourierReconstructionCPU<T>::RemovePD(const PhysicalDescriptor &pd, bool) const
+template<typename T> void FourierReconstructionCPU<T>::RemovePD(const PhysicalDescriptor &pd, bool)
 {
   free(pd.GetPtr());
 }

@@ -22,6 +22,7 @@ public:
       p.dataInfo.GetType(),
       p.dataInfo.GetManager(),
       p.dataInfo.GetHandle());
+    pd.SetPinned(p.dataInfo.IsPinned());
     return data::Payload(p.info, std::move(pd));
   }
 

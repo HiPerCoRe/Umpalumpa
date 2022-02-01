@@ -9,7 +9,7 @@ namespace umpalumpa::fourier_reconstruction {
 class FRStarPU final : public AFR
 {
 public:
-  ~FRStarPU();
+  virtual ~FRStarPU();
 
   void Cleanup() override;
 

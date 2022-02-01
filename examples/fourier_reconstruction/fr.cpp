@@ -143,7 +143,7 @@ Payload<FourierDescriptor> FourierReconstruction<T>::ConvertToFFT(
   auto out = AFFT::OutputData(outFFT);
   if (!alg.IsInitialized()) {
     auto settings =
-      Settings(Locality::kOutOfPlace, Direction::kForward, std::min(8ul, GetAvailableCores()));
+      Settings(Locality::kOutOfPlace, Direction::kForward, std::min(1ul, GetAvailableCores()));
     if (!alg.Init(out, in, settings)) {
       spdlog::error("Initialization of the FFT algorithm failed");
     }

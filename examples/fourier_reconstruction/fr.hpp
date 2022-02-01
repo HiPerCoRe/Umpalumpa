@@ -44,7 +44,7 @@ protected:
   /**
    * This method removes all data allocated by the Physical Descriptor
    **/
-  virtual void RemovePD(const PhysicalDescriptor &pd, bool pinned) const = 0;
+  virtual void RemovePD(const PhysicalDescriptor &pd, bool pinned) = 0;
 
   /**
    * This method fetches data represented by the Physical Descriptor to main RAM.

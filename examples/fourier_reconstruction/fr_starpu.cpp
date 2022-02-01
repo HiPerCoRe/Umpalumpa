@@ -21,6 +21,7 @@ FourierReconstructionStarPU<T>::FourierReconstructionStarPU()
   SetAvailableBytesRAM();
   SetAvailableBytesCUDA();
   STARPU_CHECK_RETURN_VALUE(starpu_init(NULL), "StarPU init");
+  thr = std::make_unique<std::thread>([this]() { RemoveFromQueue(); });
 }
 
 template<typename T> void FourierReconstructionStarPU<T>::SetAvailableBytesRAM()
@@ -68,6 +69,11 @@ template<typename T> FourierReconstructionStarPU<T>::~FourierReconstructionStarP
   FFTAlg.release();
   cropAlg.release();
   FRAlg.release();
+  {
+    keepWorking = false;// tell thread that we want to finish
+    workAvailable.notify_one();// wake it up
+    thr->join();// wait till it's done
+  }
   starpu_shutdown();
 }
 
@@ -85,22 +91,38 @@ PhysicalDescriptor
   }
   auto *handle = new starpu_data_handle_t();
   auto pd = PhysicalDescriptor(ptr, bytes, type, ManagedBy::StarPU, handle);
+  pd.SetPinned(pinned);
   StarPUUtils::Register(pd, copyInRAM ? STARPU_MAIN_RAM : -1);
   return pd;
 }
 
-template<typename T>
-void FourierReconstructionStarPU<T>::RemovePD(const PhysicalDescriptor &pd, bool pinned) const
+template<typename T> void FourierReconstructionStarPU<T>::RemoveFromQueue()
 {
-  StarPUUtils::Unregister(pd, StarPUUtils::UnregisterType::kSubmitNoCopy);
-  // don't release the handle, some task might still use it
-  // we can release the pointer, because either the data should be already processed,
-  // or not allocated at this node at all
-  delete StarPUUtils::GetHandle(pd);
-  if (nullptr != pd.GetPtr()) {
-    auto flags = STARPU_MALLOC_COUNT | (pinned ? STARPU_MALLOC_PINNED : 0);
-    starpu_free_flags(pd.GetPtr(), pd.GetBytes(), flags);
+  while (keepWorking) {
+    std::unique_lock lock(mutex);
+    workAvailable.wait(lock);
+    while (!toRemove.empty()) {
+      auto &data = toRemove.front();
+      auto *handle = reinterpret_cast<starpu_data_handle_t *>(data.handle);
+      starpu_data_unregister_no_coherency(*handle);
+      if (nullptr != data.ptr) {
+        auto flags = STARPU_MALLOC_COUNT | (data.isPinned ? STARPU_MALLOC_PINNED : 0);
+        starpu_free_flags(data.ptr, data.bytes, flags);
+      }
+      delete handle;
+      toRemove.pop();
+    }
   }
+}
+
+template<typename T>
+void FourierReconstructionStarPU<T>::RemovePD(const PhysicalDescriptor &pd, bool)
+{
+  std::unique_lock lock(mutex);
+  auto wasEmpty = toRemove.empty();
+  toRemove.push(pd);
+  lock.unlock();
+  if (wasEmpty) { workAvailable.notify_one(); }
 }
 
 template<typename T>
