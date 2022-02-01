@@ -47,10 +47,10 @@ void FourierReconstruction<T>::Execute(const umpalumpa::data::Size &imgSize,
     auto fft = ConvertToFFT(img, name);
     auto croppedFFT = Crop(fft, filter, name);
     InsertToVolume(croppedFFT, volume, weight, space, table, settings);
-    RemovePD(img.dataInfo, true);
-    RemovePD(fft.dataInfo, false);
-    RemovePD(space.dataInfo, true);
-    RemovePD(croppedFFT.dataInfo, false);
+    RemovePD(img.dataInfo);
+    RemovePD(fft.dataInfo);
+    RemovePD(space.dataInfo);
+    RemovePD(croppedFFT.dataInfo);
   }
 
   GetFRAlg().Synchronize(); // wait till the work is done
@@ -59,10 +59,10 @@ void FourierReconstruction<T>::Execute(const umpalumpa::data::Size &imgSize,
   // Print(volume, "Volume data");
   // Print(weight, "Weight data");
 
-  RemovePD(table.dataInfo, true);
-  RemovePD(weight.dataInfo, true);
-  RemovePD(volume.dataInfo, true);
-  RemovePD(filter.dataInfo, false);
+  RemovePD(table.dataInfo);
+  RemovePD(weight.dataInfo);
+  RemovePD(volume.dataInfo);
+  RemovePD(filter.dataInfo);
 }
 
 template<typename T>
@@ -92,7 +92,7 @@ template<typename T> auto FourierReconstruction<T>::CreatePayloadVolume(const Si
   auto ld = FourierDescriptor(size, umpalumpa::data::PaddingDescriptor(), fd);
   auto type = DataType::Get<std::complex<T>>();
   auto bytes = ld.Elems() * type.GetSize();
-  return umpalumpa::data::Payload(ld, CreatePD(bytes, type, true, true), "Volume in FD");
+  return umpalumpa::data::Payload(ld, CreatePD(bytes, type, true, false), "Volume in FD");
 }
 
 template<typename T> auto FourierReconstruction<T>::CreatePayloadWeight(const Size &size)
@@ -100,7 +100,7 @@ template<typename T> auto FourierReconstruction<T>::CreatePayloadWeight(const Si
   auto ld = LogicalDescriptor(size);
   auto type = DataType::Get<T>();
   auto bytes = ld.Elems() * type.GetSize();
-  return umpalumpa::data::Payload(ld, CreatePD(bytes, type, true, true), "Weight in FD");
+  return umpalumpa::data::Payload(ld, CreatePD(bytes, type, true, false), "Weight in FD");
 }
 
 template<typename T>
@@ -112,7 +112,7 @@ auto FourierReconstruction<T>::CreatePayloadBlobTable(
   auto ld = LogicalDescriptor(Size(count, 1, 1, 1));
   auto type = DataType::Get<T>();
   auto bytes = ld.Elems() * type.GetSize();
-  return umpalumpa::data::Payload(ld, CreatePD(bytes, type, true, true), "Interpolation table");
+  return umpalumpa::data::Payload(ld, CreatePD(bytes, type, true, false), "Interpolation table");
 }
 
 template<typename T> size_t FourierReconstruction<T>::GetAvailableCores() const
@@ -223,7 +223,7 @@ Payload<LogicalDescriptor> FourierReconstruction<T>::CreatePayloadImage(const Si
   auto ld = LogicalDescriptor(size);
   auto type = DataType::Get<T>();
   auto bytes = ld.Elems() * type.GetSize();
-  return Payload(ld, CreatePD(bytes, type, true, true), "Image(s) " + name);
+  return Payload(ld, CreatePD(bytes, type, true, false), "Image(s) " + name);
 };
 
 template<typename T>
@@ -234,7 +234,7 @@ Payload<LogicalDescriptor> FourierReconstruction<T>::CreatePayloadTraverseSpace(
   auto ld = LogicalDescriptor(size);
   auto type = DataType::Get<TraverseSpace>();
   auto bytes = ld.Elems() * type.GetSize();
-  return Payload(ld, CreatePD(bytes, type, true, true), "Traverse space(s) " + name);
+  return Payload(ld, CreatePD(bytes, type, true, false), "Traverse space(s) " + name);
 };
 
 template<typename T>

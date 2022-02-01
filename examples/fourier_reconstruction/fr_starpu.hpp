@@ -18,7 +18,7 @@ public:
 protected:
   PhysicalDescriptor CreatePD(size_t bytes, DataType type, bool copyInRAM, bool pinned) override;
 
-  void RemovePD(const PhysicalDescriptor &pd, bool pinned) override;
+  void RemovePD(const PhysicalDescriptor &pd) override;
 
   AFFT &GetFFTAlg() const override { return *FFTAlg; }
 

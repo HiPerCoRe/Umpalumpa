@@ -15,14 +15,17 @@ FourierReconstructionCPU<T>::FourierReconstructionCPU()
 
 template<typename T>
 PhysicalDescriptor
-  FourierReconstructionCPU<T>::CreatePD(size_t bytes, DataType type, bool copyInRAM, bool)
+  FourierReconstructionCPU<T>::CreatePD(size_t bytes, DataType type, bool copyInRAM, bool pinned)
 {
   void *ptr = nullptr;
   if (0 != bytes) { ptr = calloc(bytes, 1); }
-  return PhysicalDescriptor(ptr, bytes, type, ManagedBy::Manually, nullptr);
+  // FIXME pin data
+  auto pd = PhysicalDescriptor(ptr, bytes, type, ManagedBy::Manually, nullptr);
+  pd.SetPinned(pinned);
+  return pd;
 }
 
-template<typename T> void FourierReconstructionCPU<T>::RemovePD(const PhysicalDescriptor &pd, bool)
+template<typename T> void FourierReconstructionCPU<T>::RemovePD(const PhysicalDescriptor &pd)
 {
   free(pd.GetPtr());
 }

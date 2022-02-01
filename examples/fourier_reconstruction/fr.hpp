@@ -44,7 +44,7 @@ protected:
   /**
    * This method removes all data allocated by the Physical Descriptor
    **/
-  virtual void RemovePD(const PhysicalDescriptor &pd, bool pinned) = 0;
+  virtual void RemovePD(const PhysicalDescriptor &pd) = 0;
 
   /**
    * This method fetches data represented by the Physical Descriptor to main RAM.
@@ -151,7 +151,6 @@ private:
     printf("   [% 5.3f, % 5.3f, % 5.3f]]\n", m[6], m[7], m[8]);
   }
 
-
   void Print(const Quaternion &q)
   {
     printf("q=[% 7.7f, % 7.7f, % 7.7f, % 7.7f]\n", q[0], q[1], q[2], q[3]);
@@ -161,24 +160,6 @@ private:
   void Print(const Payload<U> &p, const std::string &name);
 
   std::mt19937 generator;
-
-  //   /**
-  //    * Move Shift values by specified offset and scale by the specified factor
-  //    **/
-  //   std::vector<Shift> Transform(const std::vector<Shift> &shift,
-  //     float scaleX,
-  //     float scaleY,
-  //     float shiftX,
-  //     float shiftY)
-  //   {
-  //     auto res = std::vector<Shift>();
-  //     for (const auto &s : shift) {
-  //       auto x = -(s.x - shiftX) * scaleX;
-  //       auto y = -(s.y - shiftY) * scaleY;
-  //       res.push_back({ x, y });
-  //     }
-  //     return res;
-  //   }
 
   /**
    * Create Payload representing a filter applied to the data
@@ -223,32 +204,6 @@ private:
     Payload<LogicalDescriptor> &traverseSpace,
     Payload<LogicalDescriptor> &table,
     const umpalumpa::fourier_reconstruction::Settings &settings);
-
-  //   Payload<FourierDescriptor> Correlate(Payload<FourierDescriptor> &first,
-  //     Payload<FourierDescriptor> &second,
-  //     const std::string &name);
-
-  //   Payload<FourierDescriptor> ConvertFromFFT(Payload<FourierDescriptor> &correlation,
-  //     const std::string &name);
-
-  //   Payload<LogicalDescriptor> FindMax(Payload<FourierDescriptor> &outCorrelation,
-  //     const std::string &name);
-
-  //   std::vector<Shift> ExtractShift(const Payload<LogicalDescriptor> &shift);
-
-  //   void LogResult(size_t i, size_t j, size_t batch, const std::vector<Shift> &shift);
-
-  //   size_t NoOfCorrelations(size_t batch, bool isWithin)
-  //   {
-  //     // Note: we are wasting some performence by computing intra-buffer correlations
-  //     // return isWithin ? ((batch * (batch - 1)) / 2) : (batch * batch);
-  //     return batch * batch;
-  //   }
-
-  //   size_t NoOfBatches(const Size &s, size_t batch)
-  //   {
-  //     return ((s.n / batch + 1) * (s.n / batch)) / 2;
-  //   }
 
   size_t GetAvailableCores() const;
 };

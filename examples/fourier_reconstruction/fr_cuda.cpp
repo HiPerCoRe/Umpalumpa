@@ -15,14 +15,16 @@ FourierReconstructionCUDA<T>::FourierReconstructionCUDA()
 
 template<typename T>
 PhysicalDescriptor
-  FourierReconstructionCUDA<T>::CreatePD(size_t bytes, DataType type, bool copyInRAM, bool)
+  FourierReconstructionCUDA<T>::CreatePD(size_t bytes, DataType type, bool copyInRAM, bool pinned)
 {
   void *ptr = nullptr;
   if (0 != bytes) { CudaErrchk(cudaMallocManaged(&ptr, bytes)); }
-  return PhysicalDescriptor(ptr, bytes, type, ManagedBy::CUDA, nullptr);
+  auto pd = PhysicalDescriptor(ptr, bytes, type, ManagedBy::CUDA, nullptr);
+  pd.SetPinned(pinned);
+  return pd;
 }
 
-template<typename T> void FourierReconstructionCUDA<T>::RemovePD(const PhysicalDescriptor &pd, bool)
+template<typename T> void FourierReconstructionCUDA<T>::RemovePD(const PhysicalDescriptor &pd)
 {
   CudaErrchk(cudaFree(pd.GetPtr()));
 }

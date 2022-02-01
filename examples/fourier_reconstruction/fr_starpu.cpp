@@ -115,8 +115,7 @@ template<typename T> void FourierReconstructionStarPU<T>::RemoveFromQueue()
   }
 }
 
-template<typename T>
-void FourierReconstructionStarPU<T>::RemovePD(const PhysicalDescriptor &pd, bool)
+template<typename T> void FourierReconstructionStarPU<T>::RemovePD(const PhysicalDescriptor &pd)
 {
   std::unique_lock lock(mutex);
   auto wasEmpty = toRemove.empty();
