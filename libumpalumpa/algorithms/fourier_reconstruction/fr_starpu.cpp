@@ -223,7 +223,7 @@ bool FRStarPU::ExecuteImpl(const OutputData &out, const InputData &in)
   task->detach = 0;// so that we can wait for it
   task->cl = [] {
     static starpu_codelet c = {};
-    c.where = STARPU_CUDA | STARPU_CPU;
+    c.where = STARPU_CUDA;// | STARPU_CPU; // CPU version is waaaay too slow  // FIXME maybe for kFast
     c.cpu_funcs[0] = Codelet;
     c.cuda_funcs[0] = Codelet;
     c.cuda_flags[0] = STARPU_CUDA_ASYNC;
