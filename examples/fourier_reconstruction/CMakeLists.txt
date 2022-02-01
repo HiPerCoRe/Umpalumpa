@@ -9,9 +9,9 @@ set(sources
     fr_cuda.cpp
 	)
 
-# if(USE_STARPU)
-  # list(APPEND sources fourier_reconstruction_starpu.cpp)
-# endif()
+if(USE_STARPU)
+  list(APPEND sources fr_starpu.cpp)
+endif()
 
 target_sources(fourier_reconstruction PRIVATE ${sources})
 

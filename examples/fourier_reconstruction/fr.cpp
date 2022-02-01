@@ -45,24 +45,34 @@ void FourierReconstruction<T>::Execute(const umpalumpa::data::Size &imgSize,
     auto space = CreatePayloadTraverseSpace(traverseSpaceBatchSize, name);
     GenerateTraverseSpaces(imgCroppedBatchSize, volumeSize, space, symmetries, settings);
     auto fft = ConvertToFFT(img, name);
-    RemovePD(img.dataInfo, true);
     auto croppedFFT = Crop(fft, filter, name);
-    RemovePD(fft.dataInfo, true);
     InsertToVolume(croppedFFT, volume, weight, space, table, settings);
+    RemovePD(img.dataInfo, true);
+    RemovePD(fft.dataInfo, false);
     RemovePD(space.dataInfo, true);
-    RemovePD(croppedFFT.dataInfo, true);
+    RemovePD(croppedFFT.dataInfo, false);
   }
+
   GetFRAlg().Synchronize(); // wait till the work is done
-  Acquire(volume.dataInfo);
-  Acquire(weight.dataInfo);
-  umpalumpa::utils::PrintData(std::cout , volume);
-  Release(weight.dataInfo);
-  Release(volume.dataInfo);
+  
+  // Show results
+  // Print(volume, "Volume data");
+  // Print(weight, "Weight data");
 
   RemovePD(table.dataInfo, true);
   RemovePD(weight.dataInfo, true);
   RemovePD(volume.dataInfo, true);
-  RemovePD(filter.dataInfo, true);
+  RemovePD(filter.dataInfo, false);
+}
+
+template<typename T>
+template<typename U>
+void FourierReconstruction<T>::Print(const Payload<U> &p, const std::string &name) {
+  Acquire(p.dataInfo);
+  std::cout << name << "\n";
+  umpalumpa::utils::PrintData(std::cout , p);
+  std::cout << "\n";
+  Release(p.dataInfo);
 }
 
 template<typename T> auto FourierReconstruction<T>::GenerateSymmetries(size_t count)
@@ -233,7 +243,7 @@ Payload<LogicalDescriptor> FourierReconstruction<T>::CreatePayloadFilter(const S
   auto ld = LogicalDescriptor(size.CopyFor(1));
   auto type = DataType::Get<void>();
   auto bytes = ld.Elems() * type.GetSize();
-  auto payload = Payload(ld, CreatePD(0, type, false, true), "Filter");
+  auto payload = Payload(ld, CreatePD(0, type, false, false), "Filter");
   return payload;
 };
 

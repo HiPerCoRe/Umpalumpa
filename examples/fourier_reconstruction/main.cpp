@@ -1,5 +1,6 @@
-// #include "fr_cpu.hpp"
+#include "fr_cpu.hpp"
 #include "fr_cuda.hpp"
+#include "fr_starpu.hpp"
 
 int main(int argc, char **argv)
 {
@@ -16,7 +17,9 @@ int main(int argc, char **argv)
 
   auto size = umpalumpa::data::Size(x, x, 1, n);
   const auto program = []() -> std::unique_ptr<FourierReconstruction<float>> {
-    return std::make_unique<FourierReconstructionCUDA<float>>();
+    // return std::make_unique<FourierReconstructionCUDA<float>>();
+    // return std::make_unique<FourierReconstructionCPU<float>>();
+    return std::make_unique<FourierReconstructionStarPU<float>>();
   }();
   program->Execute(size, symmetries, batch);
 }

@@ -157,6 +157,9 @@ private:
     printf("q=[% 7.7f, % 7.7f, % 7.7f, % 7.7f]\n", q[0], q[1], q[2], q[3]);
   }
 
+  template<typename U>
+  void Print(const Payload<U> &p, const std::string &name);
+
   std::mt19937 generator;
 
   //   /**

@@ -141,7 +141,7 @@ namespace {// to avoid poluting
 FRStarPU::~FRStarPU()
 {
   if (!this->IsInitialized()) return;
-  Synchronize();
+  Cleanup();
   starpu_execute_on_each_worker(DeleteAlg<FRCPU>, &algs, STARPU_CPU);
   starpu_execute_on_each_worker(DeleteAlg<FRCUDA>, &algs, STARPU_CUDA);
 }
