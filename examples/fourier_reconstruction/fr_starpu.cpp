@@ -100,7 +100,7 @@ template<typename T> void FourierReconstructionStarPU<T>::RemoveFromQueue()
 {
   while (keepWorking) {
     std::unique_lock lock(mutex);
-    workAvailable.wait(lock);
+    workAvailable.wait(lock, [this]() { return !keepWorking; });
     while (!toRemove.empty()) {
       auto &data = toRemove.front();
       auto *handle = reinterpret_cast<starpu_data_handle_t *>(data.handle);
