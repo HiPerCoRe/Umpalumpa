@@ -117,7 +117,8 @@ public:
   };
 
   /**
-   * Hopefully just a temporary solution to get access to a strategy.
+   * FIXME Just a temporary solution to get access to a strategy.
+   * will be substituted by some TuningHint/TuningSettings struct
    **/
   Strategy &GetStrategy() { return *strategy; }
 
