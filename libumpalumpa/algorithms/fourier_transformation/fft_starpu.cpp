@@ -103,9 +103,9 @@ FFTStarPU::~FFTStarPU()
 {
   if (!this->IsInitialized()) return;
   Synchronize();
+  Cleanup();
   starpu_execute_on_each_worker(DeleteAlg<FFTCPU>, &algs, STARPU_CPU);
   starpu_execute_on_each_worker(DeleteAlg<FFTCUDA>, &algs, STARPU_CUDA);
-  Cleanup();
 }
 
 void FFTStarPU::Cleanup()
