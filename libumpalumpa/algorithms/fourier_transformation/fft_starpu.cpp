@@ -96,6 +96,7 @@ namespace {// to avoid poluting
     auto id = static_cast<size_t>(starpu_worker_get_id());
     auto *alg = reinterpret_cast<T *>(vec->at(id));
     delete alg;
+    vec->at(id) = nullptr;
   }
 }// namespace
 
