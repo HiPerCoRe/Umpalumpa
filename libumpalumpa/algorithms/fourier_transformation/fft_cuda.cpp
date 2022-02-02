@@ -32,7 +32,7 @@ template<typename F> void FFTCUDA::manyHelper(F function)
   size_t offset = 3 - static_cast<size_t>(rank);
 
   function(rank,
-    &n[offset],
+    n.data() + offset,
     nullptr,
     1,
     idist,
@@ -59,6 +59,11 @@ bool FFTCUDA::InitImpl()
 
 bool FFTCUDA::ExecuteImpl(const OutputData &out, const InputData &in)
 {
+  // Output memory needs to be set to 0, otherwise fft produces incorrect results
+  CudaErrchk(cudaMemset(out.GetData().GetPtr(), 0, out.GetData().GetRequiredBytes()));
+  // FIXME use async version once the stream works again
+  // CudaErrchk(cudaMemsetAsync(out.GetData().GetPtr(), 0, out.GetData().GetRequiredBytes(),
+  // stream));
   auto direction = (GetSettings().IsForward() ? CUFFT_FORWARD : CUFFT_INVERSE);
   CudaErrchk(cufftXtExec(plan, in.GetData().GetPtr(), out.GetData().GetPtr(), direction));
   return true;
@@ -88,7 +93,7 @@ void FFTCUDA::setupPlan()
       cufftPlanMany(&plan, rank, n, inembed, istride, idist, onembed, ostride, odist, type, batch));
   };
   manyHelper(f);
-  CudaErrchk(cufftSetStream(plan, stream));
+  // CudaErrchk(cufftSetStream(plan, stream));// FIXME causes CUFFT_EXEC_FAILED error when executed
 }
 
 FFTCUDA::FFTCUDA(int deviceOrdinal) : shouldDestroyStream(true)
@@ -110,7 +115,11 @@ FFTCUDA::~FFTCUDA()
   }
 }
 
-void FFTCUDA::Synchronize() { CudaErrchk(cudaStreamSynchronize(stream)); }
+void FFTCUDA::Synchronize()
+{
+  // CudaErrchk(cudaStreamSynchronize(stream));// FIXME use when stream works again
+  CudaErrchk(cudaDeviceSynchronize());
+}
 
 size_t FFTCUDA::GetUsedBytes() const
 {
