@@ -2,7 +2,6 @@
 
 #include <gtest/gtest.h>
 #include <libumpalumpa/data/physical_desriptor.hpp>
-#include <tests/algorithms/test_processing_unit.hpp>
 
 namespace umpalumpa::test {
 
@@ -37,9 +36,5 @@ protected:
    **/
   virtual void Acquire(const PhysicalDescriptor &pd) = 0;
   virtual void Release(const PhysicalDescriptor &pd) = 0;
-  /**
-   * Serves for distinguishing tests that can be run only at some specific processing unit.
-   **/
-  virtual TestProcessingUnit GetTestProcessingUnit() const { return TestProcessingUnit::kAny; }
 };
 }// namespace umpalumpa::test

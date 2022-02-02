@@ -61,7 +61,7 @@ void StrategyManager::Register(TunableStrategy &strat)
     debugMsg += "As a new Leader";
   }
 
-  strat.groupLeader = groupPtr->leader.get();
+  strat.AssignLeader(groupPtr->leader.get());
   groupPtr->strategies.push_back(&strat);
   spdlog::debug("Strategy at address {} registered", reinterpret_cast<size_t>(&strat));
   spdlog::debug(debugMsg + " strategy {}", reinterpret_cast<size_t>(groupPtr->leader.get()));
