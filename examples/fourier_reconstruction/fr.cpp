@@ -8,9 +8,13 @@
 template<typename T>
 void FourierReconstruction<T>::Execute(const umpalumpa::data::Size &imgSize,
   size_t noOfSymmetries,
-  size_t batchSize)
+  size_t batchSize,
+  const umpalumpa::fourier_reconstruction::Settings::Type &type,
+  const umpalumpa::fourier_reconstruction::Settings::Interpolation &interpolation)
 {
   assert(imgSize.x % 2 == 0);// we can process only odd size of the images
+  using umpalumpa::fourier_reconstruction::Settings;
+  using umpalumpa::fourier_reconstruction::Settings;
 
   auto imgBatchSize = umpalumpa::data::Size(imgSize.x, imgSize.y, 1, batchSize);
   auto volumeSize = umpalumpa::data::Size(imgSize.x + 1, imgSize.y + 1, imgSize.y + 1, 1);
@@ -18,20 +22,25 @@ void FourierReconstruction<T>::Execute(const umpalumpa::data::Size &imgSize,
     imgSize.x / 2, imgSize.y, 1, batchSize);// This should probably be .x / 2 + 1 (i.e. normal FFT
                                             // size), but in Xmipp it's like that
   auto traverseSpaceBatchSize = umpalumpa::data::Size(1, 1, 1, batchSize * noOfSymmetries);
+  auto settings = umpalumpa::fourier_reconstruction::Settings{};
+  settings.SetType(type);
+  settings.SetInterpolation(interpolation);
 
   spdlog::info(
-    "\nRunning Fourier Reconstruction.\nImage size: {}*{} ({})\nBatch: {}\nSymmetries: {}",
+    "\nRunning Fourier Reconstruction.\nImage size: {}*{} ({})\nBatch: {}\nSymmetries: "
+    "{}\nInterpolation type: {}\nInterpolation coefficient type: {}",
     imgSize.x,
     imgSize.y,
     imgSize.n,
     batchSize,
-    noOfSymmetries);
+    noOfSymmetries,
+    settings.GetType() == Settings::Type::kPrecise ? "immediate interpolation"
+                                                   : "delayed interpolation",
+    settings.GetInterpolation() == Settings::Interpolation::kDynamic ? "dynamic computation"
+                                                                     : "precomputed table");
 
   auto symmetries = GenerateSymmetries(noOfSymmetries);
   auto filter = CreatePayloadFilter(imgCroppedBatchSize);
-  auto settings = umpalumpa::fourier_reconstruction::Settings{};
-  settings.SetType(umpalumpa::fourier_reconstruction::Settings::Type::kPrecise);
-  settings.SetInterpolation(umpalumpa::fourier_reconstruction::Settings::Interpolation::kDynamic);
   auto volume = CreatePayloadVolume(volumeSize);
   auto weight = CreatePayloadWeight(volumeSize);
   // FIXME init volume and weight to 0
@@ -39,7 +48,7 @@ void FourierReconstruction<T>::Execute(const umpalumpa::data::Size &imgSize,
 
   for (size_t i = 0; i < imgSize.n; i += batchSize) {
     auto name = std::to_string(i) + "-" + std::to_string(i + batchSize - 1);
-    spdlog::info("Loop {}", name);
+    spdlog::debug("Loop {}", name);
     auto img = CreatePayloadImage(imgBatchSize, name);
     GenerateData(i, img);
     auto space = CreatePayloadTraverseSpace(traverseSpaceBatchSize, name);
@@ -53,8 +62,8 @@ void FourierReconstruction<T>::Execute(const umpalumpa::data::Size &imgSize,
     RemovePD(croppedFFT.dataInfo);
   }
 
-  GetFRAlg().Synchronize(); // wait till the work is done
-  
+  GetFRAlg().Synchronize();// wait till the work is done
+
   // Show results
   // Print(volume, "Volume data");
   // Print(weight, "Weight data");
@@ -67,10 +76,11 @@ void FourierReconstruction<T>::Execute(const umpalumpa::data::Size &imgSize,
 
 template<typename T>
 template<typename U>
-void FourierReconstruction<T>::Print(const Payload<U> &p, const std::string &name) {
+void FourierReconstruction<T>::Print(const Payload<U> &p, const std::string &name)
+{
   Acquire(p.dataInfo);
   std::cout << name << "\n";
-  umpalumpa::utils::PrintData(std::cout , p);
+  umpalumpa::utils::PrintData(std::cout, p);
   std::cout << "\n";
   Release(p.dataInfo);
 }
@@ -81,7 +91,7 @@ template<typename T> auto FourierReconstruction<T>::GenerateSymmetries(size_t co
   std::vector<Matrix3x3> res;
   res.reserve(count);
   for (size_t i = 0; i < count; ++i) { res.emplace_back(GenerateMatrix()); }
-  spdlog::info("{} symmetries generated", res.size());
+  spdlog::debug("{} symmetries generated", res.size());
   return res;
 }
 
@@ -260,7 +270,7 @@ void FourierReconstruction<T>::GenerateData(size_t, const Payload<LogicalDescrip
   auto *ptr = reinterpret_cast<T *>(p.GetPtr());
   FillRandom(ptr, p.dataInfo.GetBytes());
   // std::fill(ptr, ptr + p.info.GetSize().total, static_cast<T>(1));
-  spdlog::info("Image data generated");
+  spdlog::debug("Image data generated");
   Release(p.dataInfo);
 }
 
@@ -297,7 +307,7 @@ void FourierReconstruction<T>::GenerateTraverseSpaces(
     }
   }
   Release(p.dataInfo);
-  spdlog::info("Traverse spaces generated");
+  spdlog::debug("Traverse spaces generated");
 }
 
 template class FourierReconstruction<float>;

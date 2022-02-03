@@ -29,7 +29,11 @@ public:
   FourierReconstruction() : generator(42)// fixed seed for reproducibility
   {}
 
-  void Execute(const Size &imgSize, size_t noOfSymmetries, size_t batchSize);
+  void Execute(const Size &imgSize,
+    size_t noOfSymmetries,
+    size_t batchSize,
+    const umpalumpa::fourier_reconstruction::Settings::Type &type,
+    const umpalumpa::fourier_reconstruction::Settings::Interpolation &interpolation);
 
   virtual ~FourierReconstruction() = default;
 
@@ -156,8 +160,7 @@ private:
     printf("q=[% 7.7f, % 7.7f, % 7.7f, % 7.7f]\n", q[0], q[1], q[2], q[3]);
   }
 
-  template<typename U>
-  void Print(const Payload<U> &p, const std::string &name);
+  template<typename U> void Print(const Payload<U> &p, const std::string &name);
 
   std::mt19937 generator;
 
