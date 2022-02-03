@@ -12,7 +12,7 @@ int main(int argc, char **argv)
   size_t symmetries = 5;
   auto type = Settings::Type::kPrecise;
   auto interpolation = Settings::Interpolation::kDynamic;
-  if (argc == 5) {
+  if (argc == 7) {
     x = atoi(argv[1]);
     n = atoi(argv[2]);
     batch = atoi(argv[3]);
