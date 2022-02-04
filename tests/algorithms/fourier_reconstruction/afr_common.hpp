@@ -54,7 +54,7 @@ protected:
     const Settings &s,
     float weight)
   {
-    return computeTraverseSpace(
+    return ComputeTraverseSpace(
       transformationSize.y
         / 2,// FIXME this should be probably .x, but Xmipp implementation has it like this
       transformationSize.y,
@@ -150,6 +150,7 @@ protected:
     TestPoint(s.bottomOrigin, 6.f, 0.f, 3.f);
 
     ASSERT_FLOAT_EQ(s.weight, 1.f);
+    ASSERT_EQ(s.projectionIndex, 0);
   }
 
   void TestTravelSpace5x6XYPrecise(const TraverseSpace &s)
@@ -169,6 +170,7 @@ protected:
     TestPoint(s.bottomOrigin, 7.9f, -1.9f, 4.9f);
 
     ASSERT_FLOAT_EQ(s.weight, 1.f);
+    ASSERT_EQ(s.projectionIndex, 0);
   }
 
   void TestTravelSpace5x6YZFast(const TraverseSpace &s)
@@ -188,6 +190,7 @@ protected:
     TestPoint(s.bottomOrigin, 3.f, 0.f, 0.f);
 
     ASSERT_FLOAT_EQ(s.weight, 1.f);
+    ASSERT_EQ(s.projectionIndex, 0);
   }
 
   void TestTravelSpace5x6YZPrecise(const TraverseSpace &s)
@@ -207,9 +210,10 @@ protected:
     TestPoint(s.bottomOrigin, 4.9f, -1.9f, -1.9f);
 
     ASSERT_FLOAT_EQ(s.weight, 1.f);
+    ASSERT_EQ(s.projectionIndex, 0);
   }
 
-    void TestTravelSpace5x6XZFast(const TraverseSpace &s)
+  void TestTravelSpace5x6XZFast(const TraverseSpace &s)
   {
     ASSERT_EQ(s.minY, 3);
     ASSERT_EQ(s.minX, 0);
@@ -226,6 +230,7 @@ protected:
     TestPoint(s.bottomOrigin, 6.f, 3.f, 0.f);
 
     ASSERT_FLOAT_EQ(s.weight, 1.f);
+    ASSERT_EQ(s.projectionIndex, 0);
   }
 
   void TestTravelSpace5x6XZPrecise(const TraverseSpace &s)
@@ -245,24 +250,32 @@ protected:
     TestPoint(s.bottomOrigin, 7.9f, 4.9f, -1.9f);
 
     ASSERT_FLOAT_EQ(s.weight, 1.f);
+    ASSERT_EQ(s.projectionIndex, 0);
   }
 
   void TestResult(const AFR::OutputData &d, const TraverseSpace &s, float maxDistance)
   {
     auto &volume = d.GetVolume();
+    auto &weight = d.GetWeight();
+    Acquire(volume.dataInfo);
+    Acquire(weight.dataInfo);
 
     auto &volumeSize = volume.info.GetSize();
-    auto ExpectZero = [&volumeSize](auto *v, size_t x, size_t y, size_t z) {
+    auto ExpectZero = [&volumeSize](auto *vol, auto *wt, size_t x, size_t y, size_t z) {
       size_t index = z * volumeSize.x * volumeSize.y + y * volumeSize.x + x;
-      auto c = reinterpret_cast<std::complex<float> *>(v)[index];
-      EXPECT_FLOAT_EQ(c.real(), 0.f) << " at " << x << " " << y << " " << z;
-      EXPECT_FLOAT_EQ(c.imag(), 0.f) << " at " << x << " " << y << " " << z;
+      auto v = reinterpret_cast<std::complex<float> *>(vol)[index];
+      auto w = reinterpret_cast<float *>(wt)[index];
+      ASSERT_FLOAT_EQ(v.real(), 0.f) << "volume at " << x << " " << y << " " << z;
+      ASSERT_FLOAT_EQ(v.imag(), 0.f) << "volume at " << x << " " << y << " " << z;
+      ASSERT_FLOAT_EQ(w, 0.f) << "weight at " << x << " " << y << " " << z;
     };
-    auto ExpectNotZero = [&volumeSize](auto *v, size_t x, size_t y, size_t z) {
+    auto ExpectNotZero = [&volumeSize](auto *vol, auto *wt, size_t x, size_t y, size_t z) {
       size_t index = z * volumeSize.x * volumeSize.y + y * volumeSize.x + x;
-      auto c = reinterpret_cast<std::complex<float> *>(v)[index];
-      EXPECT_NE(c.real(), 0.f) << " at " << x << " " << y << " " << z;
-      EXPECT_NE(c.imag(), 0.f) << " at " << x << " " << y << " " << z;
+      auto v = reinterpret_cast<std::complex<float> *>(vol)[index];
+      auto w = reinterpret_cast<float *>(wt)[index];
+      ASSERT_NE(v.real(), 0.f) << "volume at " << x << " " << y << " " << z;
+      ASSERT_NE(v.imag(), 0.f) << "volume at " << x << " " << y << " " << z;
+      ASSERT_NE(w, 0.f) << "volume at " << x << " " << y << " " << z;
     };
     Point3D<float> posInVolume;
     for (int z = 0; z < volumeSize.z; ++z) {
@@ -273,8 +286,10 @@ protected:
           // transform current point to center
           posInVolume.x = static_cast<float>(x - (static_cast<int>(volumeSize.x) - 1) / 2);
           // iterations that would access pixel with too high frequency should be 0
-          if (posInVolume.x * posInVolume.x + posInVolume.y * posInVolume.y + posInVolume.z * posInVolume.z > s.maxDistanceSqr) {
-            ExpectZero(volume.GetPtr(), x, y, z);
+          if (posInVolume.x * posInVolume.x + posInVolume.y * posInVolume.y
+                + posInVolume.z * posInVolume.z
+              > s.maxDistanceSqr) {
+            ExpectZero(volume.GetPtr(), weight.GetPtr(), x, y, z);
             continue;
           }
           auto imgPos = posInVolume;// because we just shifted the center
@@ -286,14 +301,16 @@ protected:
                    > maxDistance) {
             // reading outside of the image OR too far from the plane
             // -> should not affect the volume
-            ExpectZero(volume.GetPtr(), x, y, z);
+            ExpectZero(volume.GetPtr(), weight.GetPtr(), x, y, z);
           } else {
             // reading from the image -> should affect the volume
-            ExpectNotZero(volume.GetPtr(), x, y, z);
+            ExpectNotZero(volume.GetPtr(), weight.GetPtr(), x, y, z);
           }
         }
       }
     }
+    Release(weight.dataInfo);
+    Release(volume.dataInfo);
   }
 
   void TestXYPlane5x6(const Settings &settings)

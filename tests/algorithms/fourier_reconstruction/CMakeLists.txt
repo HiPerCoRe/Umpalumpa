@@ -3,13 +3,13 @@ add_executable(fourier_reconstruction_tests)
 # list of test files
 set(tests
     fr_cpu.cpp
-    # fr_cuda.cpp
+    fr_cuda.cpp
     ../../empty.cu # needs to be here so that CMAKE links CUDA libraries
 )
 
-# if(USE_STARPU)
-# list(APPEND tests fr_starpu.cpp)
-# endif()
+if(USE_STARPU)
+list(APPEND tests fr_starpu.cpp)
+endif()
 
 target_sources(fourier_reconstruction_tests PRIVATE ${tests})
 

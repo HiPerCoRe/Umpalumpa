@@ -47,6 +47,7 @@ public:
 protected:
   virtual bool IsValid(const OutputData &out, const InputData &in, const Settings &) const
   {
+    // FIXME add check that in case of the centering, data must be even (or odd, not sure which one)
     return out.IsValid() && in.IsValid();
   }
 };

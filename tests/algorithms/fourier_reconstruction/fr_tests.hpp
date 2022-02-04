@@ -1,6 +1,5 @@
 #pragma once
 
-#include <libumpalumpa/algorithms/fourier_reconstruction/fr_common_kernels.hpp>
 using namespace umpalumpa::fourier_reconstruction;
 
 // TODO add test for constants

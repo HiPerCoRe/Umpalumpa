@@ -7,5 +7,6 @@ function(set_project_options project_name)
 endif()
 
 target_compile_options(${project_name} INTERFACE $<$<COMPILE_LANGUAGE:CXX>:-std=c++17>)
+target_compile_options(${project_name} INTERFACE $<$<COMPILE_LANGUAGE:CUDA>:-std=c++17>)
 
 endfunction()

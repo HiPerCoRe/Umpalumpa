@@ -1,7 +1,6 @@
 #pragma once
 
 #include <complex>
-#include <algorithm>// std::clamp
 #include <libumpalumpa/algorithms/fourier_reconstruction/blob_order.hpp>
 #include <libumpalumpa/algorithms/fourier_reconstruction/traverse_space.hpp>
 #include <libumpalumpa/algorithms/fourier_reconstruction/fr_common_kernels.hpp>
@@ -24,34 +23,35 @@ public:
     const int xSize,
     const int ySize,
     const std::complex<float> *const __restrict__ FFT,
-    const TraverseSpace *const __restrict__ space,
+    const TraverseSpace &space,
     const Constants &constants)
   {
     float wBlob = 1.f;
 
-    float dataWeight = space->weight;
+    float dataWeight = space.weight;
 
     // transform current point to center
     data::Point3D<float> imgPos;
     imgPos.x = static_cast<float>(x - constants.cMaxVolumeIndexX / 2);
     imgPos.y = static_cast<float>(y - constants.cMaxVolumeIndexYZ / 2);
     imgPos.z = static_cast<float>(z - constants.cMaxVolumeIndexYZ / 2);
-    if (imgPos.x * imgPos.x + imgPos.y * imgPos.y + imgPos.z * imgPos.z > space->maxDistanceSqr) {
+    if (imgPos.x * imgPos.x + imgPos.y * imgPos.y + imgPos.z * imgPos.z > space.maxDistanceSqr) {
       return;// discard iterations that would access pixel with too high frequency
     }
     // rotate around center
-    multiply(space->transformInv, imgPos);
-    if (imgPos.x < 0.f)
+    multiply(space.transformInv, imgPos);
+    if (imgPos.x
+        < 0.f)// FIXME here maybe should be some rounding, in case the matrix is not very precise
       return;// reading outside of the image boundary. Z is always correct and Y is checked by the
              // condition above
 
     // transform back and round
     // just Y coordinate needs adjusting, since X now matches to picture and Z is irrelevant
-    int imgX = std::clamp(static_cast<int>(imgPos.x + 0.5f), 0, xSize - 1);
-    int imgY = std::clamp(
-      static_cast<int>(imgPos.y + 0.5f + static_cast<float>(constants.cMaxVolumeIndexYZ / 2)),
-      0,
-      ySize - 1);
+    int imgX = clamp(static_cast<int>(imgPos.x + 0.5f), 0, xSize - 1);
+    int imgY =
+      clamp(static_cast<int>(imgPos.y + 0.5f + static_cast<float>(constants.cMaxVolumeIndexYZ / 2)),
+        0,
+        ySize - 1);
 
     int index3D = z * (constants.cMaxVolumeIndexYZ + 1) * (constants.cMaxVolumeIndexX + 1)
                   + y * (constants.cMaxVolumeIndexX + 1) + x;
@@ -76,7 +76,7 @@ public:
     const int xSize,
     const int ySize,
     const std::complex<float> *const __restrict__ FFT,
-    const TraverseSpace *const __restrict__ space,
+    const TraverseSpace &space,
     const float *__restrict__ blobTableSqrt,
     const Constants &constants)
   {
@@ -85,11 +85,11 @@ public:
     imgPos.x = static_cast<float>(x - constants.cMaxVolumeIndexX / 2);
     imgPos.y = static_cast<float>(y - constants.cMaxVolumeIndexYZ / 2);
     imgPos.z = static_cast<float>(z - constants.cMaxVolumeIndexYZ / 2);
-    if ((imgPos.x * imgPos.x + imgPos.y * imgPos.y + imgPos.z * imgPos.z) > space->maxDistanceSqr) {
+    if ((imgPos.x * imgPos.x + imgPos.y * imgPos.y + imgPos.z * imgPos.z) > space.maxDistanceSqr) {
       return;// discard iterations that would access pixel with too high frequency
     }
     // rotate around center
-    multiply(space->transformInv, imgPos);
+    multiply(space.transformInv, imgPos);
     if (imgPos.x < -constants.cBlobRadius)
       return;// reading outside of the image boundary. Z is always correct and Y is checked by the
              // condition above
@@ -115,7 +115,7 @@ public:
                   + y * (constants.cMaxVolumeIndexX + 1) + x;
     float w = 0.f;
     std::complex<float> vol = { 0.f, 0.f };
-    float dataWeight = space->weight;
+    float dataWeight = space.weight;
 
     // check which pixel in the vicinity should contribute
     for (int i = minY; i <= maxY; i++) {
@@ -157,27 +157,27 @@ public:
     const int xSize,
     const int ySize,
     const std::complex<T> *__restrict__ FFT,
-    const TraverseSpace *const __restrict__ tSpace,
+    const TraverseSpace &tSpace,
     const T *__restrict__ blobTableSqrt,
     const Constants &constants)
   {
     using namespace utils;
 
-    switch (tSpace->dir) {
+    switch (tSpace.dir) {
     case TraverseSpace::Direction::XY: {
-      for (int idy = tSpace->minY; idy <= tSpace->maxY; idy++) {
+      for (int idy = tSpace.minY; idy <= tSpace.maxY; idy++) {
         const T idyT = static_cast<T>(idy);
-        for (int idx = tSpace->minX; idx <= tSpace->maxX; idx++) {
+        for (int idx = tSpace.minX; idx <= tSpace.maxX; idx++) {
           const T idxT = static_cast<T>(idx);
           if (useFast) {
-            float hitZ = getZ(idxT, idyT, tSpace->unitNormal, tSpace->bottomOrigin);
+            float hitZ = getZ(idxT, idyT, tSpace.unitNormal, tSpace.bottomOrigin);
             int z = static_cast<int>(hitZ + 0.5f);// rounding
             ProcessVoxel(volume, weights, idx, idy, z, xSize, ySize, FFT, tSpace, constants);
           } else {
-            float z1 = getZ(idxT, idyT, tSpace->unitNormal, tSpace->bottomOrigin);// lower plane
-            float z2 = getZ(idxT, idyT, tSpace->unitNormal, tSpace->topOrigin);// upper plane
-            z1 = std::clamp(z1, 0.f, static_cast<float>(constants.cMaxVolumeIndexYZ));
-            z2 = std::clamp(z2, 0.f, static_cast<float>(constants.cMaxVolumeIndexYZ));
+            float z1 = getZ(idxT, idyT, tSpace.unitNormal, tSpace.bottomOrigin);// lower plane
+            float z2 = getZ(idxT, idyT, tSpace.unitNormal, tSpace.topOrigin);// upper plane
+            z1 = clamp(z1, 0.f, static_cast<float>(constants.cMaxVolumeIndexYZ));
+            z2 = clamp(z2, 0.f, static_cast<float>(constants.cMaxVolumeIndexYZ));
             int lower = static_cast<int>(floorf(fminf(z1, z2)));
             int upper = static_cast<int>(ceilf(fmaxf(z1, z2)));
             for (int z = lower; z <= upper; z++) {
@@ -189,19 +189,19 @@ public:
       }
     } break;
     case TraverseSpace::Direction::XZ: {
-      for (int idy = tSpace->minZ; idy <= tSpace->maxZ; idy++) {// map z -> y
+      for (int idy = tSpace.minZ; idy <= tSpace.maxZ; idy++) {// map z -> y
         const T idyT = static_cast<T>(idy);
-        for (int idx = tSpace->minX; idx <= tSpace->maxX; idx++) {
+        for (int idx = tSpace.minX; idx <= tSpace.maxX; idx++) {
           const T idxT = static_cast<T>(idx);
           if (useFast) {
-            float hitY = getY<T>(idxT, idyT, tSpace->unitNormal, tSpace->bottomOrigin);
+            float hitY = getY<T>(idxT, idyT, tSpace.unitNormal, tSpace.bottomOrigin);
             int y = static_cast<int>(hitY + 0.5f);// rounding
             ProcessVoxel(volume, weights, idx, y, idy, xSize, ySize, FFT, tSpace, constants);
           } else {
-            float y1 = getY(idxT, idyT, tSpace->unitNormal, tSpace->bottomOrigin);// lower plane
-            float y2 = getY(idxT, idyT, tSpace->unitNormal, tSpace->topOrigin);// upper plane
-            y1 = std::clamp(y1, 0.f, static_cast<float>(constants.cMaxVolumeIndexYZ));
-            y2 = std::clamp(y2, 0.f, static_cast<float>(constants.cMaxVolumeIndexYZ));
+            float y1 = getY(idxT, idyT, tSpace.unitNormal, tSpace.bottomOrigin);// lower plane
+            float y2 = getY(idxT, idyT, tSpace.unitNormal, tSpace.topOrigin);// upper plane
+            y1 = clamp(y1, 0.f, static_cast<float>(constants.cMaxVolumeIndexYZ));
+            y2 = clamp(y2, 0.f, static_cast<float>(constants.cMaxVolumeIndexYZ));
             int lower = static_cast<int>(floorf(fminf(y1, y2)));
             int upper = static_cast<int>(ceilf(fmaxf(y1, y2)));
             for (int y = lower; y <= upper; y++) {
@@ -213,19 +213,19 @@ public:
       }
     } break;
     case TraverseSpace::Direction::YZ: {
-      for (int idy = tSpace->minZ; idy <= tSpace->maxZ; idy++) {// map z -> y
+      for (int idy = tSpace.minZ; idy <= tSpace.maxZ; idy++) {// map z -> y
         const T idyT = static_cast<T>(idy);
-        for (int idx = tSpace->minY; idx <= tSpace->maxY; idx++) {// map y > x
+        for (int idx = tSpace.minY; idx <= tSpace.maxY; idx++) {// map y > x
           const T idxT = static_cast<T>(idx);
           if (useFast) {
-            float hitX = getX<T>(idxT, idyT, tSpace->unitNormal, tSpace->bottomOrigin);
+            float hitX = getX<T>(idxT, idyT, tSpace.unitNormal, tSpace.bottomOrigin);
             int x = static_cast<int>(hitX + 0.5f);// rounding
             ProcessVoxel(volume, weights, x, idx, idy, xSize, ySize, FFT, tSpace, constants);
           } else {
-            float x1 = getX(idxT, idyT, tSpace->unitNormal, tSpace->bottomOrigin);// lower plane
-            float x2 = getX(idxT, idyT, tSpace->unitNormal, tSpace->topOrigin);// upper plane
-            x1 = std::clamp(x1, 0.f, static_cast<float>(constants.cMaxVolumeIndexX));
-            x2 = std::clamp(x2, 0.f, static_cast<float>(constants.cMaxVolumeIndexX));
+            float x1 = getX(idxT, idyT, tSpace.unitNormal, tSpace.bottomOrigin);// lower plane
+            float x2 = getX(idxT, idyT, tSpace.unitNormal, tSpace.topOrigin);// upper plane
+            x1 = clamp(x1, 0.f, static_cast<float>(constants.cMaxVolumeIndexX));
+            x2 = clamp(x2, 0.f, static_cast<float>(constants.cMaxVolumeIndexX));
             int lower = static_cast<int>(floorf(fminf(x1, x2)));
             int upper = static_cast<int>(ceilf(fmaxf(x1, x2)));
             for (int x = lower; x <= upper; x++) {
@@ -245,24 +245,31 @@ public:
     T *__restrict__ weights,
     const int xSize,
     const int ySize,
-    const std::complex<T> *__restrict__ FFT,
-    const TraverseSpace *const __restrict__ tSpace,
+    const std::complex<T> *__restrict__ FFTs,
+    const TraverseSpace *const __restrict__ spaces,
     size_t noOfSpaces,
     const T *__restrict__ blobTableSqrt,
     const Constants &constants)
   {
     for (size_t i = 0; i < noOfSpaces; ++i) {
+      const auto &tSpace = spaces[i];
+      const auto *FFT = FFTs + xSize * ySize * tSpace.projectionIndex;
       switch (order) {
       case BlobOrder::k0:
-        return Execute<0>(volume, weights, xSize, ySize, FFT, tSpace, blobTableSqrt, constants);
+        Execute<0>(volume, weights, xSize, ySize, FFT, tSpace, blobTableSqrt, constants);
+        continue;
       case BlobOrder::k1:
-        return Execute<1>(volume, weights, xSize, ySize, FFT, tSpace, blobTableSqrt, constants);
+        Execute<1>(volume, weights, xSize, ySize, FFT, tSpace, blobTableSqrt, constants);
+        continue;
       case BlobOrder::k2:
-        return Execute<2>(volume, weights, xSize, ySize, FFT, tSpace, blobTableSqrt, constants);
+        Execute<2>(volume, weights, xSize, ySize, FFT, tSpace, blobTableSqrt, constants);
+        continue;
       case BlobOrder::k3:
-        return Execute<3>(volume, weights, xSize, ySize, FFT, tSpace, blobTableSqrt, constants);
+        Execute<3>(volume, weights, xSize, ySize, FFT, tSpace, blobTableSqrt, constants);
+        continue;
       case BlobOrder::k4:
-        return Execute<4>(volume, weights, xSize, ySize, FFT, tSpace, blobTableSqrt, constants);
+        Execute<4>(volume, weights, xSize, ySize, FFT, tSpace, blobTableSqrt, constants);
+        continue;
       default:
         return;// not supported
       }
