@@ -91,12 +91,12 @@ PhysicalDescriptor
   }
   auto *handle = new starpu_data_handle_t();
   auto pd = PhysicalDescriptor(ptr, bytes, type, ManagedBy::StarPU, handle);
+  pd.SetPinned(pinned);
   StarPUUtils::Register(pd, copyInRAM ? STARPU_MAIN_RAM : -1);
   return pd;
 }
 
-template<typename T>
-void FlexAlignStarPU<T>::RemovePD(const PhysicalDescriptor &pd, bool pinned) const
+template<typename T> void FlexAlignStarPU<T>::RemovePD(const PhysicalDescriptor &pd)
 {
   StarPUUtils::Unregister(pd, StarPUUtils::UnregisterType::kSubmitNoCopy);
   // don't release the handle, some task might still use it
@@ -104,7 +104,7 @@ void FlexAlignStarPU<T>::RemovePD(const PhysicalDescriptor &pd, bool pinned) con
   // or not allocated at this node at all
   delete StarPUUtils::GetHandle(pd);
   if (nullptr != pd.GetPtr()) {
-    auto flags = STARPU_MALLOC_COUNT | (pinned ? STARPU_MALLOC_PINNED : 0);
+    auto flags = STARPU_MALLOC_COUNT | (pd.IsPinned() ? STARPU_MALLOC_PINNED : 0);
     starpu_free_flags(pd.GetPtr(), pd.GetBytes(), flags);
   }
 }

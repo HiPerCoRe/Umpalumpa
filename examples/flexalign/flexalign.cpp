@@ -2,62 +2,75 @@
 #include <cassert>
 #include <libumpalumpa/system_includes/spdlog.hpp>
 
-template<typename T> void FlexAlign<T>::Execute(const umpalumpa::data::Size &sizeAll, const size_t batch, const size_t num_of_movies, const size_t downscale_factor)
+template<typename T>
+void FlexAlign<T>::Execute(const umpalumpa::data::Size &movieSize,
+  const size_t batch,
+  const size_t num_of_movies,
+  const umpalumpa::data::Size &croppedSize)
 {
-  assert(sizeAll.x > 5);
-  assert(sizeAll.y > 5);
-  assert(sizeAll.z == 1);
+  assert(movieSize.x > 5);// because of the cross size
+  assert(movieSize.y > 5);// because of the cross size
+  assert(movieSize.z == 1);
 
-  //const size_t batch = 5;
-  assert(0 == sizeAll.n % batch);
+  // const size_t batch = 5;
+  assert(0 == movieSize.n % batch);
 
-  auto sizeBatch = sizeAll.CopyFor(batch);
-  //auto sizeBatchCrop = Size(sizeBatch.x / 2, sizeBatch.y / 2, sizeBatch.z, sizeBatch.n);
-  auto sizeBatchCrop = Size(sizeBatch.x / downscale_factor, sizeBatch.y / downscale_factor, sizeBatch.z, sizeBatch.n);
-  // auto sizeBatchCrop = Size(928, 928, 1, 1);
+  auto sizeBatch = movieSize.CopyFor(batch);
+  auto sizeBatchCrop = Size(croppedSize.x, croppedSize.y, sizeBatch.z, sizeBatch.n);
+  
+  spdlog::info(
+    "\nRunning FlexAlign.\nImage size: {}*{} ({})\nBatch: {}\nNumber of movies: "
+    "{}\nCorrelation size: {}*{} ({})",
+    movieSize.x,
+    movieSize.y,
+    movieSize.n,
+    batch,
+    num_of_movies,
+    sizeBatchCrop.x,
+    sizeBatchCrop.y,
+    sizeBatchCrop.n);
+  
+  
   auto sizeCross = Size(3, 3, 1, 1);
   auto scaleX = static_cast<float>(sizeBatch.x) / static_cast<float>(sizeBatchCrop.x);
   auto scaleY = static_cast<float>(sizeBatch.y) / static_cast<float>(sizeBatchCrop.y);
 
+  auto filter = CreatePayloadFilter(sizeBatchCrop);
+  auto imgs = std::vector<Payload<LogicalDescriptor>>();
+  imgs.reserve(movieSize.n);
+  auto ffts = std::vector<Payload<FourierDescriptor>>();
+  auto shifts = std::vector<Payload<LogicalDescriptor>>();
+  // Preallocate memory. This can be quite expensive, because e.g. cudaHostAlloc is
+  // synchronizing, i.e. it can slow down the execution later on
+  for (size_t j = 0; j < movieSize.n; j += batch) {
+    auto name = std::to_string(j) + "-" + std::to_string(j + batch - 1);
+    imgs.emplace_back(CreatePayloadImage(sizeBatch, name));
+  }
   for (size_t k = 0; k < num_of_movies; k++) {
-    auto filter = CreatePayloadFilter(sizeBatchCrop);
+    spdlog::info("Processing movie {}", k);
+    ffts.reserve(movieSize.n);
+    shifts.reserve(NoOfBatches(movieSize, batch));
 
-    auto imgs = std::vector<Payload<LogicalDescriptor>>();
-    imgs.reserve(sizeAll.n);
-
-    auto ffts = std::vector<Payload<FourierDescriptor>>();
-    ffts.reserve(sizeAll.n);
-
-    auto shifts = std::vector<Payload<LogicalDescriptor>>();
-    shifts.reserve(NoOfBatches(sizeAll, batch));
-
-    // Preallocate memory. This can be quite expensive, because e.g. cudaHostAlloc is
-    // synchronizing, i.e. it can slow down the execution later on
-    for (size_t j = 0; j < sizeAll.n; j += batch) {
-      auto name = std::to_string(j) + "-" + std::to_string(j + batch - 1);
-      auto &img = imgs.emplace_back(CreatePayloadImage(sizeBatch, name));
-    }
-
-    for (size_t j = 0; j < sizeAll.n; j += batch) {
+    for (size_t j = 0; j < movieSize.n; j += batch) {
       auto name = std::to_string(j) + "-" + std::to_string(j + batch - 1);
       auto &img = imgs.at(j / batch);
       GenerateClockArms(j, img, sizeCross, j, j);
       auto fft = ConvertToFFT(img, name);
       ffts.emplace_back(Crop(fft, filter, name));
-      RemovePD(fft.dataInfo, false);
+      RemovePD(fft.dataInfo);
       for (size_t i = 0; i <= j; i += batch) {
         auto name = std::to_string(i) + "-" + std::to_string(i + batch - 1) + "<->"
                     + std::to_string(j) + "-" + std::to_string(j + batch - 1);
         auto correlation = Correlate(ffts.at(i / batch), ffts.at(j / batch), name);
         auto ifft = ConvertFromFFT(correlation, name);
-        RemovePD(correlation.dataInfo, false);
+        RemovePD(correlation.dataInfo);
         shifts.emplace_back(FindMax(ifft, name));
-        RemovePD(ifft.dataInfo, false);
+        RemovePD(ifft.dataInfo);
       }
     }
     // wait for results and process them
-    assert(shifts.size() == NoOfBatches(sizeAll, batch));
-    for (size_t j = 0, counter = 0; j < sizeAll.n; j += batch) {
+    assert(shifts.size() == NoOfBatches(movieSize, batch));
+    for (size_t j = 0, counter = 0; j < movieSize.n; j += batch) {
       for (size_t i = 0; i <= j; i += batch, ++counter) {
         auto shift = ExtractShift(shifts.at(counter));
         // reported shift is position in the 2D image, where center of that image
@@ -70,11 +83,12 @@ template<typename T> void FlexAlign<T>::Execute(const umpalumpa::data::Size &siz
       }
     }
     // Release allocated data. Payloads themselves don't need any extra handling
-    for (const auto &p : ffts) { RemovePD(p.dataInfo, false); }
-    for (const auto &p : imgs) { RemovePD(p.dataInfo, true); }
-
-    RemovePD(filter.dataInfo, true);
-  }  
+    for (const auto &p : ffts) { RemovePD(p.dataInfo); }
+    ffts.clear();
+    shifts.clear();
+  }
+  for (const auto &p : imgs) { RemovePD(p.dataInfo); }
+  RemovePD(filter.dataInfo);
 }
 
 template<typename T> size_t FlexAlign<T>::GetAvailableCores() const
@@ -94,7 +108,7 @@ std::vector<typename FlexAlign<T>::Shift> FlexAlign<T>::ExtractShift(
     res.push_back({ x, y });
   }
   Release(shift.dataInfo);
-  RemovePD(shift.dataInfo, false);
+  RemovePD(shift.dataInfo);
   return res;
 }
 
@@ -113,6 +127,7 @@ void FlexAlign<T>::LogResult(size_t i, size_t j, size_t batch, const std::vector
       const auto level = [maxDelta]() {
         constexpr auto delta1 = 0.1f;
         constexpr auto delta2 = 0.5f;
+        if (true) return spdlog::level::debug;
         if (maxDelta < delta1) return spdlog::level::info;
         if (maxDelta < delta2) return spdlog::level::warn;
         return spdlog::level::err;
@@ -251,8 +266,12 @@ Payload<LogicalDescriptor> FlexAlign<T>::FindMax(Payload<FourierDescriptor> &out
       spdlog::error("Initialization of the Extrema Finder algorithm failed");
     }
   }
+  // FIXME
+  // Note: The search might lead to Conditional jump or move depends on uninitialised value(s)
+  // the reason is that we probably don't have valid data for the last iteration if we e.g.
+  // have only 3 images in the last batch of size 4
   if (!alg.Execute(out, in)) { spdlog::error("Execution of the Extrema Finder algorithm failed"); }
-  RemovePD(empty.dataInfo, false);
+  RemovePD(empty.dataInfo);
   return pOut;
 };
 
@@ -321,10 +340,11 @@ void FlexAlign<T>::GenerateClockArms(size_t index,
   assert(p.IsValid() && !p.IsEmpty());
 
   Acquire(p.dataInfo);
+  memset(p.GetPtr(), 0, p.GetRequiredBytes());
   for (size_t n = 0; n < p.info.GetSize().n; ++n) {
     auto posX = startX + n;
     auto posY = startY + n;
-    spdlog::info("Generated shift of img {} is [{}, {}]", index + n, posX, posY);
+    spdlog::debug("Generated shift of img {} is [{}, {}]", index + n, posX, posY);
 
     assert(posX + armSize.x < p.info.GetSize().x);
     assert(posY + armSize.y < p.info.GetSize().y);

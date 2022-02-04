@@ -9,12 +9,12 @@ template<typename T> class FlexAlignStarPU : public FlexAlign<T>
 {
 public:
   FlexAlignStarPU();
-  ~FlexAlignStarPU();
+  virtual ~FlexAlignStarPU();
 
 protected:
   PhysicalDescriptor CreatePD(size_t bytes, DataType type, bool copyInRAM, bool pinned) override;
 
-  void RemovePD(const PhysicalDescriptor &pd, bool pinned) const override;
+  void RemovePD(const PhysicalDescriptor &pd) override;
 
   AFFT &GetForwardFFTAlg() const override { return *forwardFFTAlg; }
 
