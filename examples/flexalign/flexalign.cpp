@@ -83,9 +83,10 @@ void FlexAlign<T>::Execute(const umpalumpa::data::Size &movieSize,
       }
     }
     // Release allocated data. Payloads themselves don't need any extra handling
+    for (const auto &s : shifts) { RemovePD(s.dataInfo); }
+    shifts.clear();
     for (const auto &p : ffts) { RemovePD(p.dataInfo); }
     ffts.clear();
-    shifts.clear();
   }
   for (const auto &p : imgs) { RemovePD(p.dataInfo); }
   RemovePD(filter.dataInfo);
@@ -108,7 +109,6 @@ std::vector<typename FlexAlign<T>::Shift> FlexAlign<T>::ExtractShift(
     res.push_back({ x, y });
   }
   Release(shift.dataInfo);
-  RemovePD(shift.dataInfo);
   return res;
 }
 

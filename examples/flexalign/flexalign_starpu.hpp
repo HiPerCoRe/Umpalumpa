@@ -1,6 +1,10 @@
 #pragma once
 
 #include "flexalign.hpp"
+#include <queue>
+#include <mutex>
+#include <condition_variable>
+#include <thread>
 
 /**
  * This example implements StarPU implementation of FlexAlign
@@ -31,6 +35,17 @@ protected:
   void Release(const PhysicalDescriptor &p) const override;
 
 private:
+  struct PDData
+  {
+    PDData(const PhysicalDescriptor &pd)
+      : handle(pd.GetHandle()), ptr(pd.GetPtr()), bytes(pd.GetBytes()), isPinned(pd.IsPinned())
+    {}
+    void *handle;
+    void *ptr;
+    const size_t bytes;
+    const bool isPinned;
+  };
+
   static void SetAvailableBytesRAM();
   static void SetAvailableBytesCUDA();
 
@@ -39,4 +54,11 @@ private:
   std::unique_ptr<AFP> cropAlg;
   std::unique_ptr<ACorrelation> corrAlg;
   std::unique_ptr<AExtremaFinder> extremaFinderAlg;
+
+  void RemoveFromQueue();
+  std::mutex mutex;
+  std::queue<PDData> toRemove;
+  std::condition_variable workAvailable;
+  std::unique_ptr<std::thread> thr;
+  bool keepWorking = true;
 };
