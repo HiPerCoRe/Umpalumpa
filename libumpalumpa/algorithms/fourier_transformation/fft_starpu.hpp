@@ -9,7 +9,7 @@ namespace umpalumpa::fourier_transformation {
 class FFTStarPU final : public AFFT
 {
 public:
-  ~FFTStarPU();
+  virtual ~FFTStarPU();
 
   void Cleanup() override;
 

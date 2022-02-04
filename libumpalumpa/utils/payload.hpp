@@ -47,23 +47,15 @@ void PrintData(std::ostream &out,
   const umpalumpa::data::Size &dims,
   const umpalumpa::data::Size &offset)
 {
-  auto total = p.info.GetSize();
-  switch (p.dataInfo.GetType()) {
-  case DataType::kFloat:
-    PrivatePrint<T, float>(out, p, total, dims, offset);
-    break;
-  case DataType::kDouble:
-    PrivatePrint<T, double>(out, p, total, dims, offset);
-    break;
-  case DataType::kComplexFloat:
-    PrivatePrint<T, std::complex<float>>(out, p, total, dims, offset);
-    break;
-  case DataType::kComplexDouble:
-    PrivatePrint<T, std::complex<double>>(out, p, total, dims, offset);
-    break;
-  default:
-    throw std::logic_error("Trying to print unprintable type.");
-  }
+  const auto &total = p.info.GetSize();
+  const auto &type = p.dataInfo.GetType();
+  if (type.template Is<float>()) return PrivatePrint<T, float>(out, p, total, dims, offset);
+  if (type.template Is<double>()) return PrivatePrint<T, double>(out, p, total, dims, offset);
+  if (type.template Is<std::complex<float>>())
+    return PrivatePrint<T, std::complex<float>>(out, p, total, dims, offset);
+  if (type.template Is<std::complex<double>>())
+    return PrivatePrint<T, std::complex<double>>(out, p, total, dims, offset);
+  throw std::logic_error("Trying to print unprintable type.");
 }
 
 template<typename T> void PrintData(std::ostream &out, const umpalumpa::data::Payload<T> &p)

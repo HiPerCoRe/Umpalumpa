@@ -31,7 +31,6 @@ namespace {// to avoid poluting
     using umpalumpa::utils::StarPUUtils;
     auto *args = reinterpret_cast<CodeletArgs *>(func_arg);
 
-    // FIXME if handle points to the void interface, we access illegal memory
     auto pVals = StarPUUtils::Assemble(args->vals, buffers[0]);
     auto pLocs = StarPUUtils::Assemble(args->locs, buffers[1]);
     auto out = AExtremaFinder::OutputData(pVals, pLocs);

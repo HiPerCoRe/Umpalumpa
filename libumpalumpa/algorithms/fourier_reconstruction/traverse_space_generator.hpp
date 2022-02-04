@@ -91,7 +91,7 @@ static void computeAABB(data::Point3D<float> (&AABB)[2], data::Point3D<float> (&
  * transformInv - inverse transformation
  * space - which will be filled
  */
-static void computeTraverseSpace(uint32_t imgSizeX,
+static void ComputeTraverseSpace(uint32_t imgSizeX,
   uint32_t imgSizeY,
   const float transform[3][3],
   TraverseSpace &space,
