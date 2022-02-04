@@ -142,8 +142,8 @@ Payload<FourierDescriptor> FlexAlign<T>::ConvertToFFT(const Payload<LogicalDescr
     auto ld = FourierDescriptor(inFFT.info.GetSize(),
       inFFT.info.GetPadding(),
       umpalumpa::data::FourierDescriptor::FourierSpaceDescriptor());
-    auto type = GetComplexDataType();
-    auto bytes = ld.Elems() * Sizeof(type);
+    auto type = DataType::Get<std::complex<T>>();
+    auto bytes = ld.Elems() * type.GetSize();
     return Payload(ld, CreatePD(bytes, type, false, false), "FFT (out) " + name);
   }();
   using namespace umpalumpa::fourier_transformation;
@@ -174,8 +174,8 @@ Payload<FourierDescriptor> FlexAlign<T>::Crop(const Payload<FourierDescriptor> &
     auto ld = FourierDescriptor(filter.info.GetSize().CopyFor(fft.info.GetSize().n),
       umpalumpa::data::PaddingDescriptor(),
       umpalumpa::data::FourierDescriptor::FourierSpaceDescriptor());
-    auto type = GetComplexDataType();
-    auto bytes = ld.Elems() * Sizeof(type);
+    auto type = DataType::Get<std::complex<T>>();
+    auto bytes = ld.Elems() * type.GetSize();
     return Payload(ld, CreatePD(bytes, type, false, false), "Crop (out) " + name);
   }();
   using namespace umpalumpa::fourier_processing;
@@ -201,8 +201,8 @@ Payload<FourierDescriptor> FlexAlign<T>::ConvertFromFFT(Payload<FourierDescripto
 {
   auto pOut = [&correlation, &name, this]() {
     auto ld = FourierDescriptor(correlation.info.GetSpatialSize(), correlation.info.GetPadding());
-    auto type = GetDataType();
-    auto bytes = ld.Elems() * Sizeof(type);
+    auto type = DataType::Get<T>();
+    auto bytes = ld.Elems() * type.GetSize();
     return Payload(ld, CreatePD(bytes, type, false, false), "IFFT (out) " + name);
   }();
   using namespace umpalumpa::fourier_transformation;
@@ -231,12 +231,12 @@ Payload<LogicalDescriptor> FlexAlign<T>::FindMax(Payload<FourierDescriptor> &out
       "Location of Max (in) " + name);
   }();
   auto empty = Payload(
-    LogicalDescriptor(Size(0, 0, 0, 0)), CreatePD(0, DataType::kVoid, false, false), "Empty");
+    LogicalDescriptor(Size(0, 0, 0, 0)), CreatePD(0, DataType::Get<void>(), false, false), "Empty");
   auto pOut = [&outCorrelation, &name, this]() {
-    auto type = DataType::kFloat;
+    auto type = DataType::Get<float>();
     auto size = Size(2, 1, 1, outCorrelation.info.GetSize().n);
     auto ld = LogicalDescriptor(size);
-    auto bytes = ld.Elems() * Sizeof(type);
+    auto bytes = ld.Elems() * type.GetSize();
     return Payload(ld, CreatePD(bytes, type, true, false), "Location of Max " + name);
   }();
   using namespace umpalumpa::extrema_finder;
@@ -270,7 +270,7 @@ Payload<FourierDescriptor> FlexAlign<T>::Correlate(Payload<FourierDescriptor> &f
     auto sizeOut = first.info.GetSpatialSize().CopyFor(nOut);
     auto fd = first.info.GetFourierSpaceDescriptor();
     auto ld = FourierDescriptor(sizeOut, umpalumpa::data::PaddingDescriptor(), fd.value());
-    auto bytes = ld.Elems() * Sizeof(first.dataInfo.GetType());
+    auto bytes = ld.Elems() * first.dataInfo.GetType().GetSize();
     auto pd = CreatePD(bytes, first.dataInfo.GetType(), false, false);
     return Payload(ld, std::move(pd), "Correlation of " + name);
   }();
@@ -292,16 +292,16 @@ Payload<LogicalDescriptor> FlexAlign<T>::CreatePayloadImage(const Size &size,
   const std::string &name)
 {
   auto ld = LogicalDescriptor(size);
-  auto type = GetDataType();
-  auto bytes = ld.Elems() * Sizeof(type);
+  auto type = DataType::Get<T>();
+  auto bytes = ld.Elems() * type.GetSize();
   return Payload(ld, CreatePD(bytes, type, true, true), "Image(s) " + name);
 };
 
 template<typename T> Payload<LogicalDescriptor> FlexAlign<T>::CreatePayloadFilter(const Size &size)
 {
   auto ld = LogicalDescriptor(size.CopyFor(1));
-  auto type = GetDataType();
-  auto bytes = ld.Elems() * Sizeof(type);
+  auto type = DataType::Get<T>();
+  auto bytes = ld.Elems() * type.GetSize();
   auto payload = Payload(ld, CreatePD(bytes, type, true, true), "Filter");
   // fill the filter
   Acquire(payload.dataInfo);
@@ -344,26 +344,6 @@ void FlexAlign<T>::GenerateClockArms(size_t index,
     }
   }
   Release(p.dataInfo);
-}
-
-template<typename T> constexpr DataType FlexAlign<T>::GetDataType() const
-{
-  if (std::is_same<T, float>::value) {
-    return DataType::kFloat;
-  } else if (std::is_same<T, double>::value) {
-    return DataType::kDouble;
-  }
-  return DataType::kVoid;// unsupported
-}
-
-template<typename T> constexpr DataType FlexAlign<T>::GetComplexDataType() const
-{
-  if (std::is_same<T, float>::value) {
-    return DataType::kComplexFloat;
-  } else if (std::is_same<T, double>::value) {
-    return DataType::kComplexDouble;
-  }
-  return DataType::kVoid;// unsupported
 }
 
 template class FlexAlign<float>;

@@ -18,8 +18,15 @@ set(umpalumpa_sources
     algorithms/fourier_transformation/fft_cpu.cpp
     algorithms/fourier_processing/fp_cpu.cpp
     algorithms/fourier_processing/fp_cuda.cpp
+    algorithms/fourier_reconstruction/afr.cpp
+    algorithms/fourier_reconstruction/fr_cuda.cpp
+    algorithms/fourier_reconstruction/fr_cpu.cpp
     algorithms/correlation/correlation_cuda.cpp
     algorithms/correlation/correlation_cpu.cpp
+    algorithms/reduction/cpu.cpp
+    algorithms/reduction/cuda.cpp
+    algorithms/initialization/cpu.cpp
+    algorithms/initialization/cuda.cpp
     tuning/ktt_provider.cpp
     tuning/algorithm_manager.cpp
     tuning/ktt_base.cpp)
@@ -31,7 +38,11 @@ if(USE_STARPU)
     algorithms/extrema_finder/single_extrema_finder_starpu.cpp
     algorithms/correlation/correlation_starpu.cpp
     algorithms/fourier_processing/fp_starpu.cpp
+    algorithms/fourier_reconstruction/fr_starpu.cpp
+    algorithms/fourier_reconstruction/fr_starpu_kernels.cu
     algorithms/fourier_transformation/fft_starpu.cpp
+    algorithms/reduction/starpu.cpp
+    algorithms/initialization/starpu.cpp
     utils/starpu.cpp)
 endif()
 

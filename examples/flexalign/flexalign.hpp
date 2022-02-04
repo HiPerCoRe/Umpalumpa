@@ -61,10 +61,6 @@ protected:
    **/
   virtual void Release(const PhysicalDescriptor &p) const = 0;
 
-  constexpr DataType GetDataType() const;
-
-  constexpr DataType GetComplexDataType() const;
-
   virtual AFFT &GetForwardFFTAlg() const = 0;
 
   virtual AFFT &GetInverseFFTAlg() const = 0;

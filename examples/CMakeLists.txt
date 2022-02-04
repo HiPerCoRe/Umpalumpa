@@ -8,3 +8,4 @@ if(USE_STARPU)
 endif()
 
 add_subdirectory(flexalign)
+add_subdirectory(fourier_reconstruction)

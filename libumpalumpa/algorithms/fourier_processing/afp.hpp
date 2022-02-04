@@ -1,5 +1,6 @@
 #pragma once
 
+#include <complex>
 #include <libumpalumpa/data/payload_wrapper.hpp>
 #include <libumpalumpa/data/payload.hpp>
 #include <libumpalumpa/algorithms/fourier_processing/settings.hpp>
@@ -37,15 +38,16 @@ class AFP
 public:
   static bool IsFloat(const OutputData &out, const InputData &in)
   {
-    return (in.GetData().dataInfo.GetType() == data::DataType::kComplexFloat)
-           && (in.GetFilter().dataInfo.GetType() == data::DataType::kFloat
-               || in.GetFilter().dataInfo.GetType() == data::DataType::kVoid)// no filter
-           && (out.GetData().dataInfo.GetType() == data::DataType::kComplexFloat);
+    return (in.GetData().dataInfo.GetType().Is<std::complex<float>>())
+           && (in.GetFilter().dataInfo.GetType().Is<float>()
+               || in.GetFilter().dataInfo.GetType().Is<void>())// no filter
+           && (out.GetData().dataInfo.GetType().Is<std::complex<float>>());
   }
 
 protected:
   virtual bool IsValid(const OutputData &out, const InputData &in, const Settings &) const
   {
+    // FIXME add check that in case of the centering, data must be even (or odd, not sure which one)
     return out.IsValid() && in.IsValid();
   }
 };
