@@ -47,7 +47,7 @@ protected:
     if (s.GetResult() == Result::kLocation) {
       const auto &p = out.GetLocations();
       // is the type correct?
-      result = result && (data::DataType::kFloat == p.dataInfo.GetType());
+      result = result && (p.dataInfo.GetType().Is<float>());
       // we need to have enough space for results
       result = result && (in.GetData().info.GetSize().n == p.info.GetSize().n);
       result = result && (data::Dimensionality::k1Dim == p.info.GetSize().GetDim());

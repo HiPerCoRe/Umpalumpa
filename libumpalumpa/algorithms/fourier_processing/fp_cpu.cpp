@@ -1,4 +1,3 @@
-#include <complex>
 #include <functional>
 #include <libumpalumpa/algorithms/fourier_processing/fp_cpu.hpp>
 #include <libumpalumpa/algorithms/fourier_processing/fp_cpu_kernels.hpp>

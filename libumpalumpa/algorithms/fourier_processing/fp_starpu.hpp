@@ -9,7 +9,7 @@ namespace umpalumpa::fourier_processing {
 class FPStarPU final : public AFP
 {
 public:
-  ~FPStarPU();
+  virtual ~FPStarPU();
 
   void Cleanup() override;
 

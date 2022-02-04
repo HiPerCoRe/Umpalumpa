@@ -1,5 +1,6 @@
 #pragma once
 
+#include <complex>
 #include <libumpalumpa/data/payload_wrapper.hpp>
 #include <libumpalumpa/data/payload.hpp>
 #include <libumpalumpa/algorithms/basic_algorithm.hpp>
@@ -32,9 +33,9 @@ class ACorrelation : public BasicAlgorithm<OutputDataWrapper<>, InputDataWrapper
 public:
   static bool IsFloat(const OutputData &out, const InputData &in)
   {
-    return (in.GetData1().dataInfo.GetType() == data::DataType::kComplexFloat)
-           && (in.GetData2().dataInfo.GetType() == data::DataType::kComplexFloat)
-           && (out.GetCorrelations().dataInfo.GetType() == data::DataType::kComplexFloat);
+    return (in.GetData1().dataInfo.GetType().Is<std::complex<float>>())
+           && (in.GetData2().dataInfo.GetType().Is<std::complex<float>>())
+           && (out.GetCorrelations().dataInfo.GetType().Is<std::complex<float>>());
   }
 
 protected:

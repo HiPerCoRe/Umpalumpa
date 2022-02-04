@@ -62,12 +62,14 @@ public:
     return info.IsEquivalentTo(ref.info) && (dataInfo.GetType() == ref.dataInfo.GetType());
   }
 
+  bool operator==(const Payload<T> &o) const { return info == o.info && dataInfo == o.dataInfo; }
+
   /**
    * Returns minimal number of bytes necessary to fit this data.
    * Returned amount might be smaller than bytes provided by Physical descriptor,
    * as data represented by this Payload might not span the entire memory block.
    **/
-  size_t GetRequiredBytes() const { return info.Elems() * Sizeof(dataInfo.GetType()); }
+  size_t GetRequiredBytes() const { return info.Elems() * dataInfo.GetType().GetSize(); }
 
   inline void *GetPtr() const { return dataInfo.GetPtr(); }
 
@@ -83,13 +85,6 @@ public:
   // std::string description;
 
   typedef T LDType;
-
-  /**
-   * Use this with utmost causion and only when you have a very good reason,
-   * e.g. you get existing Payload and you cannot change it.
-   * Otherwise prefer to create a new Payload.
-   **/
-  void Set(const PhysicalDescriptor pd) { this->dataInfo = pd; }
 
 private:
   static auto constexpr suffixEmpty = " [empty]";
