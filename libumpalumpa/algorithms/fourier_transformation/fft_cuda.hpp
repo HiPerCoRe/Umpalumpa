@@ -13,14 +13,14 @@ public:
    **/
   explicit FFTCUDA(const std::vector<CUstream> &s) : stream(s.at(0)) {}
   explicit FFTCUDA(int deviceOrdinal);
-  ~FFTCUDA();
+  virtual ~FFTCUDA();
   void Synchronize() override;
   void Cleanup() override;
   size_t GetUsedBytes() const override;
 
 protected:
   bool InitImpl() override;
-  bool ExecuteImpl(const OutputData &out, const InputData &in);
+  bool ExecuteImpl(const OutputData &out, const InputData &in) override;
   bool IsValid(const OutputData &out, const InputData &in, const Settings &s) const override;
 
 private:

@@ -136,7 +136,7 @@ namespace {// to avoid poluting
       auto argImgCacheDim = tuner.AddArgumentScalar(0);// value will be replaced in the launcher
 
       auto argSize = tuner.AddArgumentScalar(in.GetFFT().info.GetSize());
-      auto argSpaceCount = tuner.AddArgumentScalar(in.GetTraverseSpace().info.GetSize());
+      auto argSpaceCount = tuner.AddArgumentScalar(in.GetTraverseSpace().info.GetSize().n);
 
       // FIXME change to 0 once KTT supports it
       auto argSharedMemSize =
