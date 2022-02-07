@@ -74,6 +74,7 @@ template<typename T> FourierReconstructionStarPU<T>::~FourierReconstructionStarP
     workAvailable.notify_one();// wake it up
     thr->join();// wait till it's done
   }
+  if (!toRemove.empty()) { spdlog::error("Some Physical Descriptors were not removed!"); }
   starpu_shutdown();
 }
 
@@ -98,30 +99,41 @@ PhysicalDescriptor
 
 template<typename T> void FourierReconstructionStarPU<T>::RemoveFromQueue()
 {
-  while (keepWorking) {
+  while (true) {
     std::unique_lock lock(mutex);
-    workAvailable.wait(lock, [this]() { return !keepWorking; });
-    while (!toRemove.empty()) {
-      auto &data = toRemove.front();
-      auto *handle = reinterpret_cast<starpu_data_handle_t *>(data.handle);
-      starpu_data_unregister_no_coherency(*handle);
-      if (nullptr != data.ptr) {
-        auto flags = STARPU_MALLOC_COUNT | (data.isPinned ? STARPU_MALLOC_PINNED : 0);
-        starpu_free_flags(data.ptr, data.bytes, flags);
-      }
-      delete handle;
-      toRemove.pop();
+    while (toRemove.empty()) {
+      if (!keepWorking) return;
+      workAvailable.wait(lock);
     }
+    // make a local copy
+    auto data = toRemove.front();
+    toRemove.pop();
+    // and unlock the queue, so it's not blocked till we're done here
+    lock.unlock();
+    auto *handle = reinterpret_cast<starpu_data_handle_t *>(data.handle);
+    starpu_data_unregister_no_coherency(*handle);
+    if (nullptr != data.ptr) {
+      auto flags = STARPU_MALLOC_COUNT | (data.isPinned ? STARPU_MALLOC_PINNED : 0);
+      starpu_free_flags(data.ptr, data.bytes, flags);
+    }
+    delete handle;
   }
 }
 
 template<typename T> void FourierReconstructionStarPU<T>::RemovePD(const PhysicalDescriptor &pd)
 {
-  std::unique_lock lock(mutex);
-  auto wasEmpty = toRemove.empty();
-  toRemove.push(pd);
-  lock.unlock();
-  if (wasEmpty) { workAvailable.notify_one(); }
+  if (nullptr == pd.GetPtr()) {
+    // these are managed internally by StarPU, so just mark them as removable
+    StarPUUtils::Unregister(pd, StarPUUtils::UnregisterType::kSubmitNoCopy);
+    delete StarPUUtils::GetHandle(pd);
+  } else {
+    // we need to make sure that the data is not in use before we delete it
+    std::unique_lock lock(mutex);
+    auto wasEmpty = toRemove.empty();
+    toRemove.push(pd);
+    lock.unlock();
+    workAvailable.notify_one();
+  }
 }
 
 template<typename T>

@@ -36,9 +36,19 @@ public:
 
   bool IsPinned() const { return pinned; };
 
-  auto CopyWithoutData() const { return PhysicalDescriptor(nullptr, 0, type, manager, nullptr); }
+  auto CopyWithoutData() const
+  {
+    auto pd = PhysicalDescriptor(nullptr, 0, type, manager, nullptr);
+    pd.SetPinned(pinned);
+    return pd;
+  }
 
-  auto CopyWithPtr(void *p) const { return PhysicalDescriptor(p, bytes, type, manager, handle); }
+  auto CopyWithPtr(void *p) const
+  {
+    auto pd = PhysicalDescriptor(p, bytes, type, manager, handle);
+    pd.SetPinned(pinned);
+    return pd;
+  }
 
   void SetPinned(bool isPinned) { pinned = isPinned; };
 

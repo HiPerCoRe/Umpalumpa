@@ -1,0 +1,5 @@
+Parameters are passed in the following order: X, Y, movie size, batch size, the number of movies, downscale factor. E.g.:  
+./flexalign 2048 2048 40 5 100 2
+(100 movies of size 2048x2048x40 in batches of 5 downscaled to 50%)
+
+Passing fewer than 6 parameters will cause the program to use default values (2048,2048,40,5,1,2).

@@ -257,7 +257,7 @@ protected:
             inverseOut.GetData().info.GetSize().x,
             [&ref, offset, &inData, normFact, delta](auto &pos) {
               auto dist = std::distance(ref.get() + offset, &pos);
-              EXPECT_NEAR(pos, inData[offset + dist] * normFact, delta) << "at " << dist;
+              ASSERT_NEAR(pos, inData[offset + dist] * normFact, delta) << "at " << dist;
             });
         }
       }
