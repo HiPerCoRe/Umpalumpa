@@ -97,6 +97,9 @@ void TunableStrategy::SaveTuningToLeader(ktt::KernelId kernelId,
   if (tuningResults.GetKernelDuration() < bestTimeSoFar) {
     groupLeader->SetBestConfiguration(index, tuningResults.GetConfiguration());
     groupLeader->SetBestConfigTime(index, tuningResults.GetKernelDuration());
+    // TODO not like this -> it is too often (performance goes to hell),
+    // and probably at different place or just once in a while
+    StrategyManager::Get().SaveTuningData();
   }
 }
 

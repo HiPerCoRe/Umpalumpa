@@ -4,6 +4,7 @@
 #include <libumpalumpa/data/size.hpp>
 #include <libumpalumpa/algorithms/fourier_transformation/locality.hpp>
 #include <libumpalumpa/algorithms/fourier_transformation/direction.hpp>
+#include <iostream>
 
 namespace umpalumpa::fourier_processing {
 class Settings
@@ -45,6 +46,32 @@ public:
   bool GetNormalize() const { return normalize; }
   bool GetApplyFilter() const { return applyFilter; }
   auto GetMaxFreq() const { return maxFreq; }
+
+  void Serialize(std::ostream &out) const
+  {
+    out << static_cast<int>(locality) << ' ' << center << ' ' << normalize << ' ' << applyFilter
+        << ' ' << shift;
+    out << ' ' << maxFreq.has_value();
+    if (maxFreq.has_value()) { out << ' ' << maxFreq.value(); }
+    out << '\n';
+  }
+  static auto Deserialize(std::istream &in)
+  {
+    int locality;
+    bool center, normalize, applyFilter, shift, hasMaxFreq;
+    in >> locality >> center >> normalize >> applyFilter >> shift >> hasMaxFreq;
+    Settings s(static_cast<fourier_transformation::Locality>(locality));
+    s.SetCenter(center);
+    s.SetNormalize(normalize);
+    s.SetApplyFilter(applyFilter);
+    s.SetShift(shift);
+    if (hasMaxFreq) {
+      float maxFreq;
+      in >> maxFreq;
+      s.SetMaxFreq(maxFreq);
+    }
+    return s;
+  }
 
 private:
   static constexpr int version = 1;

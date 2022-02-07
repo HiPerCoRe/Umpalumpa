@@ -4,6 +4,7 @@
 #include <libumpalumpa/data/data_type.hpp>
 #include <libumpalumpa/data/managed_by.hpp>
 #include <type_traits>
+#include <iostream>
 
 namespace umpalumpa::data {
 /**
@@ -51,10 +52,24 @@ public:
 
   PhysicalDescriptor(PhysicalDescriptor &&) = default;
 
+  void Serialize(std::ostream &out) const
+  {
+    out << bytes << ' ' << static_cast<int>(type) << ' ' << static_cast<int>(manager) << '\n';
+  }
+  static auto Deserialize(std::istream &in)
+  {
+    size_t bytes;
+    int type;
+    int manager;
+    in >> bytes >> type >> manager;
+    return PhysicalDescriptor(
+      nullptr, bytes, static_cast<DataType>(type), static_cast<ManagedBy>(manager), nullptr);
+  }
+
 private:
   // Prevent copying of this instance (to avoid accidental handle copy)
   PhysicalDescriptor(const PhysicalDescriptor &) = default;
-  constexpr PhysicalDescriptor &operator=(const PhysicalDescriptor &) = default;
+  PhysicalDescriptor &operator=(const PhysicalDescriptor &) = default;
   void *ptr;// type defined by DataType
   size_t bytes;// how big block is available
   DataType type;// what type is stored

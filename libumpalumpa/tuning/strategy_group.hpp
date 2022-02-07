@@ -2,9 +2,15 @@
 #include <memory>
 #include <vector>
 #include <limits>
+#include <fstream>
+#include <sstream>
+#include <filesystem>
 #include <libumpalumpa/algorithms/basic_algorithm.hpp>
 #include <libumpalumpa/tuning/tunable_strategy.hpp>
 #include <libumpalumpa/tuning/ktt_strategy_base.hpp>
+
+// TMP
+#include <iostream>
 
 namespace umpalumpa::tuning {
 
@@ -16,6 +22,11 @@ namespace umpalumpa::tuning {
  */
 struct Leader : virtual public detail::TunableStrategyInterface
 {
+  Leader() = default;
+  Leader(std::vector<ktt::KernelConfiguration> &&vConf, std::vector<ktt::Nanoseconds> &&vTime)
+    : bestConfigs(vConf), bestConfigTimes(vTime)
+  {}
+
   virtual void SetBestConfigurations(const std::vector<ktt::KernelConfiguration> &configs)
   {
     bestConfigs = configs;
@@ -36,12 +47,19 @@ struct Leader : virtual public detail::TunableStrategyInterface
     bestConfigTimes.at(kernelIndex) = time;
   }
 
+  virtual const ktt::KernelConfiguration &GetBestConfiguration(size_t kernelIndex) const
+  {
+    return bestConfigs.at(kernelIndex);
+  }
+
   virtual ktt::Nanoseconds GetBestConfigTime(size_t kernelIndex) const
   {
     return bestConfigTimes.at(kernelIndex);
   }
-  // TODO add methods needed by the Leader class
 
+  virtual void Serialize(std::ostream &out) const = 0;
+
+  // TODO add methods needed by the Leader class
 protected:
   std::vector<ktt::KernelConfiguration> bestConfigs;
   std::vector<ktt::Nanoseconds> bestConfigTimes;// FIXME tmp
@@ -80,6 +98,67 @@ struct StrategyGroup
     return std::make_unique<InternalLeader<Strategy>>(s, a);
   }
 
+  template<typename Strategy, typename Algorithm>
+  static std::vector<std::shared_ptr<StrategyGroup>> LoadTuningData(const Strategy &,
+    const Algorithm &a)
+  {
+    auto filePath = utils::GetTuningDirectory() + typeid(Strategy).name();
+    // if (std::filesystem::exists(filePath)) {
+    //   std::filesystem::copy(filePath, filePath + ".backup");
+    // }
+    std::ifstream inputFile(filePath);
+    if (!inputFile) { return {}; }
+
+    std::vector<std::shared_ptr<StrategyGroup>> vec;
+    while (true) {
+      auto x = InternalLeader<Strategy>::Deserialize(a, inputFile);
+      if (!inputFile) { break; }
+      // std::cout << "AFTER LOADING\n";
+      // x->Serialize(std::cout);// TMP DEBUG FIXME
+      auto sg = std::make_shared<StrategyGroup>(std::move(x));
+      vec.push_back(std::move(sg));
+    }
+    return vec;
+  }
+
+  // template<typename Strategy, typename Algorithm>
+  // static auto Deserialize(const Algorithm &a, std::istream &in)
+  // {
+  //   return std::make_shared<StrategyGroup>(InternalLeader<Strategy>::Deserialize(a, in));
+  // }
+
+  void Serialize(std::ostream &out) const
+  {
+    // auto filePath = utils::GetTuningDirectory() + leader->GetFullName();
+    // std::cout << "(Serialize) Trying to open: " << filePath << std::endl;
+    // std::ofstream outputFile(filePath, std::ios_base::app);
+    // if (!outputFile) {
+    //   throw std::logic_error("Could not save tuning results to file: \'" + filePath + "\'\n");
+    // }
+
+    // std::cout << "Serializing...\n";
+    leader->Serialize(out);
+    // std::cout << "AFTER SAVING\n";
+    // leader->Serialize(std::cout);// TMP DEBUG FIXME
+  }
+
+  bool IsEqualTo(const StrategyGroup &ref) const
+  {
+    const auto &refLeader = *ref.leader;
+    return leader->IsEqualTo(dynamic_cast<const TunableStrategy &>(refLeader));
+  }
+
+  void Merge(const StrategyGroup &other)
+  {
+    for (size_t idx = 0; idx < leader->GetBestConfigurations().size(); ++idx) {
+      if (other.leader->GetBestConfigTime(idx) < leader->GetBestConfigTime(idx)) {
+        // Might just move it, but not sure if it is safe right now
+        leader->SetBestConfiguration(idx, other.leader->GetBestConfiguration(idx));
+        leader->SetBestConfigTime(idx, other.leader->GetBestConfigTime(idx));
+      }
+    }
+  }
+
 private:
   /**
    * Leader strategies are used to lead StrategyGroups. They provide methods for checking equality
@@ -103,6 +182,10 @@ private:
     static_assert(
       std::is_base_of<KTTStrategyBase<StrategyOutput, StrategyInput, StrategySettings>, S>::value);
 
+    using StratType = S;
+    using AlgType = BasicAlgorithm<StrategyOutput, StrategyInput, StrategySettings>;
+
+    std::string GetFullName() const override { return typeid(S).name(); }
     /**
      * Returns OutputData stored in the Leader strategy.
      */
@@ -122,15 +205,14 @@ private:
      * Creates a Leader strategy from the provided strategy and algorithm. Copies necessary
      * information from the provided algorithm.
      */
-    InternalLeader(const S &orig,
-      const BasicAlgorithm<StrategyOutput, StrategyInput, StrategySettings> &a)
+    InternalLeader(const S &orig, const AlgType &a)
       : S(a), op(orig.GetOutputRef().CopyWithoutData()), ip(orig.GetInputRef().CopyWithoutData()),
         o(op), i(ip), s(orig.GetSettings())
     {}
 
     ~InternalLeader()
     {
-      // TODO save config I guess
+      // Serialize(std::cout);
     }
 
     const std::vector<ktt::KernelConfiguration> &GetBestConfigurations() const override
@@ -138,9 +220,87 @@ private:
       return bestConfigs;
     }
 
+    void Serialize(std::ostream &out) const override
+    {
+      // out << "Strategy: " << this->GetName() << '\n';
+      // for (size_t idx = 0; idx < bestConfigs.size(); ++idx) {
+      //   out << "KernelIdx: " << idx << '\n';
+      //   out << "Config: " << bestConfigs.at(idx).GetString() << '\n';
+      //   out << "Time: " << bestConfigTimes.at(idx) << '\n';
+      // }
+      o.Serialize(out);
+      i.Serialize(out);
+      s.Serialize(out);
+      auto size = bestConfigs.size();
+      out << size << '\n';
+      for (size_t idx = 0; idx < size; ++idx) {
+        out << bestConfigTimes.at(idx);
+        for (const auto &pp : bestConfigs.at(idx).GetPairs()) {
+          out << ' ' << pp.HasValueDouble() << ' ' << pp.GetName() << ' ' << pp.GetValue();
+        }
+        out << '\n';
+      }
+    }
+
+    static auto Deserialize(const AlgType &a, std::istream &in)
+    {
+      auto outData = StrategyOutput::Deserialize(in);
+      auto inData = StrategyInput::Deserialize(in);
+      auto settings = StrategySettings::Deserialize(in);
+      std::vector<ktt::KernelConfiguration> vConf;
+      std::vector<ktt::Nanoseconds> vTime;
+
+      size_t size;
+      in >> size;
+      for (size_t idx = 0; idx < size; ++idx) {
+        ktt::Nanoseconds time;
+        in >> time;
+        std::string line;
+        std::getline(in, line);
+        std::stringstream ss(line + '\n');
+        std::vector<ktt::ParameterPair> params;
+        while (ss.peek() != '\n') {
+          bool isDouble;
+          std::string name;
+          ss >> isDouble >> name;
+          if (isDouble) {
+            double val;
+            ss >> val;
+            params.emplace_back(name, val);
+          } else {
+            uint64_t val;
+            ss >> val;
+            params.emplace_back(name, val);
+          }
+        }
+        vConf.emplace_back(params);// ktt::KernelConfiguration isn't move-constructible
+        vTime.emplace_back(time);
+      }
+
+      return std::make_unique<InternalLeader>(a,
+        std::move(outData),
+        std::move(inData),
+        std::move(settings),
+        std::move(vConf),
+        std::move(vTime));
+    }
+
   private:
     using OutputPayloads = typename StrategyOutput::PayloadCollection;
     using InputPayloads = typename StrategyInput::PayloadCollection;
+
+  public:
+    InternalLeader(const AlgType &a,
+      OutputPayloads &&ops,
+      InputPayloads &&ips,
+      StrategySettings &&ss,
+      std::vector<ktt::KernelConfiguration> &&vConf,
+      std::vector<ktt::Nanoseconds> &&vTime)
+      : S(a), Leader(std::move(vConf), std::move(vTime)), op(std::move(ops)), ip(std::move(ips)),
+        o(op), i(ip), s(std::move(ss))
+    {}
+
+  private:
     OutputPayloads op;
     InputPayloads ip;
 
@@ -148,6 +308,11 @@ private:
     StrategyInput i;
     StrategySettings s;
   };
+
+public:
+  template<typename Strategy>
+  StrategyGroup(std::unique_ptr<InternalLeader<Strategy>> &&l) : leader(std::move(l))
+  {}
 };
 
 }// namespace umpalumpa::tuning

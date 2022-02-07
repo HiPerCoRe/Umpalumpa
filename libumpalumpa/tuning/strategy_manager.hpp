@@ -2,6 +2,7 @@
 #include <mutex>
 #include <vector>
 #include <libumpalumpa/system_includes/ktt.hpp>
+// #include <libumpalumpa/tuning/storage.hpp>
 
 namespace umpalumpa::tuning {
 
@@ -22,8 +23,9 @@ struct StrategyGroup;
  */
 class StrategyManager
 {
-  std::vector<StrategyGroup> strategyGroups;
+  std::map<std::string, std::vector<std::shared_ptr<StrategyGroup>>> strategyGroups;
   std::mutex mutex;
+  // std::unique_ptr<Storage> tuningData;
 
   StrategyManager() = default;
   StrategyManager(StrategyManager &&) = delete;
@@ -54,6 +56,22 @@ public:
    * Ideally should be removed in the future.
    */
   const auto &GetRegisteredStrategies() const { return strategyGroups; }
+
+  /**
+   * TODO
+   */
+  void SaveTuningData();
+
+  // template<typename S, typename A>
+  // std::vector<std::shared_ptr<StrategyGroup>> LoadTuningData(const S &s, const A &a)
+  // {
+  //   tuningData->LoadTuningData(s, a);
+  // }
+
+  /**
+   * TODO
+   */
+  void Merge(std::vector<std::shared_ptr<StrategyGroup>> &&vec);
 
   /**
    * Resets the AlgorithmManager, clearing all the saved data (registered strategies, garbage

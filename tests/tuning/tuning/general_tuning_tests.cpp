@@ -16,10 +16,10 @@ public:
   {}
 
 protected:
-  Settings settings{ 0, 0 };// { equalityGroup, similarityGroup }
+  Settings settings{ 0, 0, 1 };// { equalityGroup, similarityGroup }
   Payload<LogicalDescriptor> pData;
   WaitingAlgorithm::InputData in;
-  WaitingAlgorithm::InputData out;
+  WaitingAlgorithm::OutputData out;
 
   WaitingAlgorithm alg = WaitingAlgorithm(0);
 
@@ -340,5 +340,31 @@ TEST_F(GeneralTuningTests, OneStrategy_MultipleKernels_NotInterferingWithEachOth
             << std::endl;
   ASSERT_TRUE(alg.Execute(out, in));
   ASSERT_TRUE(alg.Execute(out, in));
+}
+
+TEST_F(GeneralTuningTests, Serialization)
+{
+  StrategyManager::Get().Cleanup();
+
+  settings = { 123, 123, 1 };
+
+  ASSERT_TRUE(alg.Init(out, in, settings));
+  // After successful Init there is a strategy to work with!
+
+  auto &strat = dynamic_cast<TunableStrategy &>(alg.GetStrategy());
+  strat.SetTuningApproach(TuningApproach::kEntireStrategy);
+
+  ASSERT_TRUE(alg.Execute(out, in));
+  strat.SetTuningApproach(TuningApproach::kNoTuning);
+  ASSERT_TRUE(alg.Execute(out, in));
+
+  std::cout << "Saving\n";
+  StrategyManager::Get().SaveTuningData();
+
+  std::cout << "Loading\n";
+  auto x = strat.LoadTuningData();
+
+  std::cout << "Printing\n";
+  for (const auto &l : x) { l->leader->Serialize(std::cout); }
 }
 

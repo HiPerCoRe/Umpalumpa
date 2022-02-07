@@ -17,7 +17,7 @@ template<typename... Args> struct PayloadWrapper
    **/
   bool IsValid() const
   {
-    return std::apply([this](const auto &...p) { return ReduceBools(IsValid(p)...); }, payloads);
+    return std::apply([this](const auto &... p) { return ReduceBools(IsValid(p)...); }, payloads);
   }
 
   /**
@@ -36,7 +36,7 @@ template<typename... Args> struct PayloadWrapper
   auto CopyWithoutData() const
   {
     return std::apply(
-      [this](const auto &...p) { return std::make_tuple(RemoveData(p)...); }, payloads);
+      [this](const auto &... p) { return std::make_tuple(RemoveData(p)...); }, payloads);
   }
 
   /**
@@ -45,6 +45,23 @@ template<typename... Args> struct PayloadWrapper
    **/
   typedef std::tuple<Args...> PayloadCollection;
 
+  /**
+   * Serializes contained Payloads.
+   *
+   * Used fold expression guarantees order of execution (extremely important for serialization).
+   */
+  void Serialize(std::ostream &out) const
+  {
+    std::apply([this, &out](const auto &... p) { (..., InternalSerialize(p, out)); }, payloads);
+  }
+
+  /**
+   * Deserializes Payloads according to the provided template types.
+   *
+   * The order of execution works with the execution order of the Serialize method.
+   */
+  static auto Deserialize(std::istream &in) { return PayloadCollection(Args::Deserialize(in)...); }
+
 protected:
   /**
    * Specific Payload can be accessed using std::get<N>(payloads) function, where N is a position
@@ -52,17 +69,13 @@ protected:
    */
   const std::tuple<Args &...> payloads;// holds references to all Payloads
 
-  // NOTE not sure if the following constructor is needed
-  // All 'args' would have to be copy-constructible
-  // PayloadWrapper(const Args &... args) : payload(args...) {}
-
   /**
    * Create a wrapper of passed Payloads.
    * References to those Payloads are stored, i.e. the wrapper is not taking their ownership
    * Constructor for cases when you want to directly specify Payloads to be wrapped:
    * PayloadWrapper(payload1, payload2);
    **/
-  PayloadWrapper(Args &...args) : payloads(args...) {}
+  PayloadWrapper(Args &... args) : payloads(args...) {}
 
   /**
    * Create a wrapper of passed collection of Payloads.
@@ -106,5 +119,10 @@ private:
   bool ReduceBools(bool b, bool rest...) const { return b && ReduceBools(rest); }
 
   bool ReduceBools(bool b) const { return b; }
+
+  template<typename T> void InternalSerialize(const T &t, std::ostream &out) const
+  {
+    t.Serialize(out);
+  }
 };
 }// namespace umpalumpa::data

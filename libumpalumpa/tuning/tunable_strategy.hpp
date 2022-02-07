@@ -19,6 +19,7 @@ namespace detail {
   {
     virtual std::unique_ptr<Leader> CreateLeader() const = 0;
     virtual size_t GetHash() const = 0;
+    virtual std::string GetFullName() const = 0;
     virtual bool IsSimilarTo(const TunableStrategy &ref) const = 0;
     virtual bool IsEqualTo(const TunableStrategy &ref) const = 0;
     virtual std::vector<ktt::KernelConfiguration> GetDefaultConfigurations() const = 0;
@@ -49,9 +50,15 @@ public:
    * In order to get the correct type of the strategy, this method needs to be overriden by the
    * successor classes it the following way:
    *
-   * return algorithm::StrategyGroup::CreateLeader(*this, alg);
+   * return tuning::StrategyGroup::CreateLeader(*this, alg);
    */
   std::unique_ptr<Leader> CreateLeader() const override = 0;
+
+  /**
+   * TODO not satisfied how this works, but can't find anything better now...
+   * should be done more automatic
+   */
+  virtual std::vector<std::shared_ptr<StrategyGroup>> LoadTuningData() const = 0;
 
   /**
    * Returns hash of this strategy. This method needs to be overriden by successor strategy because
@@ -75,7 +82,7 @@ public:
   /**
    * Returns the full name of the strategy type (including namespaces).
    */
-  std::string GetFullName() const;
+  std::string GetFullName() const override;
 
   /**
    * Returns default kernel configurations that will be used if there is no other tuned

@@ -68,6 +68,7 @@ public:
   size_t GetHash() const override { return 0; }
   std::vector<ktt::KernelConfiguration> GetDefaultConfigurations() const override { return { {} }; }
   std::unique_ptr<Leader> CreateLeader() const override { return std::unique_ptr<Leader>(nullptr); }
+  std::vector<tuning::StrategyGroup> Tmp() const override { return {}; }
   bool IsSimilarTo(const TunableStrategy &) const override { return false; }
 
   std::vector<ktt::KernelDefinitionId> testDefinitionIds;
