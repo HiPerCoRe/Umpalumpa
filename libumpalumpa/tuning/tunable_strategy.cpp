@@ -5,7 +5,7 @@
 namespace umpalumpa::tuning {
 
 TunableStrategy::TunableStrategy(KTTHelper &helper)
-  : kttHelper(helper), tuningApproach(TuningApproach::kNoTuning), canTuneStrategyGroup(false),
+  : kttHelper(helper), tuningApproach(TuningApproach::kEntireStrategy), canTuneStrategyGroup(false),
     isRegistered(false), strategyId(GetNewStrategyId())
 {}
 

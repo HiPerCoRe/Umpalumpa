@@ -20,6 +20,7 @@ namespace detail {
     virtual std::unique_ptr<Leader> CreateLeader() const = 0;
     virtual size_t GetHash() const = 0;
     virtual std::string GetFullName() const = 0;
+    virtual std::string GetUniqueName() const = 0;
     virtual bool IsSimilarTo(const TunableStrategy &ref) const = 0;
     virtual bool IsEqualTo(const TunableStrategy &ref) const = 0;
     virtual std::vector<ktt::KernelConfiguration> GetDefaultConfigurations() const = 0;
@@ -83,6 +84,14 @@ public:
    * Returns the full name of the strategy type (including namespaces).
    */
   std::string GetFullName() const override;
+
+  /**
+   * Returns unique name of the strategy. Creation of the name should be dependent on the
+   * OutputData, InputData, Settings.
+   *
+   * Name returned by this method should be used as filename of the tuning data.
+   */
+  std::string GetUniqueName() const override = 0;
 
   /**
    * Returns default kernel configurations that will be used if there is no other tuned

@@ -33,7 +33,10 @@ void StrategyManager::Register(TunableStrategy &strat)
   std::string debugMsg = "";
 
   // if (!tuningData->IsLoaded(strat.GetFullName())) { Merge(strat.LoadTuningData()); }
+  // if (std::filesystem::exists(utils::GetTuningDirectory() + strat.GetFullName())) {
+  //   strat.SetTuningApproach(TuningApproach::kNoTuning);
   Merge(strat.LoadTuningData());
+  // }
 
   // Check equality and similarity
   for (auto &group : specificGroups) {
