@@ -167,7 +167,7 @@ Payload<FourierDescriptor> FlexAlign<T>::ConvertToFFT(const Payload<LogicalDescr
   auto out = AFFT::OutputData(outFFT);
   if (!alg.IsInitialized()) {
     auto settings =
-      Settings(Locality::kOutOfPlace, Direction::kForward, std::min(8ul, GetAvailableCores()));
+      Settings(Locality::kOutOfPlace, Direction::kForward, 1);//std::min(8ul, GetAvailableCores()));
     if (!alg.Init(out, in, settings)) {
       spdlog::error("Initialization of the FFT algorithm failed");
     }
@@ -226,7 +226,7 @@ Payload<FourierDescriptor> FlexAlign<T>::ConvertFromFFT(Payload<FourierDescripto
   auto out = AFFT::OutputData(pOut);
   if (!alg.IsInitialized()) {
     auto settings =
-      Settings(Locality::kOutOfPlace, Direction::kInverse, std::min(4ul, GetAvailableCores()));
+      Settings(Locality::kOutOfPlace, Direction::kInverse, 1);//std::min(4ul, GetAvailableCores()));
     if (!alg.Init(out, in, settings)) {
       spdlog::error("Initialization of the IFFT algorithm failed");
     }
