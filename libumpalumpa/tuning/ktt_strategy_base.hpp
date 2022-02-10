@@ -83,7 +83,13 @@ public:
     return BasicAlgorithm<O, I, S>::Strategy::alg.GetSettings();
   }
 
-  std::string GetUniqueName() const final { return uniqueStrategyName; }
+  std::string GetUniqueName() const final
+  {
+    if (uniqueStrategyName.empty()) {
+      throw std::logic_error("Access to uninitialized 'unique strategy name'!");
+    }
+    return uniqueStrategyName;
+  }
 
 protected:
   /**
@@ -98,15 +104,13 @@ protected:
       p.GetPtr(), p.info.GetSize().total, at, utils::KTTUtils::GetMemoryNode(p.dataInfo));
   }
 
-private:
-  std::string uniqueStrategyName;
-
   /**
    * Creates and sets unique strategy name based on the OutputData, InputData, Settings.
    */
   void SetUniqueStrategyName()
   {
-    std::stringstream ss(GetFullName());
+    std::stringstream ss;
+    ss << GetFullName();
     ss << '-';
     GetOutputRef().Serialize(ss);
     ss << '-';
@@ -121,6 +125,9 @@ private:
     }
     uniqueStrategyName = noWhitespaces.str();
   }
+
+private:
+  std::string uniqueStrategyName;
 };
 
 }// namespace umpalumpa::tuning

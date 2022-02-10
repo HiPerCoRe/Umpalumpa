@@ -23,7 +23,7 @@ struct StrategyGroup;
  */
 class StrategyManager
 {
-  std::map<std::string, std::vector<std::shared_ptr<StrategyGroup>>> strategyGroups;
+  std::vector<std::shared_ptr<StrategyGroup>> strategyGroups;
   std::mutex mutex;
   // std::unique_ptr<Storage> tuningData;
 

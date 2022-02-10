@@ -99,10 +99,12 @@ struct StrategyGroup
   }
 
   template<typename Strategy, typename Algorithm>
-  static std::vector<std::shared_ptr<StrategyGroup>> LoadTuningData(const Strategy &,
+  static std::vector<std::shared_ptr<StrategyGroup>> LoadTuningData(const Strategy &s,
     const Algorithm &a)
   {
-    auto filePath = utils::GetTuningDirectory() + typeid(Strategy).name();
+    auto filePath = utils::GetTuningDirectory() + s.GetUniqueName();// typeid(Strategy).name();
+    std::cout << "LOADING\n";
+    std::cout << filePath << std::endl;
     // if (std::filesystem::exists(filePath)) {
     //   std::filesystem::copy(filePath, filePath + ".backup");
     // }
@@ -208,7 +210,9 @@ private:
     InternalLeader(const S &orig, const AlgType &a)
       : S(a), op(orig.GetOutputRef().CopyWithoutData()), ip(orig.GetInputRef().CopyWithoutData()),
         o(op), i(ip), s(orig.GetSettings())
-    {}
+    {
+      S::SetUniqueStrategyName();
+    }
 
     ~InternalLeader()
     {
