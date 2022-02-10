@@ -9,3 +9,4 @@ endif()
 
 add_subdirectory(flexalign)
 add_subdirectory(fourier_reconstruction)
+add_subdirectory(fftw_benchmark)
