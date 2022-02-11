@@ -9,9 +9,6 @@
 #include <libumpalumpa/tuning/tunable_strategy.hpp>
 #include <libumpalumpa/tuning/ktt_strategy_base.hpp>
 
-// TMP
-#include <iostream>
-
 namespace umpalumpa::tuning {
 
 /**
@@ -72,11 +69,18 @@ protected:
  */
 struct StrategyGroup
 {
+private:
+  template<typename S> struct InternalLeader;
 
+public:
   /**
    * Creates a StrategyGroup with a Leader strategy created out of the provided strategy.
    */
   StrategyGroup(const TunableStrategy &strat) : leader(strat.CreateLeader()) {}
+
+  template<typename Strategy>
+  StrategyGroup(std::unique_ptr<InternalLeader<Strategy>> &&l) : leader(std::move(l))
+  {}
 
   std::unique_ptr<Leader> leader;
   std::vector<TunableStrategy *> strategies;
@@ -102,47 +106,18 @@ struct StrategyGroup
   static std::vector<std::shared_ptr<StrategyGroup>> LoadTuningData(const Strategy &s,
     const Algorithm &a)
   {
-    auto filePath = utils::GetTuningDirectory() + s.GetUniqueName();// typeid(Strategy).name();
-    std::cout << "LOADING\n";
-    std::cout << filePath << std::endl;
-    // if (std::filesystem::exists(filePath)) {
-    //   std::filesystem::copy(filePath, filePath + ".backup");
-    // }
+    auto filePath = utils::GetTuningDirectory() + s.GetUniqueName();
     std::ifstream inputFile(filePath);
     if (!inputFile) { return {}; }
 
     std::vector<std::shared_ptr<StrategyGroup>> vec;
-    while (true) {
-      auto x = InternalLeader<Strategy>::Deserialize(a, inputFile);
-      if (!inputFile) { break; }
-      // std::cout << "AFTER LOADING\n";
-      // x->Serialize(std::cout);// TMP DEBUG FIXME
-      auto sg = std::make_shared<StrategyGroup>(std::move(x));
-      vec.push_back(std::move(sg));
-    }
+    auto x = InternalLeader<Strategy>::Deserialize(a, inputFile);
+    auto sg = std::make_shared<StrategyGroup>(std::move(x));
+    vec.push_back(std::move(sg));
     return vec;
   }
 
-  // template<typename Strategy, typename Algorithm>
-  // static auto Deserialize(const Algorithm &a, std::istream &in)
-  // {
-  //   return std::make_shared<StrategyGroup>(InternalLeader<Strategy>::Deserialize(a, in));
-  // }
-
-  void Serialize(std::ostream &out) const
-  {
-    // auto filePath = utils::GetTuningDirectory() + leader->GetFullName();
-    // std::cout << "(Serialize) Trying to open: " << filePath << std::endl;
-    // std::ofstream outputFile(filePath, std::ios_base::app);
-    // if (!outputFile) {
-    //   throw std::logic_error("Could not save tuning results to file: \'" + filePath + "\'\n");
-    // }
-
-    // std::cout << "Serializing...\n";
-    leader->Serialize(out);
-    // std::cout << "AFTER SAVING\n";
-    // leader->Serialize(std::cout);// TMP DEBUG FIXME
-  }
+  void Serialize(std::ostream &out) const { leader->Serialize(out); }
 
   bool IsEqualTo(const StrategyGroup &ref) const
   {
@@ -214,10 +189,7 @@ private:
       S::SetUniqueStrategyName();
     }
 
-    ~InternalLeader()
-    {
-      // Serialize(std::cout);
-    }
+    ~InternalLeader() {}
 
     const std::vector<ktt::KernelConfiguration> &GetBestConfigurations() const override
     {
@@ -226,12 +198,6 @@ private:
 
     void Serialize(std::ostream &out) const override
     {
-      // out << "Strategy: " << this->GetName() << '\n';
-      // for (size_t idx = 0; idx < bestConfigs.size(); ++idx) {
-      //   out << "KernelIdx: " << idx << '\n';
-      //   out << "Config: " << bestConfigs.at(idx).GetString() << '\n';
-      //   out << "Time: " << bestConfigTimes.at(idx) << '\n';
-      // }
       o.Serialize(out);
       i.Serialize(out);
       s.Serialize(out);
@@ -302,7 +268,9 @@ private:
       std::vector<ktt::Nanoseconds> &&vTime)
       : S(a), Leader(std::move(vConf), std::move(vTime)), op(std::move(ops)), ip(std::move(ips)),
         o(op), i(ip), s(std::move(ss))
-    {}
+    {
+      S::SetUniqueStrategyName();
+    }
 
   private:
     OutputPayloads op;
@@ -312,11 +280,6 @@ private:
     StrategyInput i;
     StrategySettings s;
   };
-
-public:
-  template<typename Strategy>
-  StrategyGroup(std::unique_ptr<InternalLeader<Strategy>> &&l) : leader(std::move(l))
-  {}
 };
 
 }// namespace umpalumpa::tuning

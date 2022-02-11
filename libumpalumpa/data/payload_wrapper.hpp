@@ -4,6 +4,46 @@
 #include <cstddef>
 
 namespace umpalumpa::data {
+namespace detail {
+
+  /**
+   * Black magic that ensures the order of execution when deserializing.
+   * The whole Accumulator magic happens during compilation.
+   */
+  template<typename... Args> struct Accumulator
+  {
+    constexpr Accumulator() = default;
+
+    template<typename F> constexpr auto operator,(F &&f)
+    {
+      return std::apply(
+        [&f](auto &&... a) { return Accumulator<Args..., decltype(f())>(std::move(a)..., f()); },
+        payloads);
+    }
+
+    constexpr auto ToTuple() { return std::move(payloads); }
+
+    template<typename T, typename... Rest>
+    constexpr Accumulator(T &&t, Rest &&... r) : payloads(std::move(t), std::move(r)...)
+    {}
+
+  private:
+    std::tuple<Args...> payloads;
+  };
+
+  /*
+    Might be nice to fix this, but it has some issue with 'using detail::operator,' in the
+    PayloadWrapper::Deserialize. ADL finds a wrong overload of operator, while in a
+    separate test example it works. :(
+    If this worked we wouldn't have to use detail::Accumulator explicitly in the
+    PayloadWrapper::Deserialize.
+  */
+  // template<typename F1, typename F2> constexpr auto operator,(F1 &&f1, F2 &&f2)
+  // {
+  //   return Accumulator().operator,(std::move(f1)).operator,(std::move(f2));
+  // }
+}// namespace detail
+
 /**
  * This is a wrapper for multiple Payloads
  * Intended usage:
@@ -49,6 +89,7 @@ template<typename... Args> struct PayloadWrapper
    * Serializes contained Payloads.
    *
    * Used fold expression guarantees order of execution (extremely important for serialization).
+   * TODO ^ should be checked one more time
    */
   void Serialize(std::ostream &out) const
   {
@@ -60,7 +101,10 @@ template<typename... Args> struct PayloadWrapper
    *
    * The order of execution works with the execution order of the Serialize method.
    */
-  static auto Deserialize(std::istream &in) { return PayloadCollection(Args::Deserialize(in)...); }
+  static auto Deserialize(std::istream &in)
+  {
+    return (detail::Accumulator(), ..., [&in]() { return Args::Deserialize(in); }).ToTuple();
+  }
 
 protected:
   /**

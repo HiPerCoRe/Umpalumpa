@@ -2,7 +2,6 @@
 #include <libumpalumpa/tuning/tunable_strategy.hpp>
 #include <libumpalumpa/system_includes/spdlog.hpp>
 #include <libumpalumpa/tuning/strategy_group.hpp>
-// #include <libumpalumpa/tuning/storage.hpp>
 
 namespace umpalumpa::tuning {
 
@@ -15,8 +14,6 @@ StrategyManager &StrategyManager::Get()
 void StrategyManager::Register(TunableStrategy &strat)
 {
   std::lock_guard lck(mutex);
-
-  // auto &specificGroups = strategyGroups[strat.GetFullName()];
 
   for (auto &group : strategyGroups) {
     for (auto *s : group->strategies) {
@@ -32,11 +29,15 @@ void StrategyManager::Register(TunableStrategy &strat)
   StrategyGroup *groupPtr = nullptr;
   std::string debugMsg = "";
 
-  // if (!tuningData->IsLoaded(strat.GetFullName())) { Merge(strat.LoadTuningData()); }
-  // if (std::filesystem::exists(utils::GetTuningDirectory() + strat.GetFullName())) {
-  //   strat.SetTuningApproach(TuningApproach::kNoTuning);
-  Merge(strat.LoadTuningData());
-  // }
+  if (std::filesystem::exists(utils::GetTuningDirectory() + strat.GetUniqueName())) {
+    // Works only for equal strategies, similar strategies won't be discovered like this.
+    // Unless we update the system for discovering similar strategies we would have to
+    // load all the strategies with the name of formatt 'NAME-specificnumbers'
+    // where NAME == GetFullName() to find similar ones.
+    Merge(strat.LoadTuningData());
+    // Use the loaded config, do not tune
+    strat.SetTuningApproach(TuningApproach::kNoTuning);
+  }
 
   // Check equality and similarity
   for (auto &group : strategyGroups) {
@@ -80,10 +81,6 @@ void StrategyManager::Unregister(TunableStrategy &strat)
 {
   std::lock_guard lck(mutex);
 
-  // FIXME doesn't work, because this method is called from the destructor of TunableStrategy
-  // auto &specificGroups = strategyGroups[strat.GetFullName()];
-
-  // for (auto &[_, specificGroups] : strategyGroups) {// viz fixme ^, should be removed
   for (auto &group : strategyGroups) {
     auto stratIt = std::find(group->strategies.begin(), group->strategies.end(), &strat);
 
@@ -110,8 +107,6 @@ void StrategyManager::SaveTuningData()
   for (const auto &group : strategyGroups) {
     auto filePath = utils::GetTuningDirectory() + group->leader->GetUniqueName();
     std::ofstream outFile(filePath);
-    std::cout << "SAVING\n";
-    std::cout << filePath << std::endl;
     group->Serialize(outFile);
   }
 }
@@ -120,7 +115,6 @@ void StrategyManager::Merge(std::vector<std::shared_ptr<StrategyGroup>> &&loaded
 {
   for (auto &newGroup : loadedSG) {
     bool addNewGroup = true;
-    // auto &specificGroups = strategyGroups[newGroup->leader->GetFullName()];
 
     for (auto &group : strategyGroups) {
       if (group->IsEqualTo(*newGroup)) {

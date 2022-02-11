@@ -143,6 +143,11 @@ public:
    */
   bool ShouldBeTuned(ktt::KernelId kernelId) const;
 
+  bool CanTune(ktt::KernelId kernelId) const
+  {
+    return canTuneStrategyGroup && ShouldBeTuned(kernelId) && HasAnyTuningParameter(kernelId);
+  }
+
   void SetKttLogging(bool val) { kttLoggingOff = !val; }
 
 protected:
@@ -224,6 +229,11 @@ protected:
    */
   ktt::KernelId GetKernelId(size_t idx = 0) const { return kernelIds.at(idx).id; }
 
+  bool HasAnyTuningParameter(ktt::KernelId kernelId) const
+  {
+    return !GetDefaultConfigurations().at(GetKernelIndex(kernelId)).GetPairs().empty();
+  }
+
 private:
   /**
    * Returns an internal index of the specified ktt::KernelDefinitionId.
@@ -248,7 +258,7 @@ private:
   struct KernelInfo
   {
     ktt::KernelId id = ktt::InvalidKernelId;
-    bool tune = false;
+    bool tune = true;
   };
 
   std::vector<ktt::KernelDefinitionId> definitionIds;

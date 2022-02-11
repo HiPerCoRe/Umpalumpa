@@ -52,18 +52,14 @@ public:
 
   PhysicalDescriptor(PhysicalDescriptor &&) = default;
 
-  void Serialize(std::ostream &out) const
-  {
-    out << bytes << ' ' << static_cast<int>(type) << ' ' << static_cast<int>(manager) << '\n';
-  }
+  void Serialize(std::ostream &out) const { out << bytes << ' ' << static_cast<int>(type) << '\n'; }
   static auto Deserialize(std::istream &in)
   {
     size_t bytes;
     int type;
-    int manager;
-    in >> bytes >> type >> manager;
+    in >> bytes >> type;
     return PhysicalDescriptor(
-      nullptr, bytes, static_cast<DataType>(type), static_cast<ManagedBy>(manager), nullptr);
+      nullptr, bytes, static_cast<DataType>(type), ManagedBy::Unknown, nullptr);
   }
 
 private:
