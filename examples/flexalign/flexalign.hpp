@@ -32,7 +32,7 @@ public:
     float y;
   };
 
-  void Execute(const Size &size);
+  void Execute(const Size &movieSize, const size_t batch, const size_t num_of_movies, const Size &croppedSize);
 
   virtual ~FlexAlign() = default;
 
@@ -47,7 +47,7 @@ protected:
   /**
    * This method removes all data allocated by the Physical Descriptor
    **/
-  virtual void RemovePD(const PhysicalDescriptor &pd, bool pinned) const = 0;
+  virtual void RemovePD(const PhysicalDescriptor &pd) = 0;
 
   /**
    * This method fetches data represented by the Physical Descriptor to main RAM.
@@ -60,10 +60,6 @@ protected:
    * It has to be called once data fetched by Acquire are no longer needed.
    **/
   virtual void Release(const PhysicalDescriptor &p) const = 0;
-
-  constexpr DataType GetDataType() const;
-
-  constexpr DataType GetComplexDataType() const;
 
   virtual AFFT &GetForwardFFTAlg() const = 0;
 

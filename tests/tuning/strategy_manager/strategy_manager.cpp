@@ -103,10 +103,10 @@ protected:
   AlgorithmManagerTests()
     : settings(), size(42, 1, 1, 1), ld(size),
       pIn(Payload(ld,
-        PhysicalDescriptor(nullptr, 0, DataType::kFloat, ManagedBy::Manually, nullptr),
+        PhysicalDescriptor(nullptr, 0, DataType::Get<float>(), ManagedBy::Manually, nullptr),
         "Input data")),
       pOut(Payload(ld,
-        PhysicalDescriptor(nullptr, 0, DataType::kFloat, ManagedBy::Manually, nullptr),
+        PhysicalDescriptor(nullptr, 0, DataType::Get<float>(), ManagedBy::Manually, nullptr),
         "Output data")),
       in(pIn), out(pOut)
   {

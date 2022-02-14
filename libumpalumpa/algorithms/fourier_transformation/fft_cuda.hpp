@@ -13,7 +13,7 @@ public:
    **/
   explicit FFTCUDA(const std::vector<CUstream> &s) : stream(s.at(0)) {}
   explicit FFTCUDA(int deviceOrdinal);
-  ~FFTCUDA();
+  virtual ~FFTCUDA();
   void Synchronize() override;
   void Cleanup() override;
   size_t GetUsedBytes() const override;

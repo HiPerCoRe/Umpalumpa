@@ -245,7 +245,7 @@ namespace {// to avoid poluting
       bool canProcess = (s.GetVersion() == 1) && (s.GetLocation() == Location::kRectCenter)
                         && (s.GetType() == ExtremaType::kMax)
                         && (s.GetResult() == Result::kLocation) && (!in.GetData().info.IsPadded())
-                        && (in.GetData().dataInfo.GetType() == umpalumpa::data::DataType::kFloat);
+                        && (in.GetData().dataInfo.GetType().Is<float>());
       if (!canProcess) return false;
 
       auto &size = in.GetData().info.GetSize();

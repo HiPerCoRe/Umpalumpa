@@ -78,7 +78,7 @@ namespace {// to avoid poluting
       return (s.GetVersion() == 1) && (!in.GetData().info.IsPadded())
              && (s.GetLocation() == Location::kRectCenter) && (s.GetType() == ExtremaType::kMax)
              && (s.GetResult() == Result::kLocation)
-             && (in.GetData().dataInfo.GetType() == umpalumpa::data::DataType::kFloat);
+             && (in.GetData().dataInfo.GetType().Is<float>());
     }
 
     std::string GetName() const override { return "Strategy2"; }

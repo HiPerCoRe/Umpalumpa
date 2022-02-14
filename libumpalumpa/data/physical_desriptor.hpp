@@ -35,9 +35,23 @@ public:
 
   void *GetPtr() const { return ptr; }
 
-  auto CopyWithoutData() const { return PhysicalDescriptor(nullptr, 0, type, manager, nullptr); }
+  bool IsPinned() const { return pinned; };
 
-  auto CopyWithPtr(void *p) const { return PhysicalDescriptor(p, bytes, type, manager, handle); }
+  auto CopyWithoutData() const
+  {
+    auto pd = PhysicalDescriptor(nullptr, 0, type, manager, nullptr);
+    pd.SetPinned(pinned);
+    return pd;
+  }
+
+  auto CopyWithPtr(void *p) const
+  {
+    auto pd = PhysicalDescriptor(p, bytes, type, manager, handle);
+    pd.SetPinned(pinned);
+    return pd;
+  }
+
+  void SetPinned(bool isPinned) { pinned = isPinned; };
 
   /**
    * Descriptor is valid if it describes empty storage or non-empty storage,
@@ -52,7 +66,14 @@ public:
 
   PhysicalDescriptor(PhysicalDescriptor &&) = default;
 
+  bool operator==(const PhysicalDescriptor &o) const
+  {
+    return ptr == o.ptr && bytes == o.bytes && type == o.type && manager == o.manager
+           && handle == o.handle;
+  }
+
   void Serialize(std::ostream &out) const { out << bytes << ' ' << static_cast<int>(type) << '\n'; }
+
   static auto Deserialize(std::istream &in)
   {
     size_t bytes;
@@ -71,5 +92,6 @@ private:
   DataType type;// what type is stored
   ManagedBy manager;// who is responsible for data
   void *handle;// handle used by the manager (if any)
+  bool pinned = false;// memory has been pinned in RAM
 };
 }// namespace umpalumpa::data

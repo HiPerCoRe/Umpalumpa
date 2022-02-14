@@ -15,8 +15,9 @@ protected:
   auto CreatePayloadData(const Size &size)
   {
     auto ld = LogicalDescriptor(size);
-    auto bytes = ld.Elems() * Sizeof(DataType::kFloat);
-    auto pd = Create(bytes, DataType::kFloat);
+    auto type = DataType::Get<float>();
+    auto bytes = ld.Elems() * type.GetSize();
+    auto pd = Create(bytes, type);
     return Payload(ld, std::move(pd), "Data");
   }
 
@@ -24,10 +25,11 @@ protected:
   {
     auto ld = LogicalDescriptor(size);
     if (Result::kValue != settings.GetResult()) {
-      return Payload(ld, Create(0, DataType::kVoid), "Default (empty) Values");
+      return Payload(ld, Create(0, DataType::Get<void>()), "Default (empty) Values");
     }
-    auto bytes = ld.Elems() * Sizeof(DataType::kFloat);
-    auto pd = Create(bytes, DataType::kFloat);
+    auto type = DataType::Get<float>();
+    auto bytes = ld.Elems() * type.GetSize();
+    auto pd = Create(bytes, type);
     return Payload(ld, std::move(pd), "Values");
   }
 
@@ -35,10 +37,11 @@ protected:
   {
     auto ld = LogicalDescriptor(size);
     if (Result::kLocation != settings.GetResult()) {
-      return Payload(ld, Create(0, DataType::kVoid), "Default (empty) Locations");
+      return Payload(ld, Create(0, DataType::Get<void>()), "Default (empty) Locations");
     }
-    auto bytes = ld.Elems() * Sizeof(DataType::kFloat);
-    auto pd = Create(bytes, DataType::kFloat);
+    auto type = DataType::Get<float>();
+    auto bytes = ld.Elems() * type.GetSize();
+    auto pd = Create(bytes, type);
     return Payload(ld, std::move(pd), "Locations");
   }
 

@@ -2,76 +2,94 @@
 #include <cassert>
 #include <libumpalumpa/system_includes/spdlog.hpp>
 
-template<typename T> void FlexAlign<T>::Execute(const umpalumpa::data::Size &sizeAll)
+template<typename T>
+void FlexAlign<T>::Execute(const umpalumpa::data::Size &movieSize,
+  const size_t batch,
+  const size_t num_of_movies,
+  const umpalumpa::data::Size &croppedSize)
 {
-  assert(sizeAll.x > 5);
-  assert(sizeAll.y > 5);
-  assert(sizeAll.z == 1);
+  assert(movieSize.x > 5);// because of the cross size
+  assert(movieSize.y > 5);// because of the cross size
+  assert(movieSize.z == 1);
 
-  const size_t batch = 5;
-  assert(0 == sizeAll.n % batch);
+  // const size_t batch = 5;
+  assert(0 == movieSize.n % batch);
 
-  auto sizeBatch = sizeAll.CopyFor(batch);
-  auto sizeBatchCrop = Size(sizeBatch.x / 2, sizeBatch.y / 2, sizeBatch.z, sizeBatch.n);
-  // auto sizeBatchCrop = Size(928, 928, 1, 1);
+  auto sizeBatch = movieSize.CopyFor(batch);
+  auto sizeBatchCrop = Size(croppedSize.x, croppedSize.y, sizeBatch.z, sizeBatch.n);
+  
+  spdlog::info(
+    "\nRunning FlexAlign.\nImage size: {}*{} ({})\nBatch: {}\nNumber of movies: "
+    "{}\nCorrelation size: {}*{} ({})",
+    movieSize.x,
+    movieSize.y,
+    movieSize.n,
+    batch,
+    num_of_movies,
+    sizeBatchCrop.x,
+    sizeBatchCrop.y,
+    sizeBatchCrop.n);
+  
+  
   auto sizeCross = Size(3, 3, 1, 1);
   auto scaleX = static_cast<float>(sizeBatch.x) / static_cast<float>(sizeBatchCrop.x);
   auto scaleY = static_cast<float>(sizeBatch.y) / static_cast<float>(sizeBatchCrop.y);
 
   auto filter = CreatePayloadFilter(sizeBatchCrop);
-
   auto imgs = std::vector<Payload<LogicalDescriptor>>();
-  imgs.reserve(sizeAll.n);
-
+  imgs.reserve(movieSize.n);
   auto ffts = std::vector<Payload<FourierDescriptor>>();
-  ffts.reserve(sizeAll.n);
-
   auto shifts = std::vector<Payload<LogicalDescriptor>>();
-  shifts.reserve(NoOfBatches(sizeAll, batch));
-
   // Preallocate memory. This can be quite expensive, because e.g. cudaHostAlloc is
   // synchronizing, i.e. it can slow down the execution later on
-  for (size_t j = 0; j < sizeAll.n; j += batch) {
+  for (size_t j = 0; j < movieSize.n; j += batch) {
     auto name = std::to_string(j) + "-" + std::to_string(j + batch - 1);
-    auto &img = imgs.emplace_back(CreatePayloadImage(sizeBatch, name));
+    imgs.emplace_back(CreatePayloadImage(sizeBatch, name));
   }
+  for (size_t k = 0; k < num_of_movies; k++) {
+    spdlog::info("Processing movie {}", k);
+    ffts.reserve(movieSize.n);
+    shifts.reserve(NoOfBatches(movieSize, batch));
 
-  for (size_t j = 0; j < sizeAll.n; j += batch) {
-    auto name = std::to_string(j) + "-" + std::to_string(j + batch - 1);
-    auto &img = imgs.at(j / batch);
-    GenerateClockArms(j, img, sizeCross, j, j);
-    auto fft = ConvertToFFT(img, name);
-    ffts.emplace_back(Crop(fft, filter, name));
-    RemovePD(fft.dataInfo, false);
-    for (size_t i = 0; i <= j; i += batch) {
-      auto name = std::to_string(i) + "-" + std::to_string(i + batch - 1) + "<->"
-                  + std::to_string(j) + "-" + std::to_string(j + batch - 1);
-      auto correlation = Correlate(ffts.at(i / batch), ffts.at(j / batch), name);
-      auto ifft = ConvertFromFFT(correlation, name);
-      RemovePD(correlation.dataInfo, false);
-      shifts.emplace_back(FindMax(ifft, name));
-      RemovePD(ifft.dataInfo, false);
+    for (size_t j = 0; j < movieSize.n; j += batch) {
+      auto name = std::to_string(j) + "-" + std::to_string(j + batch - 1);
+      auto &img = imgs.at(j / batch);
+      GenerateClockArms(j, img, sizeCross, j, j);
+      auto fft = ConvertToFFT(img, name);
+      ffts.emplace_back(Crop(fft, filter, name));
+      RemovePD(fft.dataInfo);
+      for (size_t i = 0; i <= j; i += batch) {
+        auto name = std::to_string(i) + "-" + std::to_string(i + batch - 1) + "<->"
+                    + std::to_string(j) + "-" + std::to_string(j + batch - 1);
+        auto correlation = Correlate(ffts.at(i / batch), ffts.at(j / batch), name);
+        auto ifft = ConvertFromFFT(correlation, name);
+        RemovePD(correlation.dataInfo);
+        shifts.emplace_back(FindMax(ifft, name));
+        RemovePD(ifft.dataInfo);
+      }
     }
-  }
-  // wait for results and process them
-  assert(shifts.size() == NoOfBatches(sizeAll, batch));
-  for (size_t j = 0, counter = 0; j < sizeAll.n; j += batch) {
-    for (size_t i = 0; i <= j; i += batch, ++counter) {
-      auto shift = ExtractShift(shifts.at(counter));
-      // reported shift is position in the 2D image, where center of that image
-      // has position [0, 0];
-      // To get the right shift, we need to shift by half of the cropped image
-      // Since we cropped the image in the Fourier domain and performed IFFT, we performed
-      // downscaling To get the rigth shift, we have to adjust the scale.
-      auto normShift = Transform(shift, scaleX, scaleY, sizeBatchCrop.x / 2, sizeBatchCrop.y / 2);
-      LogResult(i, j, batch, normShift);
+    // wait for results and process them
+    assert(shifts.size() == NoOfBatches(movieSize, batch));
+    for (size_t j = 0, counter = 0; j < movieSize.n; j += batch) {
+      for (size_t i = 0; i <= j; i += batch, ++counter) {
+        auto shift = ExtractShift(shifts.at(counter));
+        // reported shift is position in the 2D image, where center of that image
+        // has position [0, 0];
+        // To get the right shift, we need to shift by half of the cropped image
+        // Since we cropped the image in the Fourier domain and performed IFFT, we performed
+        // downscaling To get the rigth shift, we have to adjust the scale.
+        auto normShift = Transform(shift, scaleX, scaleY, sizeBatchCrop.x / 2, sizeBatchCrop.y / 2);
+        LogResult(i, j, batch, normShift);
+      }
     }
+    // Release allocated data. Payloads themselves don't need any extra handling
+    for (const auto &s : shifts) { RemovePD(s.dataInfo); }
+    shifts.clear();
+    for (const auto &p : ffts) { RemovePD(p.dataInfo); }
+    ffts.clear();
   }
-  // Release allocated data. Payloads themselves don't need any extra handling
-  for (const auto &p : ffts) { RemovePD(p.dataInfo, false); }
-  for (const auto &p : imgs) { RemovePD(p.dataInfo, true); }
-
-  RemovePD(filter.dataInfo, true);
+  for (const auto &p : imgs) { RemovePD(p.dataInfo); }
+  RemovePD(filter.dataInfo);
 }
 
 template<typename T> size_t FlexAlign<T>::GetAvailableCores() const
@@ -91,7 +109,6 @@ std::vector<typename FlexAlign<T>::Shift> FlexAlign<T>::ExtractShift(
     res.push_back({ x, y });
   }
   Release(shift.dataInfo);
-  RemovePD(shift.dataInfo, false);
   return res;
 }
 
@@ -110,6 +127,7 @@ void FlexAlign<T>::LogResult(size_t i, size_t j, size_t batch, const std::vector
       const auto level = [maxDelta]() {
         constexpr auto delta1 = 0.1f;
         constexpr auto delta2 = 0.5f;
+        if (true) return spdlog::level::debug;
         if (maxDelta < delta1) return spdlog::level::info;
         if (maxDelta < delta2) return spdlog::level::warn;
         return spdlog::level::err;
@@ -139,8 +157,8 @@ Payload<FourierDescriptor> FlexAlign<T>::ConvertToFFT(const Payload<LogicalDescr
     auto ld = FourierDescriptor(inFFT.info.GetSize(),
       inFFT.info.GetPadding(),
       umpalumpa::data::FourierDescriptor::FourierSpaceDescriptor());
-    auto type = GetComplexDataType();
-    auto bytes = ld.Elems() * Sizeof(type);
+    auto type = DataType::Get<std::complex<T>>();
+    auto bytes = ld.Elems() * type.GetSize();
     return Payload(ld, CreatePD(bytes, type, false, false), "FFT (out) " + name);
   }();
   using namespace umpalumpa::fourier_transformation;
@@ -149,7 +167,7 @@ Payload<FourierDescriptor> FlexAlign<T>::ConvertToFFT(const Payload<LogicalDescr
   auto out = AFFT::OutputData(outFFT);
   if (!alg.IsInitialized()) {
     auto settings =
-      Settings(Locality::kOutOfPlace, Direction::kForward, std::min(8ul, GetAvailableCores()));
+      Settings(Locality::kOutOfPlace, Direction::kForward, 1);//std::min(8ul, GetAvailableCores()));
     if (!alg.Init(out, in, settings)) {
       spdlog::error("Initialization of the FFT algorithm failed");
     }
@@ -171,8 +189,8 @@ Payload<FourierDescriptor> FlexAlign<T>::Crop(const Payload<FourierDescriptor> &
     auto ld = FourierDescriptor(filter.info.GetSize().CopyFor(fft.info.GetSize().n),
       umpalumpa::data::PaddingDescriptor(),
       umpalumpa::data::FourierDescriptor::FourierSpaceDescriptor());
-    auto type = GetComplexDataType();
-    auto bytes = ld.Elems() * Sizeof(type);
+    auto type = DataType::Get<std::complex<T>>();
+    auto bytes = ld.Elems() * type.GetSize();
     return Payload(ld, CreatePD(bytes, type, false, false), "Crop (out) " + name);
   }();
   using namespace umpalumpa::fourier_processing;
@@ -198,8 +216,8 @@ Payload<FourierDescriptor> FlexAlign<T>::ConvertFromFFT(Payload<FourierDescripto
 {
   auto pOut = [&correlation, &name, this]() {
     auto ld = FourierDescriptor(correlation.info.GetSpatialSize(), correlation.info.GetPadding());
-    auto type = GetDataType();
-    auto bytes = ld.Elems() * Sizeof(type);
+    auto type = DataType::Get<T>();
+    auto bytes = ld.Elems() * type.GetSize();
     return Payload(ld, CreatePD(bytes, type, false, false), "IFFT (out) " + name);
   }();
   using namespace umpalumpa::fourier_transformation;
@@ -208,7 +226,7 @@ Payload<FourierDescriptor> FlexAlign<T>::ConvertFromFFT(Payload<FourierDescripto
   auto out = AFFT::OutputData(pOut);
   if (!alg.IsInitialized()) {
     auto settings =
-      Settings(Locality::kOutOfPlace, Direction::kInverse, std::min(4ul, GetAvailableCores()));
+      Settings(Locality::kOutOfPlace, Direction::kInverse, 1);//std::min(4ul, GetAvailableCores()));
     if (!alg.Init(out, in, settings)) {
       spdlog::error("Initialization of the IFFT algorithm failed");
     }
@@ -228,12 +246,12 @@ Payload<LogicalDescriptor> FlexAlign<T>::FindMax(Payload<FourierDescriptor> &out
       "Location of Max (in) " + name);
   }();
   auto empty = Payload(
-    LogicalDescriptor(Size(0, 0, 0, 0)), CreatePD(0, DataType::kVoid, false, false), "Empty");
+    LogicalDescriptor(Size(0, 0, 0, 0)), CreatePD(0, DataType::Get<void>(), false, false), "Empty");
   auto pOut = [&outCorrelation, &name, this]() {
-    auto type = DataType::kFloat;
+    auto type = DataType::Get<float>();
     auto size = Size(2, 1, 1, outCorrelation.info.GetSize().n);
     auto ld = LogicalDescriptor(size);
-    auto bytes = ld.Elems() * Sizeof(type);
+    auto bytes = ld.Elems() * type.GetSize();
     return Payload(ld, CreatePD(bytes, type, true, false), "Location of Max " + name);
   }();
   using namespace umpalumpa::extrema_finder;
@@ -248,8 +266,12 @@ Payload<LogicalDescriptor> FlexAlign<T>::FindMax(Payload<FourierDescriptor> &out
       spdlog::error("Initialization of the Extrema Finder algorithm failed");
     }
   }
+  // FIXME
+  // Note: The search might lead to Conditional jump or move depends on uninitialised value(s)
+  // the reason is that we probably don't have valid data for the last iteration if we e.g.
+  // have only 3 images in the last batch of size 4
   if (!alg.Execute(out, in)) { spdlog::error("Execution of the Extrema Finder algorithm failed"); }
-  RemovePD(empty.dataInfo, false);
+  RemovePD(empty.dataInfo);
   return pOut;
 };
 
@@ -267,7 +289,7 @@ Payload<FourierDescriptor> FlexAlign<T>::Correlate(Payload<FourierDescriptor> &f
     auto sizeOut = first.info.GetSpatialSize().CopyFor(nOut);
     auto fd = first.info.GetFourierSpaceDescriptor();
     auto ld = FourierDescriptor(sizeOut, umpalumpa::data::PaddingDescriptor(), fd.value());
-    auto bytes = ld.Elems() * Sizeof(first.dataInfo.GetType());
+    auto bytes = ld.Elems() * first.dataInfo.GetType().GetSize();
     auto pd = CreatePD(bytes, first.dataInfo.GetType(), false, false);
     return Payload(ld, std::move(pd), "Correlation of " + name);
   }();
@@ -289,16 +311,16 @@ Payload<LogicalDescriptor> FlexAlign<T>::CreatePayloadImage(const Size &size,
   const std::string &name)
 {
   auto ld = LogicalDescriptor(size);
-  auto type = GetDataType();
-  auto bytes = ld.Elems() * Sizeof(type);
+  auto type = DataType::Get<T>();
+  auto bytes = ld.Elems() * type.GetSize();
   return Payload(ld, CreatePD(bytes, type, true, true), "Image(s) " + name);
 };
 
 template<typename T> Payload<LogicalDescriptor> FlexAlign<T>::CreatePayloadFilter(const Size &size)
 {
   auto ld = LogicalDescriptor(size.CopyFor(1));
-  auto type = GetDataType();
-  auto bytes = ld.Elems() * Sizeof(type);
+  auto type = DataType::Get<T>();
+  auto bytes = ld.Elems() * type.GetSize();
   auto payload = Payload(ld, CreatePD(bytes, type, true, true), "Filter");
   // fill the filter
   Acquire(payload.dataInfo);
@@ -318,10 +340,11 @@ void FlexAlign<T>::GenerateClockArms(size_t index,
   assert(p.IsValid() && !p.IsEmpty());
 
   Acquire(p.dataInfo);
+  memset(p.GetPtr(), 0, p.GetRequiredBytes());
   for (size_t n = 0; n < p.info.GetSize().n; ++n) {
     auto posX = startX + n;
     auto posY = startY + n;
-    spdlog::info("Generated shift of img {} is [{}, {}]", index + n, posX, posY);
+    spdlog::debug("Generated shift of img {} is [{}, {}]", index + n, posX, posY);
 
     assert(posX + armSize.x < p.info.GetSize().x);
     assert(posY + armSize.y < p.info.GetSize().y);
@@ -341,26 +364,6 @@ void FlexAlign<T>::GenerateClockArms(size_t index,
     }
   }
   Release(p.dataInfo);
-}
-
-template<typename T> constexpr DataType FlexAlign<T>::GetDataType() const
-{
-  if (std::is_same<T, float>::value) {
-    return DataType::kFloat;
-  } else if (std::is_same<T, double>::value) {
-    return DataType::kDouble;
-  }
-  return DataType::kVoid;// unsupported
-}
-
-template<typename T> constexpr DataType FlexAlign<T>::GetComplexDataType() const
-{
-  if (std::is_same<T, float>::value) {
-    return DataType::kComplexFloat;
-  } else if (std::is_same<T, double>::value) {
-    return DataType::kComplexDouble;
-  }
-  return DataType::kVoid;// unsupported
 }
 
 template class FlexAlign<float>;
