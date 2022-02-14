@@ -23,18 +23,19 @@ struct Leader : virtual public detail::TunableStrategyInterface
       bestConfigs.size(), std::numeric_limits<ktt::Nanoseconds>::max());// FIXME tmp
   }
 
+  // FIXME make one more robust method for storing the best config instead of how it is now
+  // this will need changes in TunableStrategy aswell
+
   virtual void SetBestConfiguration(size_t kernelIndex, const ktt::KernelConfiguration &conf)
   {
     bestConfigs.at(kernelIndex) = conf;
   }
 
-  // FIXME tmp
   virtual void SetBestConfigTime(size_t kernelIndex, ktt::Nanoseconds time)
   {
     bestConfigTimes.at(kernelIndex) = time;
   }
 
-  // FIXME tmp
   virtual ktt::Nanoseconds GetBestConfigTime(size_t kernelIndex) const
   {
     return bestConfigTimes.at(kernelIndex);
@@ -47,7 +48,7 @@ protected:
 };
 
 /**
- * This class groups togerther strategies that are either equal or similar. Each StrategyGroup has
+ * This class groups together strategies that are either equal or similar. Each StrategyGroup has
  * one Leader strategy which decides what strategies belong into the StrategyGroup (and whether the
  * strategies are equal or similar). Leader strategy is never removed from the StrategyGroup.
  */

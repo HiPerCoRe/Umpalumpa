@@ -78,7 +78,11 @@ public:
   std::string GetFullName() const;
 
   /**
-   * TODO
+   * Returns default kernel configurations that will be used if there is no other tuned
+   * configuration.
+   *
+   * Each strategy has to override this method and return configurations that are relevant for this
+   * strategy.
    */
   std::vector<ktt::KernelConfiguration> GetDefaultConfigurations() const override = 0;
   /**
@@ -87,12 +91,11 @@ public:
   virtual ktt::KernelConfiguration GetBestConfiguration(ktt::KernelId kernelId) const;
 
   /**
-   * TODO
+   * Returns the best known tuning configurations for all kernels that are part of this strategy.
    */
   const std::vector<ktt::KernelConfiguration> &GetBestConfigurations() const override;
 
-  // TODO move to private + Setter
-  Leader *groupLeader = nullptr;
+  void AssignLeader(Leader *l) { groupLeader = l; }
 
   /**
    * Sets a TuningApproach which controls how the strategy should be tuned.
@@ -105,10 +108,15 @@ public:
    */
   void SetTuningFor(ktt::KernelId kernelId, bool val)
   {
-    kernelIds.at(GetKernelIndex(kernelId)).tune = val;
+    SetTuningForIdx(GetKernelIndex(kernelId), val);
   }
 
-  // FIXME find better name
+  /**
+   * Sets tuning for a kernel at specified index.
+   * This settings has effect only when TuningApproach::kSelectedKernels is set.
+   */
+  void SetTuningForIdx(size_t idx, bool val) { kernelIds.at(idx).tune = val; }
+
   /**
    * Allows tuning of the strategy group the strategy is in.
    */
@@ -232,6 +240,7 @@ private:
   // Tracker of used ids, which allows for automatic cleanup after strategy's destruction
   std::vector<std::shared_ptr<KTTIdTracker>> idTrackers;
 
+  Leader *groupLeader = nullptr;
   TuningApproach tuningApproach;
   // the strategy is equal to a Leader of a StrategyGroup and therefore is allowed to be tuned
   bool canTuneStrategyGroup;
