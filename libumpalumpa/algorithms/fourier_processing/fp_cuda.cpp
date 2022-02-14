@@ -18,7 +18,6 @@ namespace {// to avoid poluting
     // Currently we create one thread per each pixel of a single image. Each thread processes
     // same pixel of all images. The other option for 2D images is to map N dimension to the
     // Z dimension, ie. create more threads, each thread processing fewer images.
-    // FIXME  this should be tuned by the KTT
 
     size_t GetHash() const override { return 0; }
 
@@ -26,7 +25,7 @@ namespace {// to avoid poluting
     {
       return tuning::StrategyGroup::CreateLeader(*this, alg);
     }
-    std::vector<std::shared_ptr<tuning::StrategyGroup>> LoadTuningData() const override
+    tuning::StrategyGroup LoadTuningData() const override
     {
       return tuning::StrategyGroup::LoadTuningData(*this, alg);
     }

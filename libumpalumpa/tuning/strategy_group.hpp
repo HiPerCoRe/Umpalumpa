@@ -69,18 +69,10 @@ protected:
  */
 struct StrategyGroup
 {
-private:
-  template<typename S> struct InternalLeader;
-
-public:
   /**
    * Creates a StrategyGroup with a Leader strategy created out of the provided strategy.
    */
   StrategyGroup(const TunableStrategy &strat) : leader(strat.CreateLeader()) {}
-
-  template<typename Strategy>
-  StrategyGroup(std::unique_ptr<InternalLeader<Strategy>> &&l) : leader(std::move(l))
-  {}
 
   std::unique_ptr<Leader> leader;
   std::vector<TunableStrategy *> strategies;
@@ -103,18 +95,13 @@ public:
   }
 
   template<typename Strategy, typename Algorithm>
-  static std::vector<std::shared_ptr<StrategyGroup>> LoadTuningData(const Strategy &s,
-    const Algorithm &a)
+  static StrategyGroup LoadTuningData(const Strategy &s, const Algorithm &a)
   {
     auto filePath = utils::GetTuningDirectory() + s.GetUniqueName();
     std::ifstream inputFile(filePath);
-    if (!inputFile) { return {}; }
+    if (!inputFile) { throw std::logic_error("Could not open file: " + filePath); }
 
-    std::vector<std::shared_ptr<StrategyGroup>> vec;
-    auto x = InternalLeader<Strategy>::Deserialize(a, inputFile);
-    auto sg = std::make_shared<StrategyGroup>(std::move(x));
-    vec.push_back(std::move(sg));
-    return vec;
+    return StrategyGroup(InternalLeader<Strategy>::Deserialize(a, inputFile));
   }
 
   void Serialize(std::ostream &out) const { leader->Serialize(out); }
@@ -137,6 +124,12 @@ public:
   }
 
 private:
+  template<typename S> struct InternalLeader;
+
+  template<typename Strategy>
+  StrategyGroup(std::unique_ptr<InternalLeader<Strategy>> &&l) : leader(std::move(l))
+  {}
+
   /**
    * Leader strategies are used to lead StrategyGroups. They provide methods for checking equality
    * and similarity even without associated BasicAlgorithm class (Leader strategy stores copies of

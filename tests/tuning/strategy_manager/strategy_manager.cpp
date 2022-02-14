@@ -59,7 +59,7 @@ public:
       EXPECT_CALL(*ptr, IsSimilarTo).WillRepeatedly(Return(mockSimilar));
       return uPtr;
     }
-    std::vector<std::shared_ptr<tuning::StrategyGroup>> LoadTuningData() const override
+    tuning::StrategyGroup LoadTuningData() const override
     {
       return tuning::StrategyGroup::LoadTuningData(*this, alg);
     }

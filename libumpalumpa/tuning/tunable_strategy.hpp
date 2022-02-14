@@ -56,10 +56,12 @@ public:
   std::unique_ptr<Leader> CreateLeader() const override = 0;
 
   /**
+   * Loads tuning data specific for the strategy which calls this method.
+   *
    * TODO not satisfied how this works, but can't find anything better now...
    * should be done more automatic
    */
-  virtual std::vector<std::shared_ptr<StrategyGroup>> LoadTuningData() const = 0;
+  virtual StrategyGroup LoadTuningData() const = 0;
 
   /**
    * Returns hash of this strategy. This method needs to be overriden by successor strategy because

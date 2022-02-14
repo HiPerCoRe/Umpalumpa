@@ -2,7 +2,6 @@
 #include <mutex>
 #include <vector>
 #include <libumpalumpa/system_includes/ktt.hpp>
-// #include <libumpalumpa/tuning/storage.hpp>
 
 namespace umpalumpa::tuning {
 
@@ -23,9 +22,8 @@ struct StrategyGroup;
  */
 class StrategyManager
 {
-  std::vector<std::shared_ptr<StrategyGroup>> strategyGroups;
-  std::mutex mutex;
-  // std::unique_ptr<Storage> tuningData;
+  std::vector<StrategyGroup> strategyGroups;
+  mutable std::mutex mutex;
 
   StrategyManager() = default;
   StrategyManager(StrategyManager &&) = delete;
@@ -58,26 +56,24 @@ public:
   const auto &GetRegisteredStrategies() const { return strategyGroups; }
 
   /**
-   * TODO
+   * Saves tuning data of all the strategy groups.
+   * TODO should be async
    */
-  void SaveTuningData();
-
-  // template<typename S, typename A>
-  // std::vector<std::shared_ptr<StrategyGroup>> LoadTuningData(const S &s, const A &a)
-  // {
-  //   tuningData->LoadTuningData(s, a);
-  // }
-
-  /**
-   * TODO
-   */
-  void Merge(std::vector<std::shared_ptr<StrategyGroup>> &&vec);
+  void SaveTuningData() const;
 
   /**
    * Resets the AlgorithmManager, clearing all the saved data (registered strategies, garbage
    * collection metadata).
    */
   void Cleanup();
+
+protected:
+  /**
+   * Merges provided strategy group into the strategy groups saved in the StrategyManager.
+   * Makes sure to remove duplicity. In case of found duplicity, keeps the strategy group instance
+   * with better (faster) kernel execution time.
+   */
+  void Merge(StrategyGroup &&vec);
 };
 
 }// namespace umpalumpa::tuning

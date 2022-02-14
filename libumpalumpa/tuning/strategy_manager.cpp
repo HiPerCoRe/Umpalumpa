@@ -16,7 +16,7 @@ void StrategyManager::Register(TunableStrategy &strat)
   std::lock_guard lck(mutex);
 
   for (auto &group : strategyGroups) {
-    for (auto *s : group->strategies) {
+    for (auto *s : group.strategies) {
       if (s == &strat) {
         spdlog::warn("You are trying to register the same strategy instance multiple times.");
         return;
@@ -43,17 +43,17 @@ void StrategyManager::Register(TunableStrategy &strat)
   for (auto &group : strategyGroups) {
     // If we find an equal group we are satisfied and we can exit the loop
     // because equality has higher priority than similarity
-    if (group->leader->IsEqualTo(strat)) {
+    if (group.leader->IsEqualTo(strat)) {
       isEqual = true;
-      groupPtr = group.get();
+      groupPtr = &group;
       break;
     }
     // After we find a similar group we continue looking for an equal group
     // but we ignore any other similar groups
     // TODO might be updated to accept the best of all the similar groups instead of the first one
-    if (!isSimilar && group->leader->IsSimilarTo(strat)) {
+    if (!isSimilar && group.leader->IsSimilarTo(strat)) {
       isSimilar = true;
-      groupPtr = group.get();
+      groupPtr = &group;
     }
   }
 
@@ -64,7 +64,7 @@ void StrategyManager::Register(TunableStrategy &strat)
     debugMsg += "As similar to";
   } else {
     // 'strat' does not belong to any of the existing groups, create new group based on the 'strat'
-    groupPtr = strategyGroups.emplace_back(std::make_shared<StrategyGroup>(strat)).get();
+    groupPtr = &strategyGroups.emplace_back(strat);
     // First strategy in a new group can tune the group
     strat.AllowTuningStrategyGroup();
     groupPtr->leader->SetBestConfigurations(strat.GetDefaultConfigurations());
@@ -82,12 +82,12 @@ void StrategyManager::Unregister(TunableStrategy &strat)
   std::lock_guard lck(mutex);
 
   for (auto &group : strategyGroups) {
-    auto stratIt = std::find(group->strategies.begin(), group->strategies.end(), &strat);
+    auto stratIt = std::find(group.strategies.begin(), group.strategies.end(), &strat);
 
-    if (stratIt != group->strategies.end()) {
+    if (stratIt != group.strategies.end()) {
       // Remove strategy from group
-      std::iter_swap(stratIt, group->strategies.end() - 1);
-      group->strategies.pop_back();
+      std::iter_swap(stratIt, group.strategies.end() - 1);
+      group.strategies.pop_back();
       spdlog::debug("Strategy at address {} unregistered", reinterpret_cast<size_t>(&strat));
 
       // We don't want to remove empty groups... later some strategy may be added there.
@@ -101,30 +101,26 @@ void StrategyManager::Unregister(TunableStrategy &strat)
   spdlog::warn("You are trying to unregister strategy which wasn't previously registered.");
 }
 
-void StrategyManager::SaveTuningData()
+void StrategyManager::SaveTuningData() const
 {
+  std::lock_guard lck(mutex);
   // TODO Should be async
   for (const auto &group : strategyGroups) {
-    auto filePath = utils::GetTuningDirectory() + group->leader->GetUniqueName();
+    auto filePath = utils::GetTuningDirectory() + group.leader->GetUniqueName();
     std::ofstream outFile(filePath);
-    group->Serialize(outFile);
+    group.Serialize(outFile);
   }
 }
 
-void StrategyManager::Merge(std::vector<std::shared_ptr<StrategyGroup>> &&loadedSG)
+void StrategyManager::Merge(StrategyGroup &&newGroup)
 {
-  for (auto &newGroup : loadedSG) {
-    bool addNewGroup = true;
-
-    for (auto &group : strategyGroups) {
-      if (group->IsEqualTo(*newGroup)) {
-        group->Merge(*newGroup);
-        addNewGroup = false;
-        break;
-      }
+  for (auto &group : strategyGroups) {
+    if (group.IsEqualTo(newGroup)) {
+      group.Merge(newGroup);
+      return;
     }
-    if (addNewGroup) { strategyGroups.push_back(std::move(newGroup)); }
   }
+  strategyGroups.push_back(std::move(newGroup));
 }
 
 void StrategyManager::Cleanup()

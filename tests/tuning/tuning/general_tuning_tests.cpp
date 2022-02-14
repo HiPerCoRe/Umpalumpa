@@ -365,6 +365,6 @@ TEST_F(GeneralTuningTests, Serialization)
   auto x = strat.LoadTuningData();
 
   std::cout << "Printing\n";
-  for (const auto &l : x) { l->leader->Serialize(std::cout); }
+  x.leader->Serialize(std::cout);
 }
 

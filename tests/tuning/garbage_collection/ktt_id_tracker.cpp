@@ -15,7 +15,7 @@ using namespace ::testing;
     internal::CaptureStderr();\
     cmd;\
     {auto output = internal::GetCapturedStderr(); \
-    ASSERT_TRUE(StartsWith(output, "[ERROR]")) << "Output is: '" << output << "'";}
+    ASSERT_TRUE(StartsWith(output, "[Error]")) << "Output is: '" << output << "'";}
 // clang-format on
 
 // TESTS FOR KTTIdTracker

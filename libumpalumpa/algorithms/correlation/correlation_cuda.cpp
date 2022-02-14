@@ -25,7 +25,7 @@ namespace {// to avoid poluting
     {
       return tuning::StrategyGroup::CreateLeader(*this, alg);
     }
-    std::vector<std::shared_ptr<tuning::StrategyGroup>> LoadTuningData() const override
+    tuning::StrategyGroup LoadTuningData() const override
     {
       return tuning::StrategyGroup::LoadTuningData(*this, alg);
     }
