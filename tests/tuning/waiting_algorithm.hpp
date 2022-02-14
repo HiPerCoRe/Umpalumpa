@@ -23,6 +23,17 @@ struct Settings
   int similarityGroup = 0;
   // serves for advanced testing
   int numberOfKernels = 1;
+
+  void Serialize(std::ostream &out) const
+  {
+    out << equalityGroup << ' ' << similarityGroup << ' ' << numberOfKernels << '\n';
+  }
+  static auto Deserialize(std::istream &in)
+  {
+    Settings s;
+    in >> s.equalityGroup >> s.similarityGroup >> s.numberOfKernels;
+    return s;
+  }
 };
 
 class WaitingAlgorithm
@@ -58,6 +69,10 @@ namespace {
     std::unique_ptr<tuning::Leader> CreateLeader() const override
     {
       return tuning::StrategyGroup::CreateLeader(*this, alg);
+    }
+    tuning::StrategyGroup LoadTuningData() const override
+    {
+      return tuning::StrategyGroup::LoadTuningData(*this, alg);
     }
 
     std::vector<ktt::KernelConfiguration> GetDefaultConfigurations() const override

@@ -27,6 +27,8 @@ template<typename T = Payload<LogicalDescriptor>> struct DataWrapper : public Pa
 
 struct Settings
 {
+  void Serialize(std::ostream &) const {}
+  static auto Deserialize(std::istream &) { return Settings{}; }
   // Empty
 };
 
@@ -56,6 +58,10 @@ public:
       EXPECT_CALL(*ptr, GetHash()).WillRepeatedly(Return(mockHash));
       EXPECT_CALL(*ptr, IsSimilarTo).WillRepeatedly(Return(mockSimilar));
       return uPtr;
+    }
+    tuning::StrategyGroup LoadTuningData() const override
+    {
+      return tuning::StrategyGroup::LoadTuningData(*this, alg);
     }
     // Needed because of creation of a Leader strategy from the MockStrategy
     size_t mockHash = 0;

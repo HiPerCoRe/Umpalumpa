@@ -91,6 +91,20 @@ public:
    **/
   void Set(const PhysicalDescriptor pd) { this->dataInfo = pd; }
 
+  void Serialize(std::ostream &out) const
+  {
+    info.Serialize(out);
+    dataInfo.Serialize(out);
+  }
+  static auto Deserialize(std::istream &in)
+  {
+    // Needs to be written like this to guarantee the order of execution!
+    // Do NOT try to refactor this into one-liner!!!
+    auto ld = T::Deserialize(in);
+    auto pd = PhysicalDescriptor::Deserialize(in);
+    return Payload(std::move(ld), std::move(pd));
+  }
+
 private:
   static auto constexpr suffixEmpty = " [empty]";
 };

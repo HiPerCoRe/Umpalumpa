@@ -18,7 +18,7 @@ using namespace ::testing;
     internal::CaptureStderr();\
     cmd;\
     {auto output = internal::GetCapturedStderr(); \
-    ASSERT_TRUE(StartsWith(output, "[ERROR]")) << "Output is: '" << output << "'";}
+    ASSERT_TRUE(StartsWith(output, "[Error]")) << "Output is: '" << output << "'";}
 // clang-format on
 
 class TestStrategy : public TunableStrategy
@@ -65,9 +65,11 @@ public:
     return tuner.Run(GetKernelId(), {}, {}).IsValid();
   }
 
+  std::string GetUniqueName() const override { return "TestStrategy"; }
   size_t GetHash() const override { return 0; }
   std::vector<ktt::KernelConfiguration> GetDefaultConfigurations() const override { return { {} }; }
   std::unique_ptr<Leader> CreateLeader() const override { return std::unique_ptr<Leader>(nullptr); }
+  tuning::StrategyGroup LoadTuningData() const override { throw std::logic_error("Nonsense"); }
   bool IsSimilarTo(const TunableStrategy &) const override { return false; }
 
   std::vector<ktt::KernelDefinitionId> testDefinitionIds;

@@ -5,6 +5,7 @@
 #include <libumpalumpa/tuning/ktt_base.hpp>
 #include <libumpalumpa/tuning/tunable_strategy.hpp>
 #include <libumpalumpa/utils/ktt.hpp>
+#include <sstream>
 
 namespace umpalumpa::tuning {
 
@@ -44,7 +45,10 @@ public:
 
     bool initSuccessful = InitImpl();
 
-    if (initSuccessful) { Register(); }
+    if (initSuccessful) {
+      SetUniqueStrategyName();// This has to be called before the Register()!!!
+      Register();
+    }
     // TODO maybe some cleanup if not successful? check later
 
     return initSuccessful;
@@ -79,6 +83,14 @@ public:
     return BasicAlgorithm<O, I, S>::Strategy::alg.GetSettings();
   }
 
+  std::string GetUniqueName() const final
+  {
+    if (uniqueStrategyName.empty()) {
+      throw std::logic_error("Access to uninitialized 'unique strategy name'!");
+    }
+    return uniqueStrategyName;
+  }
+
 protected:
   /**
    * Creates a KTT argument of type Vector from the content of the Payload.
@@ -88,9 +100,34 @@ protected:
   auto AddArgumentVector(const data::Payload<P> &p, ktt::ArgumentAccessType at)
   {
     if (p.IsEmpty()) { return kttHelper.GetTuner().AddArgumentScalar(NULL); }
-    return kttHelper.GetTuner().AddArgumentVector<T>(
+    return kttHelper.GetTuner().template AddArgumentVector<T>(
       p.GetPtr(), p.info.GetSize().total, at, utils::KTTUtils::GetMemoryNode(p.dataInfo));
   }
+
+  /**
+   * Creates and sets unique strategy name based on the OutputData, InputData, Settings.
+   */
+  void SetUniqueStrategyName()
+  {
+    std::stringstream ss;
+    ss << GetFullName();
+    ss << '-';
+    GetOutputRef().Serialize(ss);
+    ss << '-';
+    GetInputRef().Serialize(ss);
+    ss << '-';
+    GetSettings().Serialize(ss);
+    std::stringstream noWhitespaces;
+    while (!ss.eof()) {
+      std::string tmp;
+      ss >> tmp;
+      noWhitespaces << tmp;
+    }
+    uniqueStrategyName = noWhitespaces.str();
+  }
+
+private:
+  std::string uniqueStrategyName;
 };
 
 }// namespace umpalumpa::tuning

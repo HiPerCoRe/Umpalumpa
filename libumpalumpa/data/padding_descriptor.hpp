@@ -4,6 +4,7 @@
 // however, NVRTC has size_t predefined so no include is needed
 #ifndef __CUDACC_RTC__
 #include <cstddef>
+#include <iostream>
 #endif
 
 namespace umpalumpa {
@@ -39,6 +40,19 @@ namespace data {
       return (xBeg == other.xBeg) && (xEnd == other.xEnd) && (yBeg == other.yBeg)
              && (yEnd == other.yEnd) && (zBeg == other.zBeg) && (zEnd == other.zEnd);
     }
+#ifndef __CUDACC_RTC__
+    void Serialize(std::ostream &out) const
+    {
+      out << xBeg << ' ' << xEnd << ' ' << yBeg << ' ' << yEnd << ' ' << zBeg << ' ' << zEnd
+          << '\n';
+    }
+    static auto Deserialize(std::istream &in)
+    {
+      size_t xBeg, xEnd, yBeg, yEnd, zBeg, zEnd;
+      in >> xBeg >> xEnd >> yBeg >> yEnd >> zBeg >> zEnd;
+      return PaddingDescriptor(xBeg, xEnd, yBeg, yEnd, zBeg, zEnd);
+    }
+#endif
 
   private:
     size_t xBeg;

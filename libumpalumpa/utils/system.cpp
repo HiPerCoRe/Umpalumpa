@@ -35,5 +35,14 @@ namespace utils {
       std::remove(canonicalPath.begin(), canonicalPath.end(), '\n'), canonicalPath.end());
     return canonicalPath;
   }
+
+  std::string GetTuningDirectory()
+  {
+    auto p = GetExecPath();
+    std::string_view sv(p.data(), p.size() - 1);
+    sv.remove_suffix(sv.size() - sv.find_last_of(kPathSeparator) - 1);
+    return std::string(sv);
+  }
+
 }// namespace utils
 }// namespace umpalumpa

@@ -23,7 +23,7 @@ struct StrategyGroup;
 class StrategyManager
 {
   std::vector<StrategyGroup> strategyGroups;
-  std::mutex mutex;
+  mutable std::mutex mutex;
 
   StrategyManager() = default;
   StrategyManager(StrategyManager &&) = delete;
@@ -56,10 +56,24 @@ public:
   const auto &GetRegisteredStrategies() const { return strategyGroups; }
 
   /**
+   * Saves tuning data of all the strategy groups.
+   * TODO should be async
+   */
+  void SaveTuningData() const;
+
+  /**
    * Resets the AlgorithmManager, clearing all the saved data (registered strategies, garbage
    * collection metadata).
    */
   void Cleanup();
+
+protected:
+  /**
+   * Merges provided strategy group into the strategy groups saved in the StrategyManager.
+   * Makes sure to remove duplicity. In case of found duplicity, keeps the strategy group instance
+   * with better (faster) kernel execution time.
+   */
+  void Merge(StrategyGroup &&vec);
 };
 
 }// namespace umpalumpa::tuning

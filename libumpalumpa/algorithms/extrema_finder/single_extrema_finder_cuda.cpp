@@ -39,6 +39,10 @@ namespace {// to avoid poluting
     {
       return tuning::StrategyGroup::CreateLeader(*this, alg);
     }
+    tuning::StrategyGroup LoadTuningData() const override
+    {
+      return tuning::StrategyGroup::LoadTuningData(*this, alg);
+    }
 
     std::vector<ktt::KernelConfiguration> GetDefaultConfigurations() const override
     {
@@ -205,6 +209,10 @@ namespace {// to avoid poluting
     std::unique_ptr<tuning::Leader> CreateLeader() const override
     {
       return tuning::StrategyGroup::CreateLeader(*this, alg);
+    }
+    tuning::StrategyGroup LoadTuningData() const override
+    {
+      return tuning::StrategyGroup::LoadTuningData(*this, alg);
     }
 
     std::vector<ktt::KernelConfiguration> GetDefaultConfigurations() const override

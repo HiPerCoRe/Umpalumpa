@@ -29,6 +29,16 @@ void StrategyManager::Register(TunableStrategy &strat)
   StrategyGroup *groupPtr = nullptr;
   std::string debugMsg = "";
 
+  if (std::filesystem::exists(utils::GetTuningDirectory() + strat.GetUniqueName())) {
+    // Works only for equal strategies, similar strategies won't be discovered like this.
+    // Unless we update the system for discovering similar strategies we would have to
+    // load all the strategies with the name of formatt 'NAME-specificnumbers'
+    // where NAME == GetFullName() to find similar ones.
+    Merge(strat.LoadTuningData());
+    // Use the loaded config, do not tune
+    strat.SetTuningApproach(TuningApproach::kNoTuning);
+  }
+
   // Check equality and similarity
   for (auto &group : strategyGroups) {
     // If we find an equal group we are satisfied and we can exit the loop
@@ -86,8 +96,31 @@ void StrategyManager::Unregister(TunableStrategy &strat)
       return;
     }
   }
+  // }
 
   spdlog::warn("You are trying to unregister strategy which wasn't previously registered.");
+}
+
+void StrategyManager::SaveTuningData() const
+{
+  std::lock_guard lck(mutex);
+  // TODO Should be async
+  for (const auto &group : strategyGroups) {
+    auto filePath = utils::GetTuningDirectory() + group.leader->GetUniqueName();
+    std::ofstream outFile(filePath);
+    group.Serialize(outFile);
+  }
+}
+
+void StrategyManager::Merge(StrategyGroup &&newGroup)
+{
+  for (auto &group : strategyGroups) {
+    if (group.IsEqualTo(newGroup)) {
+      group.Merge(newGroup);
+      return;
+    }
+  }
+  strategyGroups.push_back(std::move(newGroup));
 }
 
 void StrategyManager::Cleanup()

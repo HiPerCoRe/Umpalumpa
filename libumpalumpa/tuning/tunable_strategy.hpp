@@ -19,6 +19,8 @@ namespace detail {
   {
     virtual std::unique_ptr<Leader> CreateLeader() const = 0;
     virtual size_t GetHash() const = 0;
+    virtual std::string GetFullName() const = 0;
+    virtual std::string GetUniqueName() const = 0;
     virtual bool IsSimilarTo(const TunableStrategy &ref) const = 0;
     virtual bool IsEqualTo(const TunableStrategy &ref) const = 0;
     virtual std::vector<ktt::KernelConfiguration> GetDefaultConfigurations() const = 0;
@@ -49,9 +51,17 @@ public:
    * In order to get the correct type of the strategy, this method needs to be overriden by the
    * successor classes it the following way:
    *
-   * return algorithm::StrategyGroup::CreateLeader(*this, alg);
+   * return tuning::StrategyGroup::CreateLeader(*this, alg);
    */
   std::unique_ptr<Leader> CreateLeader() const override = 0;
+
+  /**
+   * Loads tuning data specific for the strategy which calls this method.
+   *
+   * TODO not satisfied how this works, but can't find anything better now...
+   * should be done more automatic
+   */
+  virtual StrategyGroup LoadTuningData() const = 0;
 
   /**
    * Returns hash of this strategy. This method needs to be overriden by successor strategy because
@@ -75,7 +85,15 @@ public:
   /**
    * Returns the full name of the strategy type (including namespaces).
    */
-  std::string GetFullName() const;
+  std::string GetFullName() const override;
+
+  /**
+   * Returns unique name of the strategy. Creation of the name should be dependent on the
+   * OutputData, InputData, Settings.
+   *
+   * Name returned by this method should be used as filename of the tuning data.
+   */
+  std::string GetUniqueName() const override = 0;
 
   /**
    * Returns default kernel configurations that will be used if there is no other tuned
@@ -126,6 +144,11 @@ public:
    * Decides, based on the TuningApproach, whether the provided kernel should be tuned or not.
    */
   bool ShouldBeTuned(ktt::KernelId kernelId) const;
+
+  bool CanTune(ktt::KernelId kernelId) const
+  {
+    return canTuneStrategyGroup && ShouldBeTuned(kernelId) && HasAnyTuningParameter(kernelId);
+  }
 
   void SetKttLogging(bool val) { kttLoggingOff = !val; }
 
@@ -208,6 +231,11 @@ protected:
    */
   ktt::KernelId GetKernelId(size_t idx = 0) const { return kernelIds.at(idx).id; }
 
+  bool HasAnyTuningParameter(ktt::KernelId kernelId) const
+  {
+    return !GetDefaultConfigurations().at(GetKernelIndex(kernelId)).GetPairs().empty();
+  }
+
 private:
   /**
    * Returns an internal index of the specified ktt::KernelDefinitionId.
@@ -232,7 +260,7 @@ private:
   struct KernelInfo
   {
     ktt::KernelId id = ktt::InvalidKernelId;
-    bool tune = false;
+    bool tune = true;
   };
 
   std::vector<ktt::KernelDefinitionId> definitionIds;

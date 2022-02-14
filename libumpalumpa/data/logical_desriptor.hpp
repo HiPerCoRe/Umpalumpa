@@ -4,6 +4,7 @@
 #include <libumpalumpa/data/padding_descriptor.hpp>
 #include <cassert>
 #include <string>
+#include <iostream>
 
 namespace umpalumpa {
 namespace data {
@@ -56,6 +57,20 @@ namespace data {
     bool IsEquivalentTo(const LogicalDescriptor &ref) const
     {
       return size.IsEquivalentTo(ref.size) && (padding == ref.padding);
+    }
+
+    void Serialize(std::ostream &out) const
+    {
+      size.Serialize(out);
+      padding.Serialize(out);
+    }
+    static auto Deserialize(std::istream &in)
+    {
+      // Needs to be written like this to guarantee the order of execution!
+      // Do NOT try to refactor this into one-liner!!!
+      auto size = Size::Deserialize(in);
+      auto padding = PaddingDescriptor::Deserialize(in);
+      return LogicalDescriptor(size, padding);
     }
 
   private:

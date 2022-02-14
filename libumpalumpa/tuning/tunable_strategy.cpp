@@ -5,8 +5,8 @@
 namespace umpalumpa::tuning {
 
 TunableStrategy::TunableStrategy(KTTHelper &helper)
-  : kttHelper(helper), tuningApproach(TuningApproach::kNoTuning), canTuneStrategyGroup(false),
-    isRegistered(false), strategyId(GetNewStrategyId())
+  : kttHelper(helper), tuningApproach(TuningApproach::kSelectedKernels),
+    canTuneStrategyGroup(false), isRegistered(false), strategyId(GetNewStrategyId())
 {}
 
 TunableStrategy::~TunableStrategy()
@@ -58,12 +58,17 @@ bool TunableStrategy::ShouldBeTuned(ktt::KernelId kernelId) const
 
 void TunableStrategy::ExecuteKernel(ktt::KernelId kernelId)
 {
-  if (canTuneStrategyGroup && ShouldBeTuned(kernelId)) {
+  if (CanTune(kernelId)) {
     auto tuningResults = RunTuning(kernelId);
     if (tuningResults.IsValid()) {
       SaveTuningToLeader(kernelId, tuningResults);
+      // Disable tuning for kernel with id 'kernelId', we already found the best configuration.
+      // Do not turn the tuning off if you process the tuning in smaller chunks!
+      SetTuningFor(kernelId, false);
     } else {
-      spdlog::warn("Tuning result is invalid. Cannot update the best configuration.");
+      spdlog::warn(
+        "Tuning result is invalid. Cannot update the best configuration. Will try to run tuning "
+        "again in the next strategy execution.");
     }
   } else {
     RunBestConfiguration(kernelId);
@@ -78,8 +83,13 @@ ktt::KernelResult TunableStrategy::RunTuning(ktt::KernelId kernelId) const
   // kernel (this is done by locking the Tuner in Execute method).
   // tuner.Synchronize();
   // Now, there are no kernels at the GPU and we can start tuning
-  auto results = tuner.TuneIteration(kernelId, {});
-  return results;
+  // Runs of the kernel should be idempotent (user needs to assure this) otherwise the tuning might
+  // give the wrong output/results.
+  auto results = tuner.Tune(kernelId);
+  if (results.empty()) { return ktt::KernelResult(); }// Return invalid result
+  return *std::min_element(std::begin(results),
+    std::end(results),
+    [](const auto &a, const auto &b) { return a.GetKernelDuration() < b.GetKernelDuration(); });
 }
 
 void TunableStrategy::RunBestConfiguration(ktt::KernelId kernelId) const
@@ -94,9 +104,15 @@ void TunableStrategy::SaveTuningToLeader(ktt::KernelId kernelId,
 {
   auto index = GetKernelIndex(kernelId);
   auto bestTimeSoFar = groupLeader->GetBestConfigTime(index);
+  // Current implementation of RunTuning method uses a Tuner::Tune method which will run the full
+  // tuning and therefore we will only get one KernelResult ever. However, everything is ready to
+  // process tuning in smaller chunks (i.e. 100 tuning steps per execution) if the need arises.
   if (tuningResults.GetKernelDuration() < bestTimeSoFar) {
     groupLeader->SetBestConfiguration(index, tuningResults.GetConfiguration());
     groupLeader->SetBestConfigTime(index, tuningResults.GetKernelDuration());
+    // If we start processing the tuning in smaller chunks (see ^) the saving of the results should
+    // be moved somewhere else because of possible performance drawbacks.
+    StrategyManager::Get().SaveTuningData();
   }
 }
 

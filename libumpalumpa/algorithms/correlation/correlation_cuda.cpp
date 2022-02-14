@@ -25,6 +25,10 @@ namespace {// to avoid poluting
     {
       return tuning::StrategyGroup::CreateLeader(*this, alg);
     }
+    tuning::StrategyGroup LoadTuningData() const override
+    {
+      return tuning::StrategyGroup::LoadTuningData(*this, alg);
+    }
 
     // FIXME this design might cause serious issues, while retrieving the correct configurations,
     // when there is more than 1 optional kernel, the same goes to GetBestConfig of Leader. Works
