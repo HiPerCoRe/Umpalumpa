@@ -158,17 +158,16 @@ protected:
    */
   void ExecuteKernel(ktt::KernelId kernelId);
 
-  // Can be moved to private
   /**
    * Runs a tuning of the specified kernel.
-   * TODO In order to correctly evaluate the tuning, this method waits until all the currently
-   * running kernels finish.
    *
-   * TODO Execution of this method is blocking because we need to stay in the critical section for
+   * In order to correctly evaluate the tuning, this method waits until all the currently
+   * running kernels finish.
+   * Execution of this method is blocking because we need to stay in the critical section for
    * the entire duration of tuning.
    *
-   * TODO IMPORTANT: This method assumes that it is being called from a critical section which locks
-   * the KTT tuner.
+   * IMPORTANT: This method assumes that it is being called from a critical section which locks
+   * the KTT tuner. This is automatically achieved in the KTTStrategyBase::Execute method.
    */
   ktt::KernelResult RunTuning(ktt::KernelId kernelId) const;
 

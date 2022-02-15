@@ -43,7 +43,7 @@ namespace {// to avoid poluting
 
     std::string GetName() const override { return "BasicInit"; }
 
-    bool Execute(const Abstract::OutputData &, const Abstract::InputData &in) override
+    bool ExecuteImpl(const Abstract::OutputData &, const Abstract::InputData &in) override
     {
       auto IsFine = [](const auto &p) { return p.IsValid() && !p.IsEmpty(); };
       if (!IsFine(in.GetData()) || !IsFine(in.GetValue())) return false;

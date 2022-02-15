@@ -87,7 +87,7 @@ namespace {// to avoid poluting
       // ensure that we have the kernel loaded to KTT
       // this has to be done in critical section, as multiple instances of this algorithm
       // might run on the same worker
-      std::lock_guard<std::mutex> lck(kttHelper.GetMutex());
+      // std::lock_guard<std::mutex> lck(kttHelper.GetMutex());
       AddKernelDefinition(kFindMax, kKernelFile, ktt::DimensionVector{ size.n });
       auto definitionId = GetDefinitionId();
 
@@ -122,7 +122,7 @@ namespace {// to avoid poluting
 
     std::string GetName() const override { return "Strategy1"; }
 
-    bool Execute(const AExtremaFinder::OutputData &out,
+    bool ExecuteImpl(const AExtremaFinder::OutputData &out,
       const AExtremaFinder::InputData &in) override
     {
       auto IsFine = [](const auto &p) { return p.IsValid() && !p.IsEmpty(); };
@@ -254,7 +254,7 @@ namespace {// to avoid poluting
       // ensure that we have the kernel loaded to KTT
       // this has to be done in critical section, as multiple instances of this algorithm
       // might run on the same worker
-      std::lock_guard<std::mutex> lck(kttHelper.GetMutex());
+      // std::lock_guard<std::mutex> lck(kttHelper.GetMutex());
       AddKernelDefinition(kFindMaxRect, kKernelFile, ktt::DimensionVector{ size.n }, { "float" });
       auto definitionId = GetDefinitionId();
 
@@ -288,7 +288,7 @@ namespace {// to avoid poluting
 
     std::string GetName() const override { return "Strategy2"; }
 
-    bool Execute(const AExtremaFinder::OutputData &out,
+    bool ExecuteImpl(const AExtremaFinder::OutputData &out,
       const AExtremaFinder::InputData &in) override
     {
       if (!in.GetData().IsValid() || in.GetData().IsEmpty() || !out.GetLocations().IsValid()

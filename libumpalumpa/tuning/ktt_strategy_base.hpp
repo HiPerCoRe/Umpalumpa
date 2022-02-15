@@ -43,21 +43,51 @@ public:
   {
     TunableStrategy::Cleanup();
 
-    bool initSuccessful = InitImpl();
+    bool initSuccessful = false;
+    {
+      std::lock_guard lck(kttHelper.GetMutex());
+      initSuccessful = InitImpl();
+    }
 
     if (initSuccessful) {
       SetUniqueStrategyName();// This has to be called before the Register()!!!
       Register();
     }
-    // TODO maybe some cleanup if not successful? check later
 
     return initSuccessful;
+  }
+
+  /**
+   * Execution method automatically called by the BasicAlgorithm class. This overriden version
+   * allows to automate some tasks tied to the tuning process.
+   */
+  bool Execute(const O &out, const I &in) override final
+  {
+    bool execSuccessful = false;
+
+    {
+      std::lock_guard lck(kttHelper.GetMutex());
+      execSuccessful = ExecuteImpl(out, in);
+    }
+
+    if (execSuccessful) {
+      // Maybe later something interesting might be done here
+    }
+
+    return execSuccessful;
   }
 
   /**
    * Strategy specific initialization function. Usually used to initialize the KTT tuner.
    */
   virtual bool InitImpl() = 0;
+
+  /**
+   * Strategy specific execution function. Usually used to set up KTT execution parameters
+   * (arguments, launcher, ...) and execute kernels.
+   */
+  virtual bool ExecuteImpl(const O &out, const I &in) = 0;
+
 
   /**
    * Getter for algorithm's OutputData.
@@ -111,24 +141,15 @@ protected:
   {
     std::stringstream ss;
     std::stringstream unique;
+    auto f = [&unique, &ss](auto &data) {
+      ss.clear();
+      data.Serialize(ss);
+      unique << '-' << std::hash<std::string>{}(ss.str());
+    };
     unique << GetFullName();
-    unique << '-';
-    GetOutputRef().Serialize(ss);
-    unique << std::hash<std::string>{}(ss.str());
-    ss.clear();
-    unique << '-';
-    GetInputRef().Serialize(ss);
-    unique << std::hash<std::string>{}(ss.str());
-    ss.clear();
-    unique << '-';
-    GetSettings().Serialize(ss);
-    unique << std::hash<std::string>{}(ss.str());
-    // std::stringstream noWhitespaces;
-    // while (!ss.eof()) {
-    //   std::string tmp;
-    //   ss >> tmp;
-    //   noWhitespaces << tmp;
-    // }
+    f(GetOutputRef());
+    f(GetInputRef());
+    f(GetSettings());
     uniqueStrategyName = unique.str();
   }
 

@@ -94,7 +94,7 @@ namespace {// to avoid poluting
       // this has to be done in critical section, as multiple instances of this algorithm
       // might run on the same worker
       const auto &s = alg.Get().GetSettings();
-      std::lock_guard<std::mutex> lck(kttHelper.GetMutex());
+      // std::lock_guard<std::mutex> lck(kttHelper.GetMutex());
       AddKernelDefinition(kTMP,
         kKernelFile,
         ktt::DimensionVector{ size.x, size.y, size.z },
@@ -151,7 +151,7 @@ namespace {// to avoid poluting
 
     std::string GetName() const override final { return "Strategy1"; }
 
-    bool Execute(const Correlation_CUDA::OutputData &out,
+    bool ExecuteImpl(const Correlation_CUDA::OutputData &out,
       const Correlation_CUDA::InputData &in) override final
     {
       if (!in.GetData1().IsValid() || in.GetData1().IsEmpty()

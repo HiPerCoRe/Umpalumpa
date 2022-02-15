@@ -79,7 +79,7 @@ namespace {// to avoid poluting
       // ensure that we have the kernel loaded to KTT
       // this has to be done in critical section, as multiple instances of this algorithm
       // might run on the same worker
-      std::lock_guard<std::mutex> lck(kttHelper.GetMutex());
+      // std::lock_guard<std::mutex> lck(kttHelper.GetMutex());
       AddKernelDefinition(kKernel, kKernelFile, ktt::DimensionVector{ size.total });
       auto definitionId = GetDefinitionId();
 
@@ -100,7 +100,7 @@ namespace {// to avoid poluting
 
     std::string GetName() const override { return "PiecewiseSum"; }
 
-    bool Execute(const Abstract::OutputData &out, const Abstract::InputData &in) override
+    bool ExecuteImpl(const Abstract::OutputData &out, const Abstract::InputData &in) override
     {
       auto IsFine = [](const auto &p) { return p.IsValid() && !p.IsEmpty(); };
       if (!IsFine(in.GetData()) || !IsFine(out.GetData())) return false;

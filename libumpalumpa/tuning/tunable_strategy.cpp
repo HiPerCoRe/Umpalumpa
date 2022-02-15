@@ -78,10 +78,9 @@ void TunableStrategy::ExecuteKernel(ktt::KernelId kernelId)
 ktt::KernelResult TunableStrategy::RunTuning(ktt::KernelId kernelId) const
 {
   auto &tuner = kttHelper.GetTuner();
-  // TODO
   // We need to let the rest of the kernels finish, while we won't allow anyone to start a new
   // kernel (this is done by locking the Tuner in Execute method).
-  // tuner.Synchronize();
+  tuner.SynchronizeDevice();// or cudaDeviceSynchronize()?
   // Now, there are no kernels at the GPU and we can start tuning
   // Runs of the kernel should be idempotent (user needs to assure this) otherwise the tuning might
   // give the wrong output/results.
