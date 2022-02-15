@@ -152,6 +152,9 @@ public:
 
   void SetKttLogging(bool val) { kttLoggingOff = !val; }
 
+  void WaitBeforeDestruction(ktt::ComputeActionId actionId) { actionIds.push_back(actionId); }
+  void WaitForKernelsToFinish() const;
+
 protected:
   /**
    * Executes the specified kernel. Internally decides whether the strategy will be tuned or not.
@@ -267,6 +270,7 @@ private:
   std::vector<KernelInfo> kernelIds;
   // Tracker of used ids, which allows for automatic cleanup after strategy's destruction
   std::vector<std::shared_ptr<KTTIdTracker>> idTrackers;
+  std::vector<ktt::ComputeActionId> actionIds;
 
   Leader *groupLeader = nullptr;
   TuningApproach tuningApproach;

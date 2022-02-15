@@ -11,14 +11,19 @@ TunableStrategy::TunableStrategy(KTTHelper &helper)
 
 TunableStrategy::~TunableStrategy()
 {
-  // FIXME Needs to be synchronized
-  // kttHelper.GetTuner().Synchronize();
-  if (isRegistered) { StrategyManager::Get().Unregister(*this); }
-  if (!idTrackers.empty()) {
-    // Needs to be locked because Cleanup routine accesses ktt::Tuner
-    std::lock_guard lck(kttHelper.GetMutex());
-    Cleanup();
-  }
+  WaitForKernelsToFinish();
+  Cleanup();
+}
+
+void TunableStrategy::WaitForKernelsToFinish() const
+{
+  auto tmp = kttHelper.GetTuner().GetLoggingLevel();
+  kttHelper.GetTuner().SetLoggingLevel(ktt::LoggingLevel::Off);
+  // We turn logging off because of 'Error' messages that specified actionId wasn't found
+  // but that is alright, we don't care about those missing ones we care about those that might
+  // still be present
+  for (auto actionId : actionIds) { kttHelper.GetTuner().WaitForComputeAction(actionId); }
+  kttHelper.GetTuner().SetLoggingLevel(tmp);
 }
 
 // This version is currently unused, might be removed later
@@ -92,9 +97,10 @@ ktt::KernelResult TunableStrategy::RunTuning(ktt::KernelId kernelId) const
 
 void TunableStrategy::RunBestConfiguration(ktt::KernelId kernelId) const
 {
+  auto tmp = kttHelper.GetTuner().GetLoggingLevel();
   if (kttLoggingOff) { kttHelper.GetTuner().SetLoggingLevel(ktt::LoggingLevel::Off); }
   kttHelper.GetTuner().Run(kernelId, GetBestConfiguration(kernelId), {});
-  if (kttLoggingOff) { kttHelper.GetTuner().SetLoggingLevel(ktt::LoggingLevel::Info); }
+  if (kttLoggingOff) { kttHelper.GetTuner().SetLoggingLevel(tmp); }
 }
 
 void TunableStrategy::SaveTuningToLeader(ktt::KernelId kernelId,
@@ -122,13 +128,19 @@ void TunableStrategy::Register()
 
 void TunableStrategy::Cleanup()
 {
-  for (auto &sharedTracker : idTrackers) { kttHelper.CleanupIdTracker(sharedTracker); }
+  if (!idTrackers.empty()) {
+    std::lock_guard lck(kttHelper.GetMutex());
+    for (auto &sharedTracker : idTrackers) { kttHelper.CleanupIdTracker(sharedTracker); }
+  }
   idTrackers.clear();
   definitionIds.clear();
   kernelIds.clear();
+  actionIds.clear();
   canTuneStrategyGroup = false;
-  // FIXME needs to unregister aswell!!!
-  isRegistered = false;
+  if (isRegistered) {
+    StrategyManager::Get().Unregister(*this);
+    isRegistered = false;
+  }
 }
 
 void TunableStrategy::AddKernelDefinition(const std::string &kernelName,
