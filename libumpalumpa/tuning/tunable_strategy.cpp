@@ -87,9 +87,7 @@ ktt::KernelResult TunableStrategy::RunTuning(ktt::KernelId kernelId) const
   // give the wrong output/results.
   auto results = tuner.Tune(kernelId);
   if (results.empty()) { return ktt::KernelResult(); }// Return invalid result
-  return *std::min_element(std::begin(results),
-    std::end(results),
-    [](const auto &a, const auto &b) { return a.GetKernelDuration() < b.GetKernelDuration(); });
+  return tuner.Run(kernelId, tuner.GetBestConfiguration(kernelId), {});
 }
 
 void TunableStrategy::RunBestConfiguration(ktt::KernelId kernelId) const

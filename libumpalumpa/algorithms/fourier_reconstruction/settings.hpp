@@ -1,5 +1,6 @@
 #pragma once
 
+#include <iostream>
 #include <libumpalumpa/algorithms/fourier_reconstruction/blob_order.hpp>
 
 namespace umpalumpa::fourier_reconstruction {
@@ -30,6 +31,32 @@ public:
   auto GetBlobRadius() const { return blobRadius; }
 
   void SetBlobRadius(float r) { this->blobRadius = r; }
+
+  bool IsEquivalentTo(const Settings &ref) const
+  {
+    return interpolation == ref.interpolation && order == ref.order && type == ref.type
+           && alpha == ref.alpha && blobRadius == ref.blobRadius;
+  }
+
+  void Serialize(std::ostream &out) const
+  {
+    out << static_cast<int>(interpolation) << ' ' << static_cast<int>(order) << ' '
+        << static_cast<int>(type) << ' ' << alpha << ' ' << blobRadius << '\n';
+  }
+
+  static auto Deserialize(std::istream &in)
+  {
+    int i, bo, t;
+    float a, br;
+    in >> i >> bo >> t >> a >> br;
+    Settings s;
+    s.SetInterpolation(static_cast<Interpolation>(i));
+    s.SetBlobOrder(static_cast<BlobOrder>(bo));
+    s.SetType(static_cast<Type>(t));
+    s.SetAlpha(a);
+    s.SetBlobRadius(br);
+    return s;
+  }
 
 private:
   Interpolation interpolation = Interpolation::kDynamic;

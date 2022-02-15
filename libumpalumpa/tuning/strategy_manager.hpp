@@ -24,6 +24,7 @@ class StrategyManager
 {
   std::vector<StrategyGroup> strategyGroups;
   mutable std::mutex mutex;
+  std::map<std::string, bool> loadedFiles;
 
   StrategyManager() = default;
   StrategyManager(StrategyManager &&) = delete;
@@ -66,6 +67,11 @@ public:
    * collection metadata).
    */
   void Cleanup();
+
+  /**
+   * Returns true when the specified file has been loaded during this runtime.
+   */
+  bool IsLoaded(const std::string &filename) const;
 
 protected:
   /**

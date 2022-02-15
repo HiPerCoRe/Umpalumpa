@@ -11,7 +11,7 @@ class GeneralTuningTests : public ::testing::Test
 public:
   GeneralTuningTests()
     : pData(LogicalDescriptor(Size(1, 1, 1, 1)),
-      PhysicalDescriptor(nullptr, 0, DataType::kVoid, ManagedBy::Manually, nullptr)),
+      PhysicalDescriptor(nullptr, 0, DataType::Get<void>(), ManagedBy::Manually, nullptr)),
       in(pData), out(pData)
   {}
 

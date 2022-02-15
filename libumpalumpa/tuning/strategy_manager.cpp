@@ -29,12 +29,17 @@ void StrategyManager::Register(TunableStrategy &strat)
   StrategyGroup *groupPtr = nullptr;
   std::string debugMsg = "";
 
-  if (std::filesystem::exists(utils::GetTuningDirectory() + strat.GetUniqueName())) {
+  auto filepath = utils::GetTuningDirectory() + strat.GetUniqueName();
+  if (std::filesystem::exists(filepath)) {
     // Works only for equal strategies, similar strategies won't be discovered like this.
     // Unless we update the system for discovering similar strategies we would have to
     // load all the strategies with the name of formatt 'NAME-specificnumbers'
     // where NAME == GetFullName() to find similar ones.
-    Merge(strat.LoadTuningData());
+    if (!IsLoaded(filepath)) {
+      Merge(strat.LoadTuningData());
+      // Mark that we already loaded this file
+      loadedFiles[filepath] = true;
+    }
     // Use the loaded config, do not tune
     strat.SetTuningApproach(TuningApproach::kNoTuning);
   }
@@ -108,7 +113,7 @@ void StrategyManager::SaveTuningData() const
   for (const auto &group : strategyGroups) {
     auto filePath = utils::GetTuningDirectory() + group.leader->GetUniqueName();
     std::ofstream outFile(filePath);
-    group.Serialize(outFile);
+    group.SaveTuningData(outFile);
   }
 }
 
@@ -127,6 +132,11 @@ void StrategyManager::Cleanup()
 {
   std::lock_guard lck(mutex);
   strategyGroups.clear();
+}
+
+bool StrategyManager::IsLoaded(const std::string &filename) const
+{
+  return loadedFiles.find(filename) != loadedFiles.end();
 }
 
 }// namespace umpalumpa::tuning

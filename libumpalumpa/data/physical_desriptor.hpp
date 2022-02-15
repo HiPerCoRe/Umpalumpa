@@ -72,15 +72,18 @@ public:
            && handle == o.handle;
   }
 
-  void Serialize(std::ostream &out) const { out << bytes << ' ' << static_cast<int>(type) << '\n'; }
+  void Serialize(std::ostream &out) const
+  {
+    type.Serialize(out);
+    out << bytes << '\n';
+  }
 
   static auto Deserialize(std::istream &in)
   {
+    auto type = DataType::Deserialize(in);
     size_t bytes;
-    int type;
-    in >> bytes >> type;
-    return PhysicalDescriptor(
-      nullptr, bytes, static_cast<DataType>(type), ManagedBy::Unknown, nullptr);
+    in >> bytes;
+    return PhysicalDescriptor(nullptr, bytes, type, ManagedBy::Unknown, nullptr);
   }
 
 private:

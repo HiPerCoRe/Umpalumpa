@@ -110,20 +110,26 @@ protected:
   void SetUniqueStrategyName()
   {
     std::stringstream ss;
-    ss << GetFullName();
-    ss << '-';
+    std::stringstream unique;
+    unique << GetFullName();
+    unique << '-';
     GetOutputRef().Serialize(ss);
-    ss << '-';
+    unique << std::hash<std::string>{}(ss.str());
+    ss.clear();
+    unique << '-';
     GetInputRef().Serialize(ss);
-    ss << '-';
+    unique << std::hash<std::string>{}(ss.str());
+    ss.clear();
+    unique << '-';
     GetSettings().Serialize(ss);
-    std::stringstream noWhitespaces;
-    while (!ss.eof()) {
-      std::string tmp;
-      ss >> tmp;
-      noWhitespaces << tmp;
-    }
-    uniqueStrategyName = noWhitespaces.str();
+    unique << std::hash<std::string>{}(ss.str());
+    // std::stringstream noWhitespaces;
+    // while (!ss.eof()) {
+    //   std::string tmp;
+    //   ss >> tmp;
+    //   noWhitespaces << tmp;
+    // }
+    uniqueStrategyName = unique.str();
   }
 
 private:

@@ -104,7 +104,7 @@ struct StrategyGroup
     return StrategyGroup(InternalLeader<Strategy>::Deserialize(a, inputFile));
   }
 
-  void Serialize(std::ostream &out) const { leader->Serialize(out); }
+  void SaveTuningData(std::ostream &out) const { leader->Serialize(out); }
 
   bool IsEqualTo(const StrategyGroup &ref) const
   {
