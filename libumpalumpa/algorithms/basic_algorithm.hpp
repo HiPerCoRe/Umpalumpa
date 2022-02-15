@@ -116,6 +116,12 @@ public:
     const BasicAlgorithm &alg;
   };
 
+  /**
+   * FIXME Just a temporary solution to get access to a strategy.
+   * will be substituted by some TuningHint/TuningSettings struct
+   **/
+  Strategy &GetStrategy() { return *strategy; }
+
 protected:
   /**
    * Returns true if output, input and settings are not logically conflicting or malformed.

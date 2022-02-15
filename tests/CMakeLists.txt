@@ -14,8 +14,10 @@ add_subdirectory(algorithms/fourier_reconstruction)
 add_subdirectory(algorithms/reduction)
 add_subdirectory(algorithms/initialization)
 add_subdirectory(data)
-add_subdirectory(tuning/algorithm_manager)
+add_subdirectory(tuning/strategy_manager)
 add_subdirectory(tuning/garbage_collection)
+add_subdirectory(tuning/tuning)
+add_subdirectory(tuning/gpu_lock)
 
 file(
   COPY runAll.sh

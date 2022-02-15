@@ -6,14 +6,14 @@
 #include <libumpalumpa/utils/system.hpp>
 #include <libumpalumpa/tuning/ktt_id_tracker.hpp>
 
-namespace umpalumpa::utils {
+namespace umpalumpa::tuning {
 class KTTHelper
 {
 public:
   KTTHelper(const CUcontext context, const std::vector<ktt::ComputeQueue> &queues)
     : tuner(ktt::ComputeApi::CUDA, ktt::ComputeApiInitializer(context, queues))
   {
-    tuner.SetCompilerOptions("-I" + kProjectRoot + " --std=c++17 -default-device");
+    tuner.SetCompilerOptions("-I" + utils::kProjectRoot + " --std=c++17 -default-device");
   }
 
   std::mutex &GetMutex() { return mutex; }
@@ -43,8 +43,10 @@ public:
     return sPtr;
   }
 
-  void CleanupIdTracker(ktt::KernelDefinitionId id)
+  void CleanupIdTracker(std::shared_ptr<KTTIdTracker> &trackerSharedPtr)
   {
+    auto id = trackerSharedPtr->definitionId;
+    trackerSharedPtr.reset();
     if (auto it = tunerIds.find(id); it != tunerIds.end()) {
       if (it->second.expired()) { tunerIds.erase(it); }// erase from map is efficient
     } else {
@@ -59,4 +61,4 @@ private:
   std::mutex mutex;
 };
 
-}// namespace umpalumpa::utils
+}// namespace umpalumpa::tuning

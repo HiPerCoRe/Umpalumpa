@@ -21,5 +21,8 @@ namespace utils {
   std::string Exec(const std::string &cmd);
 
   std::string GetSourceFilePath(const std::string &relPath);
+
+  std::string GetTuningDirectory();
+
 }// namespace utils
 }// namespace umpalumpa

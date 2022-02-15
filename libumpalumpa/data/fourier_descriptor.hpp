@@ -6,6 +6,7 @@
 #include <memory>
 #include <optional>
 #include <exception>
+#include <iostream>
 
 namespace umpalumpa {
 namespace data {
@@ -25,6 +26,17 @@ namespace data {
       {
         return (isCentered == o.isCentered) && (isShifted == o.isShifted)
                && (isNormalized == o.isNormalized) && (hasSymetry == o.hasSymetry);
+      }
+
+      void Serialize(std::ostream &out) const
+      {
+        out << isCentered << ' ' << isShifted << ' ' << isNormalized << ' ' << hasSymetry << '\n';
+      }
+      static auto Deserialize(std::istream &in)
+      {
+        bool c, sh, n, sy;
+        in >> c >> sh >> n >> sy;
+        return FourierSpaceDescriptor{ c, sh, n, sy };
       }
     };
 
@@ -139,6 +151,30 @@ namespace data {
              && frequencyDomainSizePadded == o.frequencyDomainSizePadded && padding == o.padding
              && frequencyDomainSizePadded == o.frequencyDomainSizePadded && isSpatial == o.isSpatial
              && fsd == o.fsd;
+    }
+
+    void Serialize(std::ostream &out) const
+    {
+      size.Serialize(out);
+      padding.Serialize(out);
+      out << isSpatial << ' ';
+      if (!isSpatial) {
+        fsd.value().Serialize(out);
+      } else {
+        out << '\n';
+      }
+    }
+    static auto Deserialize(std::istream &in)
+    {
+      bool isSpatial;
+      auto size = Size::Deserialize(in);
+      auto padding = PaddingDescriptor::Deserialize(in);
+      in >> isSpatial;
+      if (!isSpatial) {
+        auto fsd = FourierSpaceDescriptor::Deserialize(in);
+        return FourierDescriptor(size, padding, fsd);
+      }
+      return FourierDescriptor(size, padding);
     }
 
   private:

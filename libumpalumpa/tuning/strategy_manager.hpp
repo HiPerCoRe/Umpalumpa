@@ -3,10 +3,11 @@
 #include <vector>
 #include <libumpalumpa/system_includes/ktt.hpp>
 
-namespace umpalumpa::algorithm {
+namespace umpalumpa::tuning {
 
 // Forward declarations
 class TunableStrategy;
+struct StrategyGroup;
 
 /**
  * This class groups similar strategies into coherent groups in which the strategies can cooperate
@@ -19,23 +20,22 @@ class TunableStrategy;
  * AlgorithmManager is a singleton and can be accessed by calling static method
  * AlgorithmManager::Get().
  */
-class AlgorithmManager
+class StrategyManager
 {
-  using StrategyGroup = std::vector<TunableStrategy *>;
+  std::vector<StrategyGroup> strategyGroups;
+  mutable std::mutex mutex;
+  std::map<std::string, bool> loadedFiles;
 
-  std::vector<StrategyGroup> strategies;
-  std::mutex mutex;
-
-  AlgorithmManager() = default;
-  AlgorithmManager(AlgorithmManager &&) = delete;
-  AlgorithmManager &operator=(AlgorithmManager &&) = delete;
+  StrategyManager() = default;
+  StrategyManager(StrategyManager &&) = delete;
+  StrategyManager &operator=(StrategyManager &&) = delete;
   // Copy constructor and assign operator are implicitly deleted because of the mutex
 
 public:
   /**
    * Returns an instance of the AlgorithmManager singleton.
    */
-  static AlgorithmManager &Get();
+  static StrategyManager &Get();
 
   /**
    * Registers the strategy into the AlgorithmManager which allows tuning and usage of prepared
@@ -49,25 +49,37 @@ public:
    */
   void Unregister(TunableStrategy &strat);
 
-  // FIXME needs to be changed because strategy can have more kernels, therefore there is no single
-  // best configuration
-  /**
-   * Returns the best known configuration of a strategy with the specified hash.
-   */
-  // ktt::KernelConfiguration GetBestConfiguration(size_t stratHash);
-
   /**
    * Returns the underlying strategy container.
    *
    * Ideally should be removed in the future.
    */
-  const auto &GetRegisteredStrategies() const { return strategies; }
+  const auto &GetRegisteredStrategies() const { return strategyGroups; }
+
+  /**
+   * Saves tuning data of all the strategy groups.
+   * TODO should be async
+   */
+  void SaveTuningData() const;
 
   /**
    * Resets the AlgorithmManager, clearing all the saved data (registered strategies, garbage
    * collection metadata).
    */
-  void Cleanup() { strategies.clear(); }
+  void Cleanup();
+
+  /**
+   * Returns true when the specified file has been loaded during this runtime.
+   */
+  bool IsLoaded(const std::string &filename) const;
+
+protected:
+  /**
+   * Merges provided strategy group into the strategy groups saved in the StrategyManager.
+   * Makes sure to remove duplicity. In case of found duplicity, keeps the strategy group instance
+   * with better (faster) kernel execution time.
+   */
+  void Merge(StrategyGroup &&vec);
 };
 
-}// namespace umpalumpa::algorithm
+}// namespace umpalumpa::tuning

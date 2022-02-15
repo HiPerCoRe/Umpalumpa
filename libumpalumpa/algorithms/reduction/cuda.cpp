@@ -1,5 +1,7 @@
 #include <libumpalumpa/algorithms/reduction/cuda.hpp>
 #include <libumpalumpa/tuning/tunable_strategy.hpp>
+#include <libumpalumpa/tuning/strategy_group.hpp>
+#include <libumpalumpa/tuning/tunable_strategy.hpp>
 
 namespace umpalumpa::reduction {
 
@@ -7,7 +9,7 @@ namespace {// to avoid poluting
   inline static const auto kKernelFile =
     utils::GetSourceFilePath("libumpalumpa/algorithms/reduction/cuda_kernels.cu");
 
-  struct PiecewiseSum final : public CUDA::KTTStrategy
+  struct PiecewiseSum : public CUDA::KTTStrategy
   {
     // Inherit constructor
     using CUDA::KTTStrategy::KTTStrategy;
@@ -15,10 +17,50 @@ namespace {// to avoid poluting
     static constexpr auto kKernel = "PiecewiseSum";
 
     size_t GetHash() const override { return 0; }
-    bool IsSimilarTo(const TunableStrategy &) const override
+
+    std::unique_ptr<tuning::Leader> CreateLeader() const override
     {
-      // TODO real similarity check
-      return false;
+      return tuning::StrategyGroup::CreateLeader(*this, alg);
+    }
+    tuning::StrategyGroup LoadTuningData() const override
+    {
+      return tuning::StrategyGroup::LoadTuningData(*this, alg);
+    }
+
+    std::vector<ktt::KernelConfiguration> GetDefaultConfigurations() const override
+    {
+      return { kttHelper.GetTuner().CreateConfiguration(
+        GetKernelId(), { { "blockSize", static_cast<uint64_t>(1024) } }) };
+    }
+
+    bool IsEqualTo(const TunableStrategy &ref) const override
+    {
+      bool isEqual = true;
+      try {
+        auto &refStrat = dynamic_cast<const PiecewiseSum &>(ref);
+        isEqual = isEqual && GetOutputRef().IsEquivalentTo(refStrat.GetOutputRef());
+        isEqual = isEqual && GetInputRef().IsEquivalentTo(refStrat.GetInputRef());
+        isEqual = isEqual && GetSettings().IsEquivalentTo(refStrat.GetSettings());
+        // Additional checks might be needed
+      } catch (std::bad_cast &) {
+        isEqual = false;
+      }
+      return isEqual;
+    }
+
+    bool IsSimilarTo(const TunableStrategy &ref) const override
+    {
+      bool isSimilar = true;
+      try {
+        auto &refStrat = dynamic_cast<const PiecewiseSum &>(ref);
+        isSimilar = isSimilar && GetOutputRef().IsEquivalentTo(refStrat.GetOutputRef());
+        isSimilar = isSimilar && GetInputRef().IsEquivalentTo(refStrat.GetInputRef());
+        isSimilar = isSimilar && GetSettings().IsEquivalentTo(refStrat.GetSettings());
+        // Using naive similarity: same as equality
+      } catch (std::bad_cast &) {
+        isSimilar = false;
+      }
+      return isSimilar;
     }
 
     bool InitImpl() override
@@ -71,7 +113,7 @@ namespace {// to avoid poluting
       // prepare output data
       auto argOut = AddArgumentVector<float>(out.GetData(), ktt::ArgumentAccessType::ReadWrite);
 
-      tuner.SetArguments(GetDefinitionId(), { argOut, argIn, argSize });
+      SetArguments(GetDefinitionId(), { argOut, argIn, argSize });
 
       auto &size = in.GetData().info.GetSize();
       tuner.SetLauncher(GetKernelId(), [this, &size](ktt::ComputeInterface &interface) {
@@ -79,28 +121,22 @@ namespace {// to avoid poluting
         ktt::DimensionVector gridDim(size.total);
         gridDim.RoundUp(blockDim);
         gridDim.Divide(blockDim);
-        interface.RunKernelAsync(GetKernelId(), interface.GetAllQueues().at(0), gridDim, blockDim);
+        if (ShouldBeTuned(GetKernelId())) {
+          interface.RunKernel(GetKernelId(), gridDim, blockDim);
+        } else {
+          interface.RunKernelAsync(
+            GetKernelId(), interface.GetAllQueues().at(0), gridDim, blockDim);
+        }
       });
 
-      if (ShouldTune()) {
-        tuner.TuneIteration(GetKernelId(), {});
-      } else {
-        // TODO GetBestConfiguration can be used once the KTT is able to synchronize
-        // the best configuration from multiple KTT instances, or loads the best
-        // configuration from previous runs
-        // auto bestConfig = tuner.GetBestConfiguration(kernelId);
-        auto bestConfig = tuner.CreateConfiguration(
-          GetKernelId(), { { "blockSize", static_cast<uint64_t>(1024) } });
-        tuner.Run(GetKernelId(), bestConfig, {});// run is blocking call
-      }
-      // arguments shall be removed once the run is done
+      ExecuteKernel(GetKernelId());
 
       return true;
     };
   };
 }// namespace
 
-void CUDA::Synchronize() { GetHelper().GetTuner().Synchronize(); }
+void CUDA::Synchronize() { GetHelper().GetTuner().SynchronizeDevice(); }
 
 std::vector<std::unique_ptr<CUDA::Strategy>> CUDA::GetStrategies() const
 {

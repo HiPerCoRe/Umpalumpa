@@ -2,6 +2,7 @@ add_executable(size_tests)
 
 set(tests
     size.cpp
+    ../empty.cu
 )
 
 target_sources(size_tests PRIVATE ${tests})

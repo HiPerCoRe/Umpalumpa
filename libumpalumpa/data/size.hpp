@@ -4,6 +4,7 @@
 // however, NVRTC has size_t predefined so no include is needed
 #ifndef __CUDACC_RTC__
 #include <cstddef>
+#include <iostream>
 #endif
 #include <libumpalumpa/data/dimensionality.hpp>
 
@@ -77,6 +78,19 @@ namespace data {
     {
       return (x == ref.x) && (y == ref.y) && (z == ref.z) && (n <= ref.n);
     }
+
+#ifndef __CUDACC_RTC__
+    void Serialize(std::ostream &out) const
+    {
+      out << x << ' ' << y << ' ' << z << ' ' << n << '\n';
+    }
+    static auto Deserialize(std::istream &in)
+    {
+      size_t x, y, z, n;
+      in >> x >> y >> z >> n;
+      return Size(x, y, z, n);
+    }
+#endif
 
     // these should be private + getters
     size_t x;

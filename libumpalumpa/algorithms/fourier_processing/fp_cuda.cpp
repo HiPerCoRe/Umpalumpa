@@ -1,5 +1,6 @@
 #include <libumpalumpa/algorithms/fourier_processing/fp_cuda.hpp>
 #include <libumpalumpa/tuning/tunable_strategy.hpp>
+#include <libumpalumpa/tuning/strategy_group.hpp>
 
 namespace umpalumpa::fourier_processing {
 
@@ -7,7 +8,7 @@ namespace {// to avoid poluting
   inline static const auto kKernelFile =
     utils::GetSourceFilePath("libumpalumpa/algorithms/fourier_processing/fp_cuda_kernels.cu");
 
-  struct Strategy1 final : public FPCUDA::KTTStrategy
+  struct Strategy1 : public FPCUDA::KTTStrategy
   {
     // Inherit constructor
     using FPCUDA::KTTStrategy::KTTStrategy;
@@ -17,14 +18,57 @@ namespace {// to avoid poluting
     // Currently we create one thread per each pixel of a single image. Each thread processes
     // same pixel of all images. The other option for 2D images is to map N dimension to the
     // Z dimension, ie. create more threads, each thread processing fewer images.
-    // FIXME  this should be tuned by the KTT
 
     size_t GetHash() const override { return 0; }
-    bool IsSimilarTo(const TunableStrategy &) const override
+
+    std::unique_ptr<tuning::Leader> CreateLeader() const override
     {
-      // auto &o = dynamic_cast<const Strategy1 &>(other);
-      // TODO real similarity check
-      return false;
+      return tuning::StrategyGroup::CreateLeader(*this, alg);
+    }
+    tuning::StrategyGroup LoadTuningData() const override
+    {
+      return tuning::StrategyGroup::LoadTuningData(*this, alg);
+    }
+
+    std::vector<ktt::KernelConfiguration> GetDefaultConfigurations() const override
+    {
+      return { kttHelper.GetTuner().CreateConfiguration(GetKernelId(),
+        { { "blockSizeX", static_cast<uint64_t>(32) },
+          { "blockSizeY", static_cast<uint64_t>(8) } }) };
+    }
+
+    bool IsEqualTo(const TunableStrategy &ref) const override
+    {
+      bool isEqual = true;
+      try {
+        auto &refStrat = dynamic_cast<const Strategy1 &>(ref);
+        isEqual = isEqual && GetOutputRef().IsEquivalentTo(refStrat.GetOutputRef());
+        isEqual = isEqual && GetInputRef().IsEquivalentTo(refStrat.GetInputRef());
+        isEqual = isEqual && GetSettings().IsEquivalentTo(refStrat.GetSettings());
+        // Size.n has to be also equal for true equality
+        isEqual = isEqual
+                  && GetInputRef().GetData().info.GetSize()
+                       == refStrat.GetInputRef().GetData().info.GetSize();
+      } catch (std::bad_cast &) {
+        isEqual = false;
+      }
+      return isEqual;
+    }
+
+    bool IsSimilarTo(const TunableStrategy &ref) const override
+    {
+      bool isSimilar = true;
+      try {
+        auto &refStrat = dynamic_cast<const Strategy1 &>(ref);
+        isSimilar = isSimilar && GetOutputRef().IsEquivalentTo(refStrat.GetOutputRef());
+        isSimilar = isSimilar && GetInputRef().IsEquivalentTo(refStrat.GetInputRef());
+        isSimilar = isSimilar && GetSettings().IsEquivalentTo(refStrat.GetSettings());
+        // Using naive similarity: same as equality except for ignoring Size.n
+        // TODO real similarity check
+      } catch (std::bad_cast &) {
+        isSimilar = false;
+      }
+      return isSimilar;
     }
 
     bool InitImpl() override
@@ -128,41 +172,37 @@ namespace {// to avoid poluting
 
       auto maxFreq = tuner.AddArgumentScalar(s.GetMaxFreq().value_or(0));
 
-      auto definitionId = GetDefinitionId();
       auto kernelId = GetKernelId();
 
-      tuner.SetArguments(definitionId,
+      SetArguments(GetDefinitionId(),
         { argIn, argOut, inSize, inSpatialSize, outSize, filter, normFactor, maxFreq });
 
       auto &size = out.GetData().info.GetPaddedSize();
-      tuner.SetLauncher(kernelId, [definitionId, &size](ktt::ComputeInterface &interface) {
+      tuner.SetLauncher(kernelId, [this, &size](ktt::ComputeInterface &interface) {
+        auto definitionId = GetDefinitionId();
         auto blockDim = interface.GetCurrentLocalSize(definitionId);
         ktt::DimensionVector gridDim(size.x, size.y, size.z);
         gridDim.RoundUp(blockDim);
         gridDim.Divide(blockDim);
-        interface.RunKernelAsync(definitionId, interface.GetAllQueues().at(0), gridDim, blockDim);
+        if (ShouldBeTuned(GetKernelId())) {
+          interface.RunKernel(definitionId, gridDim, blockDim);
+        } else {
+          interface.RunKernelAsync(definitionId, interface.GetAllQueues().at(0), gridDim, blockDim);
+        }
       });
 
-      if (ShouldTune()) {
-        tuner.TuneIteration(kernelId, {});
-      } else {
-        // TODO GetBestConfiguration can be used once the KTT is able to synchronize
-        // the best configuration from multiple KTT instances, or loads the best
-        // configuration from previous runs
-        // auto bestConfig = tuner.GetBestConfiguration(kernelId);
-        auto bestConfig = tuner.CreateConfiguration(kernelId,
-          { { "blockSizeX", static_cast<uint64_t>(32) },
-            { "blockSizeY", static_cast<uint64_t>(8) } });
-        tuner.Run(kernelId, bestConfig, {});// run is blocking call
-        // arguments shall be removed once the run is done
-      }
+      ExecuteKernel(kernelId);
 
       return true;
     };
   };
 }// namespace
 
-void FPCUDA::Synchronize() { GetHelper().GetTuner().Synchronize(); }
+void FPCUDA::Synchronize()
+{
+  // FIXME when queues are implemented, synchronize only used queues
+  GetHelper().GetTuner().SynchronizeDevice();
+}
 
 std::vector<std::unique_ptr<FPCUDA::Strategy>> FPCUDA::GetStrategies() const
 {

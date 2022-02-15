@@ -1,5 +1,6 @@
 #include <libumpalumpa/algorithms/correlation/correlation_cuda.hpp>
 #include <libumpalumpa/tuning/tunable_strategy.hpp>
+#include <libumpalumpa/tuning/strategy_group.hpp>
 
 namespace umpalumpa::correlation {
 
@@ -7,7 +8,7 @@ namespace {// to avoid poluting
   inline static const auto kKernelFile =
     utils::GetSourceFilePath("libumpalumpa/algorithms/correlation/correlation_cuda_kernels.cu");
 
-  struct Strategy1 final : public Correlation_CUDA::KTTStrategy
+  struct Strategy1 : public Correlation_CUDA::KTTStrategy
   {
     // Inherit constructor
     using Correlation_CUDA::KTTStrategy::KTTStrategy;
@@ -19,25 +20,63 @@ namespace {// to avoid poluting
     // Z dimension, ie. create more threads, each thread processing fewer images.
 
     size_t GetHash() const override { return 0; }
+
+    std::unique_ptr<tuning::Leader> CreateLeader() const override
+    {
+      return tuning::StrategyGroup::CreateLeader(*this, alg);
+    }
+    tuning::StrategyGroup LoadTuningData() const override
+    {
+      return tuning::StrategyGroup::LoadTuningData(*this, alg);
+    }
+
+    // FIXME this design might cause serious issues, while retrieving the correct configurations,
+    // when there is more than 1 optional kernel, the same goes to GetBestConfig of Leader. Works
+    // for now with all the current algorithms, but some changes or new algorithms might cause
+    // issues.
+    std::vector<ktt::KernelConfiguration> GetDefaultConfigurations() const override
+    {
+      return { kttHelper.GetTuner().CreateConfiguration(GetKernelId(),
+        { { "blockSizeX", static_cast<uint64_t>(32) },
+          { "blockSizeY", static_cast<uint64_t>(32) },
+          { "TILE", static_cast<uint64_t>(8) } }) };
+    }
+
+    bool IsEqualTo(const TunableStrategy &ref) const override
+    {
+      bool isEqual = true;
+      try {
+        auto &refStrat = dynamic_cast<const Strategy1 &>(ref);
+        isEqual = isEqual && GetOutputRef().IsEquivalentTo(refStrat.GetOutputRef());
+        isEqual = isEqual && GetInputRef().IsEquivalentTo(refStrat.GetInputRef());
+        isEqual = isEqual && GetSettings().IsEquivalentTo(refStrat.GetSettings());
+        // Size.n has to be also equal for true equality
+        isEqual = isEqual
+                  && GetInputRef().GetData1().info.GetSize()
+                       == refStrat.GetInputRef().GetData1().info.GetSize();
+        isEqual = isEqual
+                  && GetInputRef().GetData2().info.GetSize()
+                       == refStrat.GetInputRef().GetData2().info.GetSize();
+      } catch (std::bad_cast &) {
+        isEqual = false;
+      }
+      return isEqual;
+    }
+
     bool IsSimilarTo(const TunableStrategy &ref) const override
     {
-      bool similar = false;
-      // TODO move try-catch somewhere else
+      bool isSimilar = true;
       try {
-        // FIXME refactor
-        auto &refAlg = dynamic_cast<const Strategy1 &>(ref).alg.Get();
-        auto &thisAlg = this->alg.Get();
-        auto refSize1 = refAlg.GetInputRef().GetData1().info.GetSize();
-        auto thisSize1 = thisAlg.GetInputRef().GetData1().info.GetSize();
-        auto refSize2 = refAlg.GetInputRef().GetData2().info.GetSize();
-        auto thisSize2 = thisAlg.GetInputRef().GetData2().info.GetSize();
-        // NOTE for testing size equivalence means similarity
-        similar = thisSize1.IsEquivalentTo(refSize1) && thisSize2.IsEquivalentTo(refSize2);
+        auto &refStrat = dynamic_cast<const Strategy1 &>(ref);
+        isSimilar = isSimilar && GetOutputRef().IsEquivalentTo(refStrat.GetOutputRef());
+        isSimilar = isSimilar && GetInputRef().IsEquivalentTo(refStrat.GetInputRef());
+        isSimilar = isSimilar && GetSettings().IsEquivalentTo(refStrat.GetSettings());
+        // Using naive similarity: same as equality except for ignoring Size.n
         // TODO real similarity check
       } catch (std::bad_cast &) {
-        similar = false;
+        isSimilar = false;
       }
-      return similar;
+      return isSimilar;
     }
 
     bool InitImpl() override
@@ -135,40 +174,36 @@ namespace {// to avoid poluting
       auto isWithin =
         tuner.AddArgumentScalar(static_cast<int>(in.GetData1().GetPtr() == in.GetData2().GetPtr()));
 
-      auto definitionId = GetDefinitionId();
       auto kernelId = GetKernelId();
 
-      tuner.SetArguments(definitionId, { argOut, argIn1, inSize, argIn2, in2N, isWithin });
+      SetArguments(GetDefinitionId(), { argOut, argIn1, inSize, argIn2, in2N, isWithin });
 
       const auto &size = out.GetCorrelations().info.GetPaddedSize();
-      tuner.SetLauncher(kernelId, [definitionId, &size](ktt::ComputeInterface &interface) {
+      tuner.SetLauncher(kernelId, [this, &size](ktt::ComputeInterface &interface) {
+        auto definitionId = GetDefinitionId();
         auto blockDim = interface.GetCurrentLocalSize(definitionId);
         ktt::DimensionVector gridDim(size.x, size.y, size.z);
         gridDim.RoundUp(blockDim);
         gridDim.Divide(blockDim);
-        interface.RunKernelAsync(definitionId, interface.GetAllQueues().at(0), gridDim, blockDim);
+        if (ShouldBeTuned(GetKernelId())) {
+          interface.RunKernel(definitionId, gridDim, blockDim);
+        } else {
+          interface.RunKernelAsync(definitionId, interface.GetAllQueues().at(0), gridDim, blockDim);
+        }
       });
 
-      if (ShouldTune()) {
-        tuner.TuneIteration(kernelId, {});
-      } else {
-        // TODO GetBestConfiguration can be used once the KTT is able to synchronize
-        // the best configuration from multiple KTT instances, or loads the best
-        // configuration from previous runs
-        // auto bestConfig = tuner.GetBestConfiguration(kernelId);
-        auto bestConfig = tuner.CreateConfiguration(kernelId,
-          { { "blockSizeX", static_cast<uint64_t>(32) },
-            { "blockSizeY", static_cast<uint64_t>(32) },
-            { "TILE", static_cast<uint64_t>(8) } });
-        tuner.Run(kernelId, bestConfig, {});// run is blocking call
-        // arguments shall be removed once the run is done
-      }
+      ExecuteKernel(kernelId);
+
       return true;
     };
   };
 }// namespace
 
-void Correlation_CUDA::Synchronize() { GetHelper().GetTuner().Synchronize(); }
+void Correlation_CUDA::Synchronize()
+{
+  // FIXME when queues are implemented, synchronize only used queues
+  GetHelper().GetTuner().SynchronizeDevice();
+}
 
 std::vector<std::unique_ptr<Correlation_CUDA::Strategy>> Correlation_CUDA::GetStrategies() const
 {

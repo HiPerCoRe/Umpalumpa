@@ -1,5 +1,7 @@
 #include <libumpalumpa/algorithms/initialization/cuda.hpp>
 #include <libumpalumpa/tuning/tunable_strategy.hpp>
+#include <libumpalumpa/tuning/strategy_group.hpp>
+#include <libumpalumpa/tuning/tunable_strategy.hpp>
 
 namespace umpalumpa::initialization {
 
@@ -7,18 +9,31 @@ namespace {// to avoid poluting
   inline static const auto kKernelFile =
     utils::GetSourceFilePath("libumpalumpa/algorithms/initialization/cuda_kernels.cu");
 
-  struct BasicInit final : public CUDA::KTTStrategy
+  struct BasicInit : public CUDA::KTTStrategy
   {
     // Inherit constructor
     using CUDA::KTTStrategy::KTTStrategy;
 
     size_t GetHash() const override { return 0; }
 
-    bool IsSimilarTo(const TunableStrategy &) const override
+    std::unique_ptr<tuning::Leader> CreateLeader() const override
     {
-      // TODO real similarity check
-      return false;
+      return tuning::StrategyGroup::CreateLeader(*this, alg);
     }
+    tuning::StrategyGroup LoadTuningData() const override
+    {
+      return tuning::StrategyGroup::LoadTuningData(*this, alg);
+    }
+
+    std::vector<ktt::KernelConfiguration> GetDefaultConfigurations() const override
+    {
+      return { kttHelper.GetTuner().CreateConfiguration(
+        GetKernelId(), { { "blockSize", static_cast<uint64_t>(1024) } }) };
+    }
+
+    bool IsEqualTo(const TunableStrategy &) const override { return true; }
+
+    bool IsSimilarTo(const TunableStrategy &) const override { return true; }
 
     bool InitImpl() override
     {

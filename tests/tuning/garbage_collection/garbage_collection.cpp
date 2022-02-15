@@ -3,12 +3,13 @@
 #include <libumpalumpa/tuning/ktt_helper.hpp>
 #include <libumpalumpa/tuning/ktt_base.hpp>
 #include <libumpalumpa/tuning/tunable_strategy.hpp>
+#include <libumpalumpa/tuning/strategy_group.hpp>
 #include <thread>
 
 using namespace umpalumpa;
 using namespace umpalumpa::utils;
-using namespace umpalumpa::algorithm;
-using KTTIdTracker = umpalumpa::utils::KTTIdTracker;
+using namespace umpalumpa::tuning;
+using KTTIdTracker = umpalumpa::tuning::KTTIdTracker;
 
 using namespace ::testing;
 
@@ -17,7 +18,7 @@ using namespace ::testing;
     internal::CaptureStderr();\
     cmd;\
     {auto output = internal::GetCapturedStderr(); \
-    ASSERT_TRUE(StartsWith(output, "[ERROR]")) << "Output is: '" << output << "'";}
+    ASSERT_TRUE(StartsWith(output, "[Error]")) << "Output is: '" << output << "'";}
 // clang-format on
 
 class TestStrategy : public TunableStrategy
@@ -64,7 +65,11 @@ public:
     return tuner.Run(GetKernelId(), {}, {}).IsValid();
   }
 
+  std::string GetUniqueName() const override { return "TestStrategy"; }
   size_t GetHash() const override { return 0; }
+  std::vector<ktt::KernelConfiguration> GetDefaultConfigurations() const override { return { {} }; }
+  std::unique_ptr<Leader> CreateLeader() const override { return std::unique_ptr<Leader>(nullptr); }
+  tuning::StrategyGroup LoadTuningData() const override { throw std::logic_error("Nonsense"); }
   bool IsSimilarTo(const TunableStrategy &) const override { return false; }
 
   std::vector<ktt::KernelDefinitionId> testDefinitionIds;

@@ -28,7 +28,8 @@ set(umpalumpa_sources
     algorithms/initialization/cpu.cpp
     algorithms/initialization/cuda.cpp
     tuning/ktt_provider.cpp
-    tuning/algorithm_manager.cpp
+    tuning/strategy_manager.cpp
+    tuning/tunable_strategy.cpp
     tuning/ktt_base.cpp)
 
 if(USE_STARPU)

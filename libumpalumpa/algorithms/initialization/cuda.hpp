@@ -7,12 +7,12 @@
 namespace umpalumpa::initialization {
 class CUDA
   : public Abstract
-  , public algorithm::KTT_Base
+  , public tuning::KTT_Base
 {
 public:
-  using algorithm::KTT_Base::KTT_Base;
+  using tuning::KTT_Base::KTT_Base;
   using BasicAlgorithm::Strategy;
-  using KTTStrategy = algorithm::KTTStrategyBase<OutputData, InputData, Settings>;
+  using KTTStrategy = tuning::KTTStrategyBase<OutputData, InputData, Settings>;
   void Synchronize() override;
 
 protected:
