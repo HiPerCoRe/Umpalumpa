@@ -13,8 +13,8 @@ KTTProvider &KTTProvider::Get()
 void KTTProvider::Ensure(int workerId, const std::vector<ktt::ComputeQueue> &queues)
 {
   assert(queues.size() >= 1);
-  std::lock_guard<std::mutex> lck(KTTProvider::Get().mutex);
   auto &provider = KTTProvider::Get();
+  std::lock_guard<std::mutex> lck(provider.mutex);
   auto it = provider.map.find(workerId);
   if (provider.map.end() == it) {
     // not found, insert it
