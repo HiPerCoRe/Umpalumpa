@@ -111,6 +111,7 @@ protected:
   {
     std::stringstream ss;
     std::stringstream unique;
+    unique << kttHelper.GetTuner().GetCurrentDeviceInfo().GetName() << '-';
     unique << GetFullName();
     unique << '-';
     GetOutputRef().Serialize(ss);

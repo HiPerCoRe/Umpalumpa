@@ -17,7 +17,7 @@ public:
 protected:
   KTTProvider(const KTTProvider &) = delete;
   KTTProvider &operator=(const KTTProvider) = delete;
-  KTTProvider(){};
+  KTTProvider() = default;
 
   static KTTProvider &Get();
 
