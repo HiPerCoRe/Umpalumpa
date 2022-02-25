@@ -68,6 +68,8 @@ protected:
 
   virtual AFR &GetFRAlg() const = 0;
 
+  virtual void OptionalSynch() {};
+
 private:
   using Quaternion = std::array<float, 4>;
   using Matrix3x3 = std::array<float, 9>;

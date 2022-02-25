@@ -30,6 +30,8 @@ protected:
 
   void Release(const PhysicalDescriptor &p) const override;
 
+  void OptionalSynch() override;
+
 private:
   struct PDData
   {

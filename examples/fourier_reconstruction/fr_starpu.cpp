@@ -24,6 +24,10 @@ FourierReconstructionStarPU<T>::FourierReconstructionStarPU()
   thr = std::make_unique<std::thread>([this]() { RemoveFromQueue(); });
 }
 
+template<typename T> void FourierReconstructionStarPU<T>::OptionalSynch() {
+  starpu_task_wait_for_n_submitted(200);
+}
+
 template<typename T> void FourierReconstructionStarPU<T>::SetAvailableBytesRAM()
 {
   struct sysinfo info;
