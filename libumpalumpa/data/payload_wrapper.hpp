@@ -2,6 +2,7 @@
 
 #include <tuple>
 #include <cstddef>
+#include <iostream>
 
 namespace umpalumpa::data {
 namespace detail {
