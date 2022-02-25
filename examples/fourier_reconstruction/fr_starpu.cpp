@@ -119,6 +119,7 @@ template<typename T> void FourierReconstructionStarPU<T>::RemoveFromQueue()
     if (nullptr != data.ptr) {
       auto flags = STARPU_MALLOC_COUNT | (data.isPinned ? STARPU_MALLOC_PINNED : 0);
       starpu_free_flags(data.ptr, data.bytes, flags);
+      starpu_memory_deallocate(STARPU_MAIN_RAM, data.bytes);
     }
     delete handle;
   }
