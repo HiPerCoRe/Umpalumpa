@@ -105,6 +105,7 @@ void SingleExtremaFinderStarPU::Cleanup()
   Synchronize();
   starpu_execute_on_each_worker(UniversalCleanup<SingleExtremaFinderCPU>, &algs, STARPU_CPU);
   starpu_execute_on_each_worker(UniversalCleanup<SingleExtremaFinderCUDA>, &algs, STARPU_CUDA);
+  AExtremaFinder::Cleanup();
 }
 
 void SingleExtremaFinderStarPU::Synchronize()

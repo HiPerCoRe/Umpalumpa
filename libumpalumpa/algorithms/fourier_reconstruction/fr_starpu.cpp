@@ -152,6 +152,7 @@ void FRStarPU::Cleanup()
   Synchronize();
   starpu_execute_on_each_worker(UniversalCleanup<FRCPU>, &algs, STARPU_CPU);
   starpu_execute_on_each_worker(UniversalCleanup<FRCUDA>, &algs, STARPU_CUDA);
+  AFR::Cleanup();
 }
 
 void FRStarPU::Synchronize()

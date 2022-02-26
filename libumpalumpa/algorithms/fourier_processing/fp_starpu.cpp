@@ -106,6 +106,7 @@ void FPStarPU::Cleanup()
   Synchronize();
   starpu_execute_on_each_worker(UniversalCleanup<FPCPU>, &algs, STARPU_CPU);
   starpu_execute_on_each_worker(UniversalCleanup<FPCUDA>, &algs, STARPU_CUDA);
+  AFP::Cleanup();
 }
 
 void FPStarPU::Synchronize()

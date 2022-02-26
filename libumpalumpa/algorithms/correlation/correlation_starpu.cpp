@@ -106,6 +106,7 @@ void Correlation_StarPU::Cleanup()
   Synchronize();
   starpu_execute_on_each_worker(UniversalCleanup<Correlation_CPU>, &algs, STARPU_CPU);
   starpu_execute_on_each_worker(UniversalCleanup<Correlation_CUDA>, &algs, STARPU_CUDA);
+  ACorrelation::Cleanup();
 }
 
 void Correlation_StarPU::Synchronize()

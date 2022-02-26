@@ -105,6 +105,7 @@ void StarPU::Cleanup()
   Synchronize();
   starpu_execute_on_each_worker(UniversalCleanup<CPU>, &algs, STARPU_CPU);
   starpu_execute_on_each_worker(UniversalCleanup<CUDA>, &algs, STARPU_CUDA);
+  Abstract::Cleanup();
 }
 
 void StarPU::Synchronize()

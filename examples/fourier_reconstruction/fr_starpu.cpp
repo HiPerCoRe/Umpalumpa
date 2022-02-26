@@ -25,7 +25,17 @@ FourierReconstructionStarPU<T>::FourierReconstructionStarPU()
 }
 
 template<typename T> void FourierReconstructionStarPU<T>::OptionalSynch() {
-  starpu_task_wait_for_n_submitted(200);
+  static size_t counter = 0;
+  if (counter++ == 500) {
+    // every now and then clean KTT algorithms. They store Arguments, and at some point
+    // the book keeping of them is too expensive
+    counter = 0;
+    FRAlg->Cleanup();
+    cropAlg->Cleanup();
+  }
+  // StarPU schedulers are not very good at handling a lot of tasks,
+  // but since we synchronize above, we get that for free
+  // starpu_task_wait_for_n_submitted(200);
 }
 
 template<typename T> void FourierReconstructionStarPU<T>::SetAvailableBytesRAM()
