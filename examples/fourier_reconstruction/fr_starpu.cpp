@@ -98,9 +98,9 @@ PhysicalDescriptor
 {
   void *ptr = nullptr;
   if (copyInRAM && 0 != bytes) {
-    starpu_memory_allocate(STARPU_MAIN_RAM, bytes, STARPU_MEMORY_WAIT);
-    starpu_memory_wait_available(STARPU_MAIN_RAM, bytes);
-    auto flags = STARPU_MALLOC_COUNT | (pinned ? STARPU_MALLOC_PINNED : 0);
+    // starpu_memory_allocate(STARPU_MAIN_RAM, bytes, STARPU_MEMORY_WAIT);
+    // starpu_memory_wait_available(STARPU_MAIN_RAM, bytes);
+    auto flags = STARPU_MEMORY_WAIT | STARPU_MALLOC_COUNT | (pinned ? STARPU_MALLOC_PINNED : 0);
     starpu_malloc_flags(&ptr, bytes, flags);
     memset(ptr, 0, bytes);
   }
@@ -129,7 +129,7 @@ template<typename T> void FourierReconstructionStarPU<T>::RemoveFromQueue()
     if (nullptr != data.ptr) {
       auto flags = STARPU_MALLOC_COUNT | (data.isPinned ? STARPU_MALLOC_PINNED : 0);
       starpu_free_flags(data.ptr, data.bytes, flags);
-      starpu_memory_deallocate(STARPU_MAIN_RAM, data.bytes);
+      // starpu_memory_deallocate(STARPU_MAIN_RAM, data.bytes);
     }
     delete handle;
   }
