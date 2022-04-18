@@ -25,8 +25,8 @@ set(umpalumpa_sources
     algorithms/correlation/correlation_cpu.cpp
     algorithms/reduction/cpu.cpp
     algorithms/reduction/cuda.cpp
-    algorithms/initialization/cpu.cpp
-    algorithms/initialization/cuda.cpp
+    # algorithms/initialization/cpu.cpp
+    # algorithms/initialization/cuda.cpp
     tuning/ktt_provider.cpp
     tuning/strategy_manager.cpp
     tuning/tunable_strategy.cpp
@@ -43,7 +43,7 @@ if(USE_STARPU)
     algorithms/fourier_reconstruction/fr_starpu_kernels.cu
     algorithms/fourier_transformation/fft_starpu.cpp
     algorithms/reduction/starpu.cpp
-    algorithms/initialization/starpu.cpp
+    # algorithms/initialization/starpu.cpp
     utils/starpu.cpp)
 endif()
 
