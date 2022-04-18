@@ -152,7 +152,8 @@ namespace {// to avoid poluting
         if (ShouldBeTuned(GetKernelId())) {
           interface.RunKernel(definitionId, gridDim, blockDim);
         } else {
-          interface.RunKernelAsync(definitionId, interface.GetAllQueues().at(0), gridDim, blockDim);
+          WaitBeforeDestruction(interface.RunKernelAsync(
+            definitionId, interface.GetAllQueues().at(0), gridDim, blockDim));
         }
       });
 
@@ -167,8 +168,8 @@ namespace {// to avoid poluting
           if (ShouldBeTuned(GetKernelId(1))) {
             interface.RunKernel(GetDefinitionId(1), gridDim, blockDim);
           } else {
-            interface.RunKernelAsync(
-              GetDefinitionId(1), interface.GetAllQueues().at(0), gridDim, blockDim);
+            WaitBeforeDestruction(interface.RunKernelAsync(
+              GetDefinitionId(1), interface.GetAllQueues().at(0), gridDim, blockDim));
           }
         });
       }
@@ -332,7 +333,8 @@ namespace {// to avoid poluting
         if (ShouldBeTuned(GetKernelId())) {
           interface.RunKernel(definitionId, gridDim, blockDim);
         } else {
-          interface.RunKernelAsync(definitionId, interface.GetAllQueues().at(0), gridDim, blockDim);
+          WaitBeforeDestruction(interface.RunKernelAsync(
+            definitionId, interface.GetAllQueues().at(0), gridDim, blockDim));
         }
       });
 

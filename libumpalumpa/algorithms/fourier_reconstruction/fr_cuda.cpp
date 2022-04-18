@@ -225,8 +225,8 @@ namespace {// to avoid poluting
           if (ShouldBeTuned(GetKernelId())) {
             interface.RunKernel(GetKernelId(), gridDim, blockDim);
           } else {
-            interface.RunKernelAsync(
-              GetDefinitionId(), interface.GetAllQueues().at(0), gridDim, blockDim);
+            WaitBeforeDestruction(interface.RunKernelAsync(
+              GetDefinitionId(), interface.GetAllQueues().at(0), gridDim, blockDim));
           }
         });
 
