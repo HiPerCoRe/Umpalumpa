@@ -10,6 +10,8 @@ void(gpuErrchk)(CUresult code, const char *file, int line, bool abort = true);
 
 void(gpuErrchk)(cufftResult code, const char *file, int line, bool abort = true);
 
+void cuInitSafe();
+
 #define CudaErrchk(code)                   \
   {                                        \
     gpuErrchk((code), __FILE__, __LINE__); \

@@ -97,7 +97,7 @@ void FFTCUDA::setupPlan()
 
 FFTCUDA::FFTCUDA(int deviceOrdinal) : shouldDestroyStream(true)
 {
-  CudaErrchk(cuInit(0));
+  cuInitSafe();
   CUdevice device;
   CudaErrchk(cuDeviceGet(&device, deviceOrdinal));
   CUcontext context;// FIXME test that stream is created on the correct device

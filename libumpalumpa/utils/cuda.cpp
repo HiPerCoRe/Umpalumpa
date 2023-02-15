@@ -2,6 +2,7 @@
 #include <cuda.h>
 #include <cstdio>
 #include <stdexcept>
+#include <mutex>
 
 void gpuErrchk(cudaError_t code, const char *file, int line, bool abort)
 {
@@ -90,6 +91,15 @@ void gpuErrchk(cufftResult code, const char *file, int line, bool abort)
     char buffer[300];
     snprintf(buffer, 300, "GPUassert: %s %s %d", _cudaGetErrorEnum(code), file, line);
     if (abort) throw std::runtime_error(std::string(buffer));
+  }
+}
+
+void cuInitSafe() {
+  static std::mutex mutex;
+  auto lock = std::unique_lock(mutex);
+  int tmp = 0;
+  if (CUDA_ERROR_NOT_INITIALIZED == cuDeviceGetCount(&tmp)) {
+    CudaErrchk(cuInit(0));
   }
 }
 

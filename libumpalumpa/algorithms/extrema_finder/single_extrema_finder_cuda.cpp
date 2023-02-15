@@ -163,7 +163,7 @@ namespace {// to avoid poluting
         SetArguments(GetDefinitionId(1), { argLocs, argIn, argSize });
 
         tuner.SetLauncher(GetKernelId(1), [this, &size](ktt::ComputeInterface &interface) {
-          const ktt::DimensionVector blockDim(size.n);
+          const ktt::DimensionVector blockDim(size.n); // FIXME this can fail if there are more than 1024 images to be processed (max size of the thread block)
           const ktt::DimensionVector gridDim(1);
           if (ShouldBeTuned(GetKernelId(1))) {
             interface.RunKernel(GetDefinitionId(1), gridDim, blockDim);

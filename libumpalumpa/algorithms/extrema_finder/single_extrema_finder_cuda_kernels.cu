@@ -194,7 +194,7 @@ __global__ void findMax(
 {
   // map one thread per signal
   auto n = threadIdx.x;
-  if (n >= size.single) return;
+  if (n >= size.n) return;
   using umpalumpa::data::Dimensionality;
   auto half = (WINDOW - 1) / 2;
   const auto dim = size.GetDimAsNumber();
