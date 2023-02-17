@@ -2,9 +2,12 @@
 // #include "flexalign_cuda.hpp"
 #include "flexalign_starpu.hpp"
 #include <iostream>
+#include "spdlog/cfg/env.h"
 
 int main(int argc, char **argv)
 {
+  spdlog::cfg::load_env_levels();
+
   size_t size_x = 4096;
   size_t size_y = 4096;
   size_t frames = 40;

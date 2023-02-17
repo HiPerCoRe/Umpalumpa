@@ -133,7 +133,7 @@ void FlexAlign<T>::LogResult(size_t i, size_t j, size_t batch, const std::vector
         return spdlog::level::err;
       }();
       spdlog::log(level,
-        "Shift of img {} and {} is [{}, {}] (expected [{}, {}])",
+        "Shift of img {} and {} is [{:.1f}, {:.1f}] (expected [{}, {}])",
         idxI,
         idxJ,
         actualShift.x,
