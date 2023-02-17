@@ -2,6 +2,7 @@
 #include <libumpalumpa/tuning/tunable_strategy.hpp>
 #include <libumpalumpa/tuning/strategy_group.hpp>
 #include <libumpalumpa/tuning/tunable_strategy.hpp>
+#include <libumpalumpa/utils/cuda_memory.hpp>
 
 namespace umpalumpa::reduction {
 
@@ -111,7 +112,26 @@ namespace {// to avoid poluting
       auto argSize = tuner.AddArgumentScalar(in.GetData().info.GetSize());
 
       // prepare output data
-      auto argOut = AddArgumentVector<float>(out.GetData(), ktt::ArgumentAccessType::ReadWrite);
+      auto shouldBeTuned = ShouldBeTuned(GetKernelId());
+      auto argOut = [shouldBeTuned, &out, this]() {
+        // If this kernel needs to be tuned, KTT will invoke it multiple times. As this kernel is
+        // overwriting the result, it would cause wrong answer. As a workaround, we create a copy of
+        // the output array that will be used for tuning. Once the tuning is over, we execute the
+        // kernel on the original data.
+        if (shouldBeTuned) {
+          auto total = out.GetData().info.GetSize().total;
+          tmpOut = std::move(umpalumpa::utils::make_unique_cuda<void>(total));
+          CudaErrchk(
+            cudaMemcpy(tmpOut.get(), out.GetData().GetPtr(), total, cudaMemcpyDeviceToDevice));
+          return kttHelper.GetTuner().template AddArgumentVector<float>(tmpOut.get(),
+            total,
+            ktt::ArgumentAccessType::ReadWrite,
+            ktt::ArgumentMemoryLocation::Device);
+        } else {
+          tmpOut.reset();
+          return AddArgumentVector<float>(out.GetData(), ktt::ArgumentAccessType::ReadWrite);
+        }
+      }();
 
       SetArguments(GetDefinitionId(), { argOut, argIn, argSize });
 
@@ -131,8 +151,17 @@ namespace {// to avoid poluting
 
       ExecuteKernel(GetKernelId());
 
+      if (shouldBeTuned && !ShouldBeTuned(GetKernelId())) {
+        // we're done with tuning, so perform the actual computation
+        return Execute(out, in);
+      }
+
       return true;
     };
+
+    // holds temporaly array for output during tuning - since autotuning will execute several times,
+    // we would get wrong answer due to multiple summation
+    umpalumpa::utils::unique_ptr_cuda<void> tmpOut;
   };
 }// namespace
 
