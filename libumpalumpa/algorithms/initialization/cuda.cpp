@@ -14,6 +14,8 @@ namespace {// to avoid poluting
     // Inherit constructor
     using CUDA::KTTStrategy::KTTStrategy;
 
+    static constexpr auto kInitialize = "Initialize";
+
     size_t GetHash() const override { return 0; }
 
     std::unique_ptr<tuning::Leader> CreateLeader() const override
@@ -37,8 +39,36 @@ namespace {// to avoid poluting
 
     bool InitImpl() override
     {
-      return !alg.GetInputRef().GetData().info.IsPadded()
-             && alg.GetInputRef().GetValue().dataInfo.GetType().Is<float>();
+      const auto &in = alg.Get().GetInputRef();
+      bool canProcess = !in.GetData().info.IsPadded()
+                        && alg.GetInputRef().GetValue().dataInfo.GetType().Is<float>();
+      if (!canProcess) return false;
+
+      auto &tuner = kttHelper.GetTuner();
+
+      // ensure that we have the kernel loaded to KTT
+      // this has to be done in critical section, as multiple instances of this algorithm
+      // might run on the same worker
+      const auto &size = in.GetData().info.GetSize();
+      std::lock_guard<std::mutex> lck(kttHelper.GetMutex());
+      AddKernelDefinition(
+        kInitialize, kKernelFile, ktt::DimensionVector{ size.total }, { "float" });
+      auto definitionId = GetDefinitionId();
+
+      AddKernel(kInitialize, definitionId);
+
+
+      auto kernelId = GetKernelId();
+      tuner.AddParameter(
+        kernelId, "blockSize", std::vector<uint64_t>{ 32, 64, 128, 256, 512, 1024 });
+      tuner.AddThreadModifier(kernelId,
+        { definitionId },
+        ktt::ModifierType::Local,
+        ktt::ModifierDimension::X,
+        "blockSize",
+        ktt::ModifierAction::Multiply);
+      tuner.SetSearcher(kernelId, std::make_unique<ktt::RandomSearcher>());
+      return canProcess;
     }
 
     std::string GetName() const override { return "BasicInit"; }
