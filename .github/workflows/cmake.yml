@@ -31,7 +31,7 @@ jobs:
     - run: echo "Installed cuda version is:${{steps.cuda-toolkit.outputs.cuda}}"
 
     - name: Install dependencies
-        run: sudo apt-get install -y libfftw3-dev
+      run: sudo apt-get install -y libfftw3-dev
 
     - name: Configure CMake
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
