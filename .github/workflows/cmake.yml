@@ -28,8 +28,7 @@ jobs:
       id: cuda-toolkit
       with:
         cuda: '11.4.0'
-        method: network
-        sub-packages: '["nvcc", "cudart", "cufft"]'
+        linux-local-args: '[ "--toolkit" ]'
     - run: echo "Installed cuda version is:${{steps.cuda-toolkit.outputs.cuda}}"
 
     - name: Install dependencies
