@@ -28,6 +28,7 @@ jobs:
       id: cuda-toolkit
       with:
         cuda: '11.4.0'
+        sub-packages: '["nvcc", "cudart", "cufft"]'
     - run: echo "Installed cuda version is:${{steps.cuda-toolkit.outputs.cuda}}"
 
     - name: Install dependencies
