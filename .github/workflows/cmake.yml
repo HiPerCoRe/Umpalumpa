@@ -33,14 +33,18 @@ jobs:
 
     - name: Install dependencies
       run: sudo apt-get install -y libfftw3-dev
-      
-    - name: find cuda
-      run: find / -iname libcuda*
-
+    
+    # since no driver is installed, the runtime libraries and includes are located elsewhere
+    - name: Add Cuda stubs
+      run: echo "LD_LIBRARY_PATH=$CUDA_PATH/lib64/stubs:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+    
     - name: Configure CMake
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
       # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
       run: cmake -DUSE_STARPU=OFF -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+
+    - name: find cuda
+      run: find / -iname cuda_runtime.h*
 
     - name: Build
       # Build your program with the given configuration
