@@ -32,7 +32,7 @@ jobs:
     - run: echo "Installed cuda version is:${{steps.cuda-toolkit.outputs.cuda}}"
 
     - name: Install dependencies
-      run: sudo apt-get install -y libfftw3-dev
+      run: sudo apt-get install -y libfftw3-dev libtbb-dev
     
     # since no driver is installed, the runtime libraries and includes are located elsewhere
     - name: Add Cuda stubs
@@ -41,11 +41,9 @@ jobs:
     - name: Configure CMake
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
       # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
-      run: cmake -DUSE_STARPU=OFF -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
-
-    - name: find cuda
-      run: find / -iname cuda_runtime.h*
+      # We disable StarPU support (not available) and we disable tests - since there is no GPU, test discovery (from GoogleTests) would fail on loading libcuda.so
+      run: cmake -DUSE_STARPU=OFF -DENABLE_TESTING=OFF -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
 
     - name: Build
       # Build your program with the given configuration
-      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} -j 2
