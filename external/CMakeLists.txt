@@ -4,9 +4,9 @@ include(ExternalProject)
 set(premake ${CMAKE_CURRENT_SOURCE_DIR}/premake5/premake5)
 if(NOT EXISTS ${premake})
   message(STATUS "Downloading premake-5")
-  set(premake_version premake-5.0.0-alpha15-linux.tar.gz)
+  set(premake_version premake-5.0.0-beta2-linux.tar.gz)
   set(path ${CMAKE_CURRENT_SOURCE_DIR}/premake5)
-  file(DOWNLOAD https://github.com/premake/premake-core/releases/download/v5.0.0-alpha15/${premake_version}
+  file(DOWNLOAD https://github.com/premake/premake-core/releases/download/v5.0.0-beta2/${premake_version}
        ${path}/${premake_version})
   execute_process(COMMAND tar -xf ${premake_version} WORKING_DIRECTORY ${path})
 endif()
