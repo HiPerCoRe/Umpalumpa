@@ -1,6 +1,8 @@
 #include "flexalign_cpu.hpp"
-// #include "flexalign_cuda.hpp"
+#include "flexalign_cuda.hpp"
+#ifdef USE_STARPU
 #include "flexalign_starpu.hpp"
+#endif
 #include <iostream>
 
 int main(int argc, char **argv)
@@ -40,7 +42,7 @@ int main(int argc, char **argv)
   auto movieSize = umpalumpa::data::Size(size_x, size_y, 1, frames);
   auto croppedSize = umpalumpa::data::Size(cropped_x, cropped_y, 1, 1);
   const auto program = []() -> std::unique_ptr<FlexAlign<float>> {
-    if (true) { return std::make_unique<FlexAlignStarPU<float>>(); }
+//    if (true) { return std::make_unique<FlexAlignStarPU<float>>(); }
     return std::make_unique<FlexAlignCPU<float>>();
   }();
   program->Execute(movieSize, batch, num_of_movies, croppedSize);

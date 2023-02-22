@@ -199,7 +199,7 @@ private:
       for (size_t idx = 0; idx < size; ++idx) {
         out << bestConfigTimes.at(idx);
         for (const auto &pp : bestConfigs.at(idx).GetPairs()) {
-          out << ' ' << pp.HasValueDouble() << ' ' << pp.GetName() << ' ' << pp.GetValue();
+          out << ' ' << (pp.GetValueType() == ktt::ParameterValueType::Double) << ' ' << pp.GetName() << ' ' << pp.GetValueString();
         }
         out << '\n';
       }
