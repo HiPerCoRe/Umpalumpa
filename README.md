@@ -1,3 +1,6 @@
+[![CMake](https://github.com/HiPerCoRe/Umpalumpa/actions/workflows/cmake.yml/badge.svg)](https://github.com/HiPerCoRe/Umpalumpa/actions/workflows/cmake.yml)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=HiPerCoRe_Umpalumpa&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=HiPerCoRe_Umpalumpa)
+
 # Umpalumpa
 
 Umpalumpa is a framework which aims to manage complex workloads on heterogeneous computers. 
@@ -32,6 +35,8 @@ StarPU (optional but highly recommended)
 [spdlog](https://github.com/gabime/spdlog) (automatically fetched)
 
 [KTT](https://github.com/HiPerCoRe/KTT) (automatically fetched)
+
+libtbb (for tests)
 
 ## Instalation
 
