@@ -18,11 +18,23 @@ jobs:
     # You can convert this to a matrix build if you need cross-platform coverage.
     # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
     runs-on: ubuntu-20.04
+    env:
+      BUILD_WRAPPER_OUT_DIR: build_wrapper_output_directory # Directory where build-wrapper for SonarCloud analysisoutput will be placed
 
     steps:
     - uses: actions/checkout@v3
       with:
           fetch-depth: 0
+
+    # This will try to fetch cache for current commit
+    # If no such cache exists, it will try to bring newest restore-key one
+    # i.e. the one from latest build. See https://docs.github.com/en/actions/guides/caching-dependencies-to-speed-up-workflows#matching-a-cache-key
+    - name: Fetch cache
+      uses: actions/cache@v2.1.5
+      with:
+        path: sonarCache
+        key: ${{ runner.os }}-sonarCache-${{ github.sha }}
+        restore-keys: ${{ runner.os }}-sonarCache-
 
     - uses: Jimver/cuda-toolkit@v0.2.8
       id: cuda-toolkit
@@ -44,6 +56,18 @@ jobs:
       # We disable StarPU support (not available) and we disable tests - since there is no GPU, test discovery (from GoogleTests) would fail on loading libcuda.so
       run: cmake -DUSE_STARPU=OFF -DENABLE_TESTING=OFF -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
 
+    - name: Install sonar-scanner and build-wrapper
+      uses: SonarSource/sonarcloud-github-c-cpp@v1
+
     - name: Build
       # Build your program with the given configuration
-      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} -j 2
+      run: |
+          build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} -j 2
+          
+    - name: Run sonar-scanner
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      run: |
+        sonar-scanner --define sonar.cfamily.build-wrapper-output="${{ env.BUILD_WRAPPER_OUT_DIR }}"
+
