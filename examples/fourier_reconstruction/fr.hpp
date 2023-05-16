@@ -1,8 +1,8 @@
 #pragma once
 
-#include <libumpalumpa/algorithms/fourier_transformation/afft.hpp>
-#include <libumpalumpa/algorithms/fourier_processing/afp.hpp>
-#include <libumpalumpa/algorithms/fourier_reconstruction/afr.hpp>
+#include <libumpalumpa/operations/fourier_transformation/afft.hpp>
+#include <libumpalumpa/operations/fourier_processing/afp.hpp>
+#include <libumpalumpa/operations/fourier_reconstruction/afr.hpp>
 
 #include <random>
 
@@ -62,11 +62,11 @@ protected:
    **/
   virtual void Release(const PhysicalDescriptor &p) const = 0;
 
-  virtual AFFT &GetFFTAlg() const = 0;
+  virtual AFFT &GetFFTOp() const = 0;
 
-  virtual AFP &GetCropAlg() const = 0;
+  virtual AFP &GetCropOp() const = 0;
 
-  virtual AFR &GetFRAlg() const = 0;
+  virtual AFR &GetFROp() const = 0;
 
   virtual void OptionalSynch() {};
 

@@ -162,17 +162,17 @@ Payload<FourierDescriptor> FlexAlign<T>::ConvertToFFT(const Payload<LogicalDescr
     return Payload(ld, CreatePD(bytes, type, false, false), "FFT (out) " + name);
   }();
   using namespace umpalumpa::fourier_transformation;
-  auto &alg = this->GetForwardFFTAlg();
+  auto &op = this->GetForwardFFTOp();
   auto in = AFFT::InputData(inFFT);
   auto out = AFFT::OutputData(outFFT);
-  if (!alg.IsInitialized()) {
+  if (!op.IsInitialized()) {
     auto settings =
       Settings(Locality::kOutOfPlace, Direction::kForward, 1);//std::min(8ul, GetAvailableCores()));
-    if (!alg.Init(out, in, settings)) {
-      spdlog::error("Initialization of the FFT algorithm failed");
+    if (!op.Init(out, in, settings)) {
+      spdlog::error("Initialization of the FFT operation failed");
     }
   }
-  if (!alg.Execute(out, in)) { spdlog::error("Execution of the FFT algorithm failed"); }
+  if (!op.Execute(out, in)) { spdlog::error("Execution of the FFT operation failed"); }
   return outFFT;
 }
 
@@ -195,18 +195,18 @@ Payload<FourierDescriptor> FlexAlign<T>::Crop(const Payload<FourierDescriptor> &
   }();
   using namespace umpalumpa::fourier_processing;
   using umpalumpa::fourier_transformation::Locality;
-  auto &alg = this->GetCropAlg();
+  auto &op = this->GetCropOp();
   auto in = AFP::InputData(inCrop, filter);
   auto out = AFP::OutputData(outCrop);
-  if (!alg.IsInitialized()) {
+  if (!op.IsInitialized()) {
     auto settings = Settings(Locality::kOutOfPlace);
     settings.SetApplyFilter(true);
     settings.SetNormalize(true);
-    if (!alg.Init(out, in, settings)) {
-      spdlog::error("Initialization of the Crop algorithm failed");
+    if (!op.Init(out, in, settings)) {
+      spdlog::error("Initialization of the Crop operation failed");
     }
   }
-  if (!alg.Execute(out, in)) { spdlog::error("Execution of the Crop algorithm failed"); }
+  if (!op.Execute(out, in)) { spdlog::error("Execution of the Crop operation failed"); }
   return outCrop;
 }
 
@@ -221,17 +221,17 @@ Payload<FourierDescriptor> FlexAlign<T>::ConvertFromFFT(Payload<FourierDescripto
     return Payload(ld, CreatePD(bytes, type, false, false), "IFFT (out) " + name);
   }();
   using namespace umpalumpa::fourier_transformation;
-  auto &alg = this->GetInverseFFTAlg();
+  auto &op = this->GetInverseFFTOp();
   auto in = AFFT::InputData(correlation);
   auto out = AFFT::OutputData(pOut);
-  if (!alg.IsInitialized()) {
+  if (!op.IsInitialized()) {
     auto settings =
       Settings(Locality::kOutOfPlace, Direction::kInverse, 1);//std::min(4ul, GetAvailableCores()));
-    if (!alg.Init(out, in, settings)) {
-      spdlog::error("Initialization of the IFFT algorithm failed");
+    if (!op.Init(out, in, settings)) {
+      spdlog::error("Initialization of the IFFT operation failed");
     }
   }
-  if (!alg.Execute(out, in)) { spdlog::error("Execution of the IFFT algorithm failed"); }
+  if (!op.Execute(out, in)) { spdlog::error("Execution of the IFFT operation failed"); }
   return pOut;
 }
 
@@ -255,22 +255,22 @@ Payload<LogicalDescriptor> FlexAlign<T>::FindMax(Payload<FourierDescriptor> &out
     return Payload(ld, CreatePD(bytes, type, true, false), "Location of Max " + name);
   }();
   using namespace umpalumpa::extrema_finder;
-  auto &alg = this->GetFindMaxAlg();
+  auto &op = this->GetFindMaxOp();
   auto in = AExtremaFinder::InputData(pIn);
   auto out = AExtremaFinder::OutputData(empty, pOut);
-  if (!alg.IsInitialized()) {
+  if (!op.IsInitialized()) {
     // FIXME search around center
     auto settings =
       Settings(ExtremaType::kMax, Location::kEntire, Result::kLocation, Precision::k3x3);
-    if (!alg.Init(out, in, settings)) {
-      spdlog::error("Initialization of the Extrema Finder algorithm failed");
+    if (!op.Init(out, in, settings)) {
+      spdlog::error("Initialization of the Extrema Finder operation failed");
     }
   }
   // FIXME
   // Note: The search might lead to Conditional jump or move depends on uninitialised value(s)
   // the reason is that we probably don't have valid data for the last iteration if we e.g.
   // have only 3 images in the last batch of size 4
-  if (!alg.Execute(out, in)) { spdlog::error("Execution of the Extrema Finder algorithm failed"); }
+  if (!op.Execute(out, in)) { spdlog::error("Execution of the Extrema Finder operation failed"); }
   RemovePD(empty.dataInfo);
   return pOut;
 };
@@ -293,16 +293,16 @@ Payload<FourierDescriptor> FlexAlign<T>::Correlate(Payload<FourierDescriptor> &f
     auto pd = CreatePD(bytes, first.dataInfo.GetType(), false, false);
     return Payload(ld, std::move(pd), "Correlation of " + name);
   }();
-  auto &alg = this->GetCorrelationAlg();
+  auto &op = this->GetCorrelationOp();
   auto in = ACorrelation::InputData(first, second);
   auto out = ACorrelation::OutputData(pOut);
-  if (!alg.IsInitialized()) {
+  if (!op.IsInitialized()) {
     auto settings = Settings(CorrelationType::kMToN);
-    if (!alg.Init(out, in, settings)) {
-      spdlog::error("Initialization of the Correlation algorithm failed");
+    if (!op.Init(out, in, settings)) {
+      spdlog::error("Initialization of the Correlation operation failed");
     }
   }
-  if (!alg.Execute(out, in)) { spdlog::error("Execution of the Correlation algorithm failed"); }
+  if (!op.Execute(out, in)) { spdlog::error("Execution of the Correlation operation failed"); }
   return pOut;
 }
 

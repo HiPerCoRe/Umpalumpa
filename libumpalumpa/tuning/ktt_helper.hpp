@@ -29,7 +29,7 @@ public:
   void RemoveQueue(const ktt::ComputeQueue)
   {
     // FIXME implment once KTT supports it
-    // be careful not to remove queue used by another algorithm
+    // be careful not to remove queue used by another operation
   }
 
   // FIXME add method to access correct stream (and remove interface.GetAllQueues().at(0) from

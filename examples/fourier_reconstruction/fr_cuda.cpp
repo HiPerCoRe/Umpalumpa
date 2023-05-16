@@ -1,16 +1,16 @@
 #include "fr_cuda.hpp"
-#include <libumpalumpa/algorithms/fourier_transformation/fft_cuda.hpp>
-#include <libumpalumpa/algorithms/fourier_processing/fp_cuda.hpp>
-#include <libumpalumpa/algorithms/fourier_reconstruction/fr_cuda.hpp>
+#include <libumpalumpa/operations/fourier_transformation/fft_cuda.hpp>
+#include <libumpalumpa/operations/fourier_processing/fp_cuda.hpp>
+#include <libumpalumpa/operations/fourier_reconstruction/fr_cuda.hpp>
 
 using umpalumpa::data::ManagedBy;
 using namespace umpalumpa;
 
 template<typename T>
 FourierReconstructionCUDA<T>::FourierReconstructionCUDA()
-  : FFTAlg(std::make_unique<fourier_transformation::FFTCUDA>(worker)),
-    cropAlg(std::make_unique<fourier_processing::FPCUDA>(worker)),
-    FRAlg(std::make_unique<fourier_reconstruction::FRCUDA>(worker))
+  : FFTOp(std::make_unique<fourier_transformation::FFTCUDA>(worker)),
+    cropOp(std::make_unique<fourier_processing::FPCUDA>(worker)),
+    FROp(std::make_unique<fourier_reconstruction::FRCUDA>(worker))
 {}
 
 template<typename T>

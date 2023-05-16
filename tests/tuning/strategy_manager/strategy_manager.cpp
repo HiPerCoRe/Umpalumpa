@@ -5,7 +5,7 @@
 #include <libumpalumpa/tuning/ktt_base.hpp>
 #include <libumpalumpa/data/payload_wrapper.hpp>
 #include <libumpalumpa/data/payload.hpp>
-#include <libumpalumpa/algorithms/basic_algorithm.hpp>
+#include <libumpalumpa/operations/basic_operation.hpp>
 #include "libumpalumpa/data/logical_desriptor.hpp"
 #include "libumpalumpa/tuning/ktt_strategy_base.hpp"
 #include "libumpalumpa/tuning/tunable_strategy.hpp"
@@ -32,12 +32,12 @@ struct Settings
   // Empty
 };
 
-class TestAlgorithm_CUDA
-  : public BasicAlgorithm<DataWrapper<>, DataWrapper<>, Settings>
+class TestOperation_CUDA
+  : public BasicOperation<DataWrapper<>, DataWrapper<>, Settings>
   , public KTT_Base
 {
 public:
-  TestAlgorithm_CUDA() : KTT_Base(0) {}
+  TestOperation_CUDA() : KTT_Base(0) {}
 
   using KTTStrategy = KTTStrategyBase<OutputData, InputData, Settings>;
 
@@ -53,7 +53,7 @@ public:
     }
     std::unique_ptr<Leader> CreateLeader() const override
     {
-      auto uPtr = StrategyGroup::CreateLeader(*this, alg);
+      auto uPtr = StrategyGroup::CreateLeader(*this, op);
       auto *ptr = dynamic_cast<MockStrategy *>(uPtr.get());// this can't fail
       EXPECT_CALL(*ptr, GetHash()).WillRepeatedly(Return(mockHash));
       EXPECT_CALL(*ptr, IsSimilarTo).WillRepeatedly(Return(mockSimilar));
@@ -61,7 +61,7 @@ public:
     }
     tuning::StrategyGroup LoadTuningData() const override
     {
-      return tuning::StrategyGroup::LoadTuningData(*this, alg);
+      return tuning::StrategyGroup::LoadTuningData(*this, op);
     }
     // Needed because of creation of a Leader strategy from the MockStrategy
     size_t mockHash = 0;
@@ -93,14 +93,14 @@ public:
 
 // ACTUAL TESTS ARE STARTING HERE
 
-// NOTE some tests are using knowledge of AlgorithmManager's internal structure, would be good to
+// NOTE some tests are using knowledge of OperationManager's internal structure, would be good to
 // somehow fix it so that the tests are not implementation dependent
 
-class AlgorithmManagerTests : public Test
+class OperationManagerTests : public Test
 {
 protected:
   // Constructor is called before every test
-  AlgorithmManagerTests()
+  OperationManagerTests()
     : settings(), size(42, 1, 1, 1), ld(size),
       pIn(Payload(ld,
         PhysicalDescriptor(nullptr, 0, DataType::Get<float>(), ManagedBy::Manually, nullptr),
@@ -110,7 +110,7 @@ protected:
         "Output data")),
       in(pIn), out(pOut)
   {
-    // NOTE AlgorithmManager is a singleton and therefore has a global state. It needs to be reset
+    // NOTE OperationManager is a singleton and therefore has a global state. It needs to be reset
     // before each test.
     StrategyManager::Get().Cleanup();
   }
@@ -122,295 +122,295 @@ protected:
   Payload<LogicalDescriptor> pIn;
   Payload<LogicalDescriptor> pOut;
 
-  const TestAlgorithm_CUDA::InputData in;
-  const TestAlgorithm_CUDA::OutputData out;
+  const TestOperation_CUDA::InputData in;
+  const TestOperation_CUDA::OutputData out;
 };
 
-TEST_F(AlgorithmManagerTests, strategy_registered_automatically_when_init_succeeds)
+TEST_F(OperationManagerTests, strategy_registered_automatically_when_init_succeeds)
 {
-  TestAlgorithm_CUDA algo;
-  EXPECT_CALL(*algo.mockStratPtr, InitImpl()).WillOnce(Return(true));
+  TestOperation_CUDA opo;
+  EXPECT_CALL(*opo.mockStratPtr, InitImpl()).WillOnce(Return(true));
 
   ASSERT_TRUE(StrategyManager::Get().GetRegisteredStrategies().empty());
-  ASSERT_TRUE(algo.Init(out, in, settings));
+  ASSERT_TRUE(opo.Init(out, in, settings));
   ASSERT_EQ(StrategyManager::Get().GetRegisteredStrategies().size(), 1u);
   ASSERT_EQ(StrategyManager::Get().GetRegisteredStrategies().at(0).strategies.size(), 1u);
 }
 
-TEST_F(AlgorithmManagerTests, strategy_not_registered_when_init_failed)
+TEST_F(OperationManagerTests, strategy_not_registered_when_init_failed)
 {
-  TestAlgorithm_CUDA algo;
-  EXPECT_CALL(*algo.mockStratPtr, InitImpl()).WillOnce(Return(false));
+  TestOperation_CUDA opo;
+  EXPECT_CALL(*opo.mockStratPtr, InitImpl()).WillOnce(Return(false));
 
   ASSERT_TRUE(StrategyManager::Get().GetRegisteredStrategies().empty());
-  ASSERT_FALSE(algo.Init(out, in, settings));
+  ASSERT_FALSE(opo.Init(out, in, settings));
   ASSERT_TRUE(StrategyManager::Get().GetRegisteredStrategies().empty());
 }
 
-TEST_F(AlgorithmManagerTests, strategy_unregistered_automatically_when_destroyed)
+TEST_F(OperationManagerTests, strategy_unregistered_automatically_when_destroyed)
 {
   {
-    TestAlgorithm_CUDA algo;
-    EXPECT_CALL(*algo.mockStratPtr, InitImpl()).WillOnce(Return(true));
+    TestOperation_CUDA opo;
+    EXPECT_CALL(*opo.mockStratPtr, InitImpl()).WillOnce(Return(true));
 
     ASSERT_TRUE(StrategyManager::Get().GetRegisteredStrategies().empty());
-    ASSERT_TRUE(algo.Init(out, in, settings));
+    ASSERT_TRUE(opo.Init(out, in, settings));
     ASSERT_EQ(StrategyManager::Get().GetRegisteredStrategies().size(), 1u);
     ASSERT_EQ(StrategyManager::Get().GetRegisteredStrategies().at(0).strategies.size(), 1u);
-  }// the algorithm and the strategy are destroyed
+  }// the operation and the strategy are destroyed
 
   ASSERT_EQ(StrategyManager::Get().GetRegisteredStrategies().size(), 1u);
   ASSERT_TRUE(StrategyManager::Get().GetRegisteredStrategies().at(0).strategies.empty());
 }
 
-TEST_F(AlgorithmManagerTests, strategy_already_registered_cant_register_again)
+TEST_F(OperationManagerTests, strategy_already_registered_cant_register_again)
 {
-  TestAlgorithm_CUDA algo;
-  EXPECT_CALL(*algo.mockStratPtr, InitImpl()).WillOnce(Return(true));
+  TestOperation_CUDA opo;
+  EXPECT_CALL(*opo.mockStratPtr, InitImpl()).WillOnce(Return(true));
 
   ASSERT_TRUE(StrategyManager::Get().GetRegisteredStrategies().empty());
-  ASSERT_TRUE(algo.Init(out, in, settings));
+  ASSERT_TRUE(opo.Init(out, in, settings));
   ASSERT_EQ(StrategyManager::Get().GetRegisteredStrategies().size(), 1u);
   // Now we have 1 strategy registered and now we try to insert again the same strategy
   // To force this situation we use explicit call to Register method
-  StrategyManager::Get().Register(*algo.mockStratPtr);// Try to add the same strategy again
+  StrategyManager::Get().Register(*opo.mockStratPtr);// Try to add the same strategy again
   // Nothing should change
   ASSERT_EQ(StrategyManager::Get().GetRegisteredStrategies().size(), 1u);
   ASSERT_EQ(StrategyManager::Get().GetRegisteredStrategies().at(0).strategies.size(), 1u);
 }
 
-TEST_F(AlgorithmManagerTests, not_registered_strategy_cant_be_unregistered)
+TEST_F(OperationManagerTests, not_registered_strategy_cant_be_unregistered)
 {
-  TestAlgorithm_CUDA algo;
+  TestOperation_CUDA opo;
 
   ASSERT_TRUE(StrategyManager::Get().GetRegisteredStrategies().empty());
-  StrategyManager::Get().Unregister(*algo.mockStratPtr);// Should print a warning
+  StrategyManager::Get().Unregister(*opo.mockStratPtr);// Should print a warning
   ASSERT_TRUE(StrategyManager::Get().GetRegisteredStrategies().empty());
 }
 
-TEST_F(AlgorithmManagerTests,
+TEST_F(OperationManagerTests,
   GetBestConfiguration_returns_empty_configuration_when_passed_invalid_hash)
 {
-  // AlgorithmManager is empty therefore every hash is invalid one
+  // OperationManager is empty therefore every hash is invalid one
   // When DB is added, it needs to be mocked in tests
-  // ASSERT_TRUE(AlgorithmManager::Get().GetBestConfiguration(0).GetPairs().empty());
+  // ASSERT_TRUE(OperationManager::Get().GetBestConfiguration(0).GetPairs().empty());
 }
 
-TEST_F(AlgorithmManagerTests,
+TEST_F(OperationManagerTests,
   strategy_registered_GetBestConfiguration_returns_best_config_when_passed_valid_hash)
 {
-  TestAlgorithm_CUDA algo;
-  EXPECT_CALL(*algo.mockStratPtr, InitImpl()).WillOnce(Return(true));
-  EXPECT_CALL(*algo.mockStratPtr, Execute).WillOnce(Return(true));
-  EXPECT_CALL(*algo.mockStratPtr, GetHash()).WillRepeatedly(Return(42));
-  algo.mockStratPtr->mockHash = 42;
+  TestOperation_CUDA opo;
+  EXPECT_CALL(*opo.mockStratPtr, InitImpl()).WillOnce(Return(true));
+  EXPECT_CALL(*opo.mockStratPtr, Execute).WillOnce(Return(true));
+  EXPECT_CALL(*opo.mockStratPtr, GetHash()).WillRepeatedly(Return(42));
+  opo.mockStratPtr->mockHash = 42;
 
   ASSERT_TRUE(StrategyManager::Get().GetRegisteredStrategies().empty());
-  ASSERT_TRUE(algo.Init(out, in, settings));
+  ASSERT_TRUE(opo.Init(out, in, settings));
   ASSERT_EQ(StrategyManager::Get().GetRegisteredStrategies().size(), 1u);
   ASSERT_EQ(StrategyManager::Get().GetRegisteredStrategies().at(0).strategies.size(), 1u);
-  // We need to execute the algorithm, so that KTT can generate some config
-  // TODO either properly define TestAlgorithm_CUDA to use KTT or generate the config in some other
+  // We need to execute the operation, so that KTT can generate some config
+  // TODO either properly define TestOperation_CUDA to use KTT or generate the config in some other
   // way
-  ASSERT_TRUE(algo.Execute(out, in));
+  ASSERT_TRUE(opo.Execute(out, in));
 
-  // auto bestConfig = AlgorithmManager::Get().GetBestConfiguration(algo.mockStratPtr->GetHash());
+  // auto bestConfig = OperationManager::Get().GetBestConfiguration(opo.mockStratPtr->GetHash());
   // TODO some assert
 }
 
-TEST_F(AlgorithmManagerTests,
+TEST_F(OperationManagerTests,
   strategy_not_registered_GetBestConfiguration_returns_best_config_when_passed_valid_hash)
 {
   // TODO when DB is added (DB should be mocked here!!!)
 }
 
-TEST_F(AlgorithmManagerTests, multiple_equivalent_strategies_registered_at_once)
+TEST_F(OperationManagerTests, multiple_equivalent_strategies_registered_at_once)
 {
-  TestAlgorithm_CUDA algo1;
-  TestAlgorithm_CUDA algo2;
-  TestAlgorithm_CUDA algo3;
-  EXPECT_CALL(*algo1.mockStratPtr, InitImpl()).WillOnce(Return(true));
-  EXPECT_CALL(*algo2.mockStratPtr, InitImpl()).WillOnce(Return(true));
-  EXPECT_CALL(*algo3.mockStratPtr, InitImpl()).WillOnce(Return(true));
+  TestOperation_CUDA opo1;
+  TestOperation_CUDA opo2;
+  TestOperation_CUDA opo3;
+  EXPECT_CALL(*opo1.mockStratPtr, InitImpl()).WillOnce(Return(true));
+  EXPECT_CALL(*opo2.mockStratPtr, InitImpl()).WillOnce(Return(true));
+  EXPECT_CALL(*opo3.mockStratPtr, InitImpl()).WillOnce(Return(true));
 
   // Same hash == equivalence
-  EXPECT_CALL(*algo1.mockStratPtr, GetHash()).WillRepeatedly(Return(42));
-  EXPECT_CALL(*algo2.mockStratPtr, GetHash()).WillRepeatedly(Return(42));
-  EXPECT_CALL(*algo3.mockStratPtr, GetHash()).WillRepeatedly(Return(42));
-  algo1.mockStratPtr->mockHash = 42;
-  algo2.mockStratPtr->mockHash = 42;
-  algo3.mockStratPtr->mockHash = 42;
+  EXPECT_CALL(*opo1.mockStratPtr, GetHash()).WillRepeatedly(Return(42));
+  EXPECT_CALL(*opo2.mockStratPtr, GetHash()).WillRepeatedly(Return(42));
+  EXPECT_CALL(*opo3.mockStratPtr, GetHash()).WillRepeatedly(Return(42));
+  opo1.mockStratPtr->mockHash = 42;
+  opo2.mockStratPtr->mockHash = 42;
+  opo3.mockStratPtr->mockHash = 42;
 
   ASSERT_TRUE(StrategyManager::Get().GetRegisteredStrategies().empty());
-  ASSERT_TRUE(algo1.Init(out, in, settings));
-  ASSERT_TRUE(algo2.Init(out, in, settings));
-  ASSERT_TRUE(algo3.Init(out, in, settings));
+  ASSERT_TRUE(opo1.Init(out, in, settings));
+  ASSERT_TRUE(opo2.Init(out, in, settings));
+  ASSERT_TRUE(opo3.Init(out, in, settings));
   ASSERT_EQ(StrategyManager::Get().GetRegisteredStrategies().size(), 1u);
   ASSERT_EQ(StrategyManager::Get().GetRegisteredStrategies().at(0).strategies.size(), 3u);
 }
 
-TEST_F(AlgorithmManagerTests, multiple_similar_strategies_registered_at_once)
+TEST_F(OperationManagerTests, multiple_similar_strategies_registered_at_once)
 {
-  TestAlgorithm_CUDA algo1;
-  TestAlgorithm_CUDA algo2;
-  TestAlgorithm_CUDA algo3;
-  EXPECT_CALL(*algo1.mockStratPtr, InitImpl()).WillOnce(Return(true));
-  EXPECT_CALL(*algo2.mockStratPtr, InitImpl()).WillOnce(Return(true));
-  EXPECT_CALL(*algo3.mockStratPtr, InitImpl()).WillOnce(Return(true));
+  TestOperation_CUDA opo1;
+  TestOperation_CUDA opo2;
+  TestOperation_CUDA opo3;
+  EXPECT_CALL(*opo1.mockStratPtr, InitImpl()).WillOnce(Return(true));
+  EXPECT_CALL(*opo2.mockStratPtr, InitImpl()).WillOnce(Return(true));
+  EXPECT_CALL(*opo3.mockStratPtr, InitImpl()).WillOnce(Return(true));
 
   // Different hash != equivalence
-  EXPECT_CALL(*algo1.mockStratPtr, GetHash()).WillRepeatedly(Return(123));
-  EXPECT_CALL(*algo2.mockStratPtr, GetHash()).WillRepeatedly(Return(456));
-  EXPECT_CALL(*algo3.mockStratPtr, GetHash()).WillRepeatedly(Return(789));
-  algo1.mockStratPtr->mockHash = 123;
-  algo2.mockStratPtr->mockHash = 456;
-  algo3.mockStratPtr->mockHash = 789;
+  EXPECT_CALL(*opo1.mockStratPtr, GetHash()).WillRepeatedly(Return(123));
+  EXPECT_CALL(*opo2.mockStratPtr, GetHash()).WillRepeatedly(Return(456));
+  EXPECT_CALL(*opo3.mockStratPtr, GetHash()).WillRepeatedly(Return(789));
+  opo1.mockStratPtr->mockHash = 123;
+  opo2.mockStratPtr->mockHash = 456;
+  opo3.mockStratPtr->mockHash = 789;
 
   // But they are similar
-  EXPECT_CALL(*algo1.mockStratPtr, IsSimilarTo).WillRepeatedly(Return(true));
-  EXPECT_CALL(*algo2.mockStratPtr, IsSimilarTo).WillRepeatedly(Return(true));
-  EXPECT_CALL(*algo3.mockStratPtr, IsSimilarTo).WillRepeatedly(Return(true));
-  algo1.mockStratPtr->mockSimilar = true;
-  algo2.mockStratPtr->mockSimilar = true;
-  algo3.mockStratPtr->mockSimilar = true;
+  EXPECT_CALL(*opo1.mockStratPtr, IsSimilarTo).WillRepeatedly(Return(true));
+  EXPECT_CALL(*opo2.mockStratPtr, IsSimilarTo).WillRepeatedly(Return(true));
+  EXPECT_CALL(*opo3.mockStratPtr, IsSimilarTo).WillRepeatedly(Return(true));
+  opo1.mockStratPtr->mockSimilar = true;
+  opo2.mockStratPtr->mockSimilar = true;
+  opo3.mockStratPtr->mockSimilar = true;
 
   ASSERT_TRUE(StrategyManager::Get().GetRegisteredStrategies().empty());
-  ASSERT_TRUE(algo1.Init(out, in, settings));
-  ASSERT_TRUE(algo2.Init(out, in, settings));
-  ASSERT_TRUE(algo3.Init(out, in, settings));
+  ASSERT_TRUE(opo1.Init(out, in, settings));
+  ASSERT_TRUE(opo2.Init(out, in, settings));
+  ASSERT_TRUE(opo3.Init(out, in, settings));
   ASSERT_EQ(StrategyManager::Get().GetRegisteredStrategies().size(), 1u);
   ASSERT_EQ(StrategyManager::Get().GetRegisteredStrategies().at(0).strategies.size(), 3u);
 }
 
-TEST_F(AlgorithmManagerTests, multiple_different_strategies_registered_at_once)
+TEST_F(OperationManagerTests, multiple_different_strategies_registered_at_once)
 {
-  TestAlgorithm_CUDA algo1;
-  TestAlgorithm_CUDA algo2;
-  TestAlgorithm_CUDA algo3;
-  EXPECT_CALL(*algo1.mockStratPtr, InitImpl()).WillOnce(Return(true));
-  EXPECT_CALL(*algo2.mockStratPtr, InitImpl()).WillOnce(Return(true));
-  EXPECT_CALL(*algo3.mockStratPtr, InitImpl()).WillOnce(Return(true));
+  TestOperation_CUDA opo1;
+  TestOperation_CUDA opo2;
+  TestOperation_CUDA opo3;
+  EXPECT_CALL(*opo1.mockStratPtr, InitImpl()).WillOnce(Return(true));
+  EXPECT_CALL(*opo2.mockStratPtr, InitImpl()).WillOnce(Return(true));
+  EXPECT_CALL(*opo3.mockStratPtr, InitImpl()).WillOnce(Return(true));
 
   // Different hash != equivalence
-  EXPECT_CALL(*algo1.mockStratPtr, GetHash()).WillRepeatedly(Return(123));
-  EXPECT_CALL(*algo2.mockStratPtr, GetHash()).WillRepeatedly(Return(456));
-  EXPECT_CALL(*algo3.mockStratPtr, GetHash()).WillRepeatedly(Return(789));
-  algo1.mockStratPtr->mockHash = 123;
-  algo2.mockStratPtr->mockHash = 456;
-  algo3.mockStratPtr->mockHash = 789;
+  EXPECT_CALL(*opo1.mockStratPtr, GetHash()).WillRepeatedly(Return(123));
+  EXPECT_CALL(*opo2.mockStratPtr, GetHash()).WillRepeatedly(Return(456));
+  EXPECT_CALL(*opo3.mockStratPtr, GetHash()).WillRepeatedly(Return(789));
+  opo1.mockStratPtr->mockHash = 123;
+  opo2.mockStratPtr->mockHash = 456;
+  opo3.mockStratPtr->mockHash = 789;
 
   // They are not similar
-  EXPECT_CALL(*algo1.mockStratPtr, IsSimilarTo).WillRepeatedly(Return(false));
-  EXPECT_CALL(*algo2.mockStratPtr, IsSimilarTo).WillRepeatedly(Return(false));
-  EXPECT_CALL(*algo3.mockStratPtr, IsSimilarTo).WillRepeatedly(Return(false));
-  algo1.mockStratPtr->mockSimilar = false;
-  algo2.mockStratPtr->mockSimilar = false;
-  algo3.mockStratPtr->mockSimilar = false;
+  EXPECT_CALL(*opo1.mockStratPtr, IsSimilarTo).WillRepeatedly(Return(false));
+  EXPECT_CALL(*opo2.mockStratPtr, IsSimilarTo).WillRepeatedly(Return(false));
+  EXPECT_CALL(*opo3.mockStratPtr, IsSimilarTo).WillRepeatedly(Return(false));
+  opo1.mockStratPtr->mockSimilar = false;
+  opo2.mockStratPtr->mockSimilar = false;
+  opo3.mockStratPtr->mockSimilar = false;
 
   ASSERT_TRUE(StrategyManager::Get().GetRegisteredStrategies().empty());
-  ASSERT_TRUE(algo1.Init(out, in, settings));
-  ASSERT_TRUE(algo2.Init(out, in, settings));
-  ASSERT_TRUE(algo3.Init(out, in, settings));
+  ASSERT_TRUE(opo1.Init(out, in, settings));
+  ASSERT_TRUE(opo2.Init(out, in, settings));
+  ASSERT_TRUE(opo3.Init(out, in, settings));
   ASSERT_EQ(StrategyManager::Get().GetRegisteredStrategies().size(), 3u);
   ASSERT_EQ(StrategyManager::Get().GetRegisteredStrategies().at(0).strategies.size(), 1u);
   ASSERT_EQ(StrategyManager::Get().GetRegisteredStrategies().at(1).strategies.size(), 1u);
   ASSERT_EQ(StrategyManager::Get().GetRegisteredStrategies().at(2).strategies.size(), 1u);
 }
 
-TEST_F(AlgorithmManagerTests, multiple_similar_strategies_unregistered_correctly)
+TEST_F(OperationManagerTests, multiple_similar_strategies_unregistered_correctly)
 {
   {
-    TestAlgorithm_CUDA algo1;
+    TestOperation_CUDA opo1;
     {
-      TestAlgorithm_CUDA algo2;
+      TestOperation_CUDA opo2;
       {
-        TestAlgorithm_CUDA algo3;
+        TestOperation_CUDA opo3;
 
-        EXPECT_CALL(*algo1.mockStratPtr, InitImpl()).WillOnce(Return(true));
-        EXPECT_CALL(*algo2.mockStratPtr, InitImpl()).WillOnce(Return(true));
-        EXPECT_CALL(*algo3.mockStratPtr, InitImpl()).WillOnce(Return(true));
+        EXPECT_CALL(*opo1.mockStratPtr, InitImpl()).WillOnce(Return(true));
+        EXPECT_CALL(*opo2.mockStratPtr, InitImpl()).WillOnce(Return(true));
+        EXPECT_CALL(*opo3.mockStratPtr, InitImpl()).WillOnce(Return(true));
 
         // Different hash != equivalence
-        EXPECT_CALL(*algo1.mockStratPtr, GetHash()).WillRepeatedly(Return(123));
-        EXPECT_CALL(*algo2.mockStratPtr, GetHash()).WillRepeatedly(Return(456));
-        EXPECT_CALL(*algo3.mockStratPtr, GetHash()).WillRepeatedly(Return(789));
-        algo1.mockStratPtr->mockHash = 123;
-        algo2.mockStratPtr->mockHash = 456;
-        algo3.mockStratPtr->mockHash = 789;
+        EXPECT_CALL(*opo1.mockStratPtr, GetHash()).WillRepeatedly(Return(123));
+        EXPECT_CALL(*opo2.mockStratPtr, GetHash()).WillRepeatedly(Return(456));
+        EXPECT_CALL(*opo3.mockStratPtr, GetHash()).WillRepeatedly(Return(789));
+        opo1.mockStratPtr->mockHash = 123;
+        opo2.mockStratPtr->mockHash = 456;
+        opo3.mockStratPtr->mockHash = 789;
 
         // But they are similar
-        EXPECT_CALL(*algo1.mockStratPtr, IsSimilarTo).WillRepeatedly(Return(true));
-        EXPECT_CALL(*algo2.mockStratPtr, IsSimilarTo).WillRepeatedly(Return(true));
-        EXPECT_CALL(*algo3.mockStratPtr, IsSimilarTo).WillRepeatedly(Return(true));
-        algo1.mockStratPtr->mockSimilar = true;
-        algo2.mockStratPtr->mockSimilar = true;
-        algo3.mockStratPtr->mockSimilar = true;
+        EXPECT_CALL(*opo1.mockStratPtr, IsSimilarTo).WillRepeatedly(Return(true));
+        EXPECT_CALL(*opo2.mockStratPtr, IsSimilarTo).WillRepeatedly(Return(true));
+        EXPECT_CALL(*opo3.mockStratPtr, IsSimilarTo).WillRepeatedly(Return(true));
+        opo1.mockStratPtr->mockSimilar = true;
+        opo2.mockStratPtr->mockSimilar = true;
+        opo3.mockStratPtr->mockSimilar = true;
 
         ASSERT_TRUE(StrategyManager::Get().GetRegisteredStrategies().empty());
-        ASSERT_TRUE(algo1.Init(out, in, settings));
-        ASSERT_TRUE(algo2.Init(out, in, settings));
-        ASSERT_TRUE(algo3.Init(out, in, settings));
+        ASSERT_TRUE(opo1.Init(out, in, settings));
+        ASSERT_TRUE(opo2.Init(out, in, settings));
+        ASSERT_TRUE(opo3.Init(out, in, settings));
         ASSERT_EQ(StrategyManager::Get().GetRegisteredStrategies().size(), 1u);
         ASSERT_EQ(StrategyManager::Get().GetRegisteredStrategies().at(0).strategies.size(), 3u);
-      }// algo3 is destroyed, therefore its strategy is unregistered
+      }// opo3 is destroyed, therefore its strategy is unregistered
       ASSERT_EQ(StrategyManager::Get().GetRegisteredStrategies().size(), 1u);
       ASSERT_EQ(StrategyManager::Get().GetRegisteredStrategies().at(0).strategies.size(), 2u);
-    }// algo2 is destroyed, therefore its strategy is unregistered
+    }// opo2 is destroyed, therefore its strategy is unregistered
     ASSERT_EQ(StrategyManager::Get().GetRegisteredStrategies().size(), 1u);
     ASSERT_EQ(StrategyManager::Get().GetRegisteredStrategies().at(0).strategies.size(), 1u);
-  }// algo1 is destroyed, therefore its strategy is unregistered
+  }// opo1 is destroyed, therefore its strategy is unregistered
   ASSERT_EQ(StrategyManager::Get().GetRegisteredStrategies().size(), 1u);
   ASSERT_TRUE(StrategyManager::Get().GetRegisteredStrategies().at(0).strategies.empty());
 }
 
-TEST_F(AlgorithmManagerTests, multiple_different_strategies_unregistered_correctly)
+TEST_F(OperationManagerTests, multiple_different_strategies_unregistered_correctly)
 {
   {
-    TestAlgorithm_CUDA algo1;
+    TestOperation_CUDA opo1;
     {
-      TestAlgorithm_CUDA algo2;
+      TestOperation_CUDA opo2;
       {
-        TestAlgorithm_CUDA algo3;
+        TestOperation_CUDA opo3;
 
-        EXPECT_CALL(*algo1.mockStratPtr, InitImpl()).WillOnce(Return(true));
-        EXPECT_CALL(*algo2.mockStratPtr, InitImpl()).WillOnce(Return(true));
-        EXPECT_CALL(*algo3.mockStratPtr, InitImpl()).WillOnce(Return(true));
+        EXPECT_CALL(*opo1.mockStratPtr, InitImpl()).WillOnce(Return(true));
+        EXPECT_CALL(*opo2.mockStratPtr, InitImpl()).WillOnce(Return(true));
+        EXPECT_CALL(*opo3.mockStratPtr, InitImpl()).WillOnce(Return(true));
 
         // Different hash != equivalence
-        EXPECT_CALL(*algo1.mockStratPtr, GetHash()).WillRepeatedly(Return(123));
-        EXPECT_CALL(*algo2.mockStratPtr, GetHash()).WillRepeatedly(Return(456));
-        EXPECT_CALL(*algo3.mockStratPtr, GetHash()).WillRepeatedly(Return(789));
-        algo1.mockStratPtr->mockHash = 123;
-        algo2.mockStratPtr->mockHash = 456;
-        algo3.mockStratPtr->mockHash = 789;
+        EXPECT_CALL(*opo1.mockStratPtr, GetHash()).WillRepeatedly(Return(123));
+        EXPECT_CALL(*opo2.mockStratPtr, GetHash()).WillRepeatedly(Return(456));
+        EXPECT_CALL(*opo3.mockStratPtr, GetHash()).WillRepeatedly(Return(789));
+        opo1.mockStratPtr->mockHash = 123;
+        opo2.mockStratPtr->mockHash = 456;
+        opo3.mockStratPtr->mockHash = 789;
 
         // They are not similar
-        EXPECT_CALL(*algo1.mockStratPtr, IsSimilarTo).WillRepeatedly(Return(false));
-        EXPECT_CALL(*algo2.mockStratPtr, IsSimilarTo).WillRepeatedly(Return(false));
-        EXPECT_CALL(*algo3.mockStratPtr, IsSimilarTo).WillRepeatedly(Return(false));
-        algo1.mockStratPtr->mockSimilar = false;
-        algo2.mockStratPtr->mockSimilar = false;
-        algo3.mockStratPtr->mockSimilar = false;
+        EXPECT_CALL(*opo1.mockStratPtr, IsSimilarTo).WillRepeatedly(Return(false));
+        EXPECT_CALL(*opo2.mockStratPtr, IsSimilarTo).WillRepeatedly(Return(false));
+        EXPECT_CALL(*opo3.mockStratPtr, IsSimilarTo).WillRepeatedly(Return(false));
+        opo1.mockStratPtr->mockSimilar = false;
+        opo2.mockStratPtr->mockSimilar = false;
+        opo3.mockStratPtr->mockSimilar = false;
 
         ASSERT_TRUE(StrategyManager::Get().GetRegisteredStrategies().empty());
-        ASSERT_TRUE(algo1.Init(out, in, settings));
-        ASSERT_TRUE(algo2.Init(out, in, settings));
-        ASSERT_TRUE(algo3.Init(out, in, settings));
+        ASSERT_TRUE(opo1.Init(out, in, settings));
+        ASSERT_TRUE(opo2.Init(out, in, settings));
+        ASSERT_TRUE(opo3.Init(out, in, settings));
         ASSERT_EQ(StrategyManager::Get().GetRegisteredStrategies().size(), 3u);
         ASSERT_EQ(StrategyManager::Get().GetRegisteredStrategies().at(0).strategies.size(), 1u);
         ASSERT_EQ(StrategyManager::Get().GetRegisteredStrategies().at(1).strategies.size(), 1u);
         ASSERT_EQ(StrategyManager::Get().GetRegisteredStrategies().at(2).strategies.size(), 1u);
-      }// algo3 is destroyed, therefore its strategy is unregistered
+      }// opo3 is destroyed, therefore its strategy is unregistered
       ASSERT_EQ(StrategyManager::Get().GetRegisteredStrategies().size(), 3u);
       ASSERT_EQ(StrategyManager::Get().GetRegisteredStrategies().at(0).strategies.size(), 1u);
       ASSERT_EQ(StrategyManager::Get().GetRegisteredStrategies().at(1).strategies.size(), 1u);
       ASSERT_TRUE(StrategyManager::Get().GetRegisteredStrategies().at(2).strategies.empty());
-    }// algo2 is destroyed, therefore its strategy is unregistered
+    }// opo2 is destroyed, therefore its strategy is unregistered
     ASSERT_EQ(StrategyManager::Get().GetRegisteredStrategies().size(), 3u);
     ASSERT_EQ(StrategyManager::Get().GetRegisteredStrategies().at(0).strategies.size(), 1u);
     ASSERT_TRUE(StrategyManager::Get().GetRegisteredStrategies().at(1).strategies.empty());
     ASSERT_TRUE(StrategyManager::Get().GetRegisteredStrategies().at(2).strategies.empty());
-  }// algo1 is destroyed, therefore its strategy is unregistered
+  }// opo1 is destroyed, therefore its strategy is unregistered
   ASSERT_EQ(StrategyManager::Get().GetRegisteredStrategies().size(), 3u);
   ASSERT_TRUE(StrategyManager::Get().GetRegisteredStrategies().at(0).strategies.empty());
   ASSERT_TRUE(StrategyManager::Get().GetRegisteredStrategies().at(1).strategies.empty());

@@ -1,4 +1,4 @@
-#include <tests/tuning/waiting_algorithm.hpp>
+#include <tests/tuning/waiting_operation.hpp>
 
 // TESTS
 

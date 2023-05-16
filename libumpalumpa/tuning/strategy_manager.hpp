@@ -14,11 +14,11 @@ struct StrategyGroup;
  * on the tuning, or reuse already tuned parameters.
  *
  * Every successfully initialized strategy that utilizes KTT is being automatically registered to
- * the AlgorithmManager. At the end of the strategy's lifetime, it is being automatically
- * unregistered from the AlgorithmManager.
+ * the OperationManager. At the end of the strategy's lifetime, it is being automatically
+ * unregistered from the OperationManager.
  *
- * AlgorithmManager is a singleton and can be accessed by calling static method
- * AlgorithmManager::Get().
+ * OperationManager is a singleton and can be accessed by calling static method
+ * OperationManager::Get().
  */
 class StrategyManager
 {
@@ -33,18 +33,18 @@ class StrategyManager
 
 public:
   /**
-   * Returns an instance of the AlgorithmManager singleton.
+   * Returns an instance of the OperationManager singleton.
    */
   static StrategyManager &Get();
 
   /**
-   * Registers the strategy into the AlgorithmManager which allows tuning and usage of prepared
+   * Registers the strategy into the OperationManager which allows tuning and usage of prepared
    * tuning parameters.
    */
   void Register(TunableStrategy &strat);
 
   /**
-   * Unregisters the strategy from the AlgorithmManager which disallows tuning and usage of prepared
+   * Unregisters the strategy from the OperationManager which disallows tuning and usage of prepared
    * tuning parameters.
    */
   void Unregister(TunableStrategy &strat);
@@ -63,7 +63,7 @@ public:
   void SaveTuningData() const;
 
   /**
-   * Resets the AlgorithmManager, clearing all the saved data (registered strategies, garbage
+   * Resets the OperationManager, clearing all the saved data (registered strategies, garbage
    * collection metadata).
    */
   void Cleanup();

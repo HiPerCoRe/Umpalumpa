@@ -1,9 +1,9 @@
 #pragma once
 
-#include <libumpalumpa/algorithms/fourier_transformation/afft.hpp>
-#include <libumpalumpa/algorithms/fourier_processing/afp.hpp>
-#include <libumpalumpa/algorithms/correlation/acorrelation.hpp>
-#include <libumpalumpa/algorithms/extrema_finder/aextrema_finder.hpp>
+#include <libumpalumpa/operations/fourier_transformation/afft.hpp>
+#include <libumpalumpa/operations/fourier_processing/afp.hpp>
+#include <libumpalumpa/operations/correlation/acorrelation.hpp>
+#include <libumpalumpa/operations/extrema_finder/aextrema_finder.hpp>
 
 using umpalumpa::data::Size;
 using umpalumpa::data::Payload;
@@ -61,15 +61,15 @@ protected:
    **/
   virtual void Release(const PhysicalDescriptor &p) const = 0;
 
-  virtual AFFT &GetForwardFFTAlg() const = 0;
+  virtual AFFT &GetForwardFFTOp() const = 0;
 
-  virtual AFFT &GetInverseFFTAlg() const = 0;
+  virtual AFFT &GetInverseFFTOp() const = 0;
 
-  virtual AFP &GetCropAlg() const = 0;
+  virtual AFP &GetCropOp() const = 0;
 
-  virtual AExtremaFinder &GetFindMaxAlg() const = 0;
+  virtual AExtremaFinder &GetFindMaxOp() const = 0;
 
-  virtual ACorrelation &GetCorrelationAlg() const = 0;
+  virtual ACorrelation &GetCorrelationOp() const = 0;
 
 private:
   /**

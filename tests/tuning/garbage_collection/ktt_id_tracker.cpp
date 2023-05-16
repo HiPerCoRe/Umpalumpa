@@ -24,9 +24,9 @@ using namespace ::testing;
 class KTTIdTrackerTests : public Test
 {
 protected:
-  KTTIdTrackerTests() : baseAlgo(0), kttHelper(baseAlgo.GetHelper()), tuner(kttHelper.GetTuner()) {}
+  KTTIdTrackerTests() : baseOpo(0), kttHelper(baseOpo.GetHelper()), tuner(kttHelper.GetTuner()) {}
 
-  KTT_Base baseAlgo;
+  KTT_Base baseOpo;
   KTTHelper &kttHelper;
   ktt::Tuner &tuner;
 

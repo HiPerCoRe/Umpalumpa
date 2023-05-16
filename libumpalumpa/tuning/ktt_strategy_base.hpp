@@ -1,7 +1,7 @@
 #pragma once
 
 #include <libumpalumpa/data/payload.hpp>
-#include <libumpalumpa/algorithms/basic_algorithm.hpp>
+#include <libumpalumpa/operations/basic_operation.hpp>
 #include <libumpalumpa/tuning/ktt_base.hpp>
 #include <libumpalumpa/tuning/tunable_strategy.hpp>
 #include <libumpalumpa/utils/ktt.hpp>
@@ -12,14 +12,14 @@ namespace umpalumpa::tuning {
 /**
  * Base class for every strategy that utilizes KTT for tuning.
  *
- * This class is a joining point of the two base classes (BasicAlgorithm::Strategy, TunableStrategy)
+ * This class is a joining point of the two base classes (BasicOperation::Strategy, TunableStrategy)
  * and it allows their cooperation.
  *
  * Having this class as a predecessor automates many tasks tied to the tuning process.
  */
 template<typename O, typename I, typename S>
 class KTTStrategyBase
-  : public BasicAlgorithm<O, I, S>::Strategy
+  : public BasicOperation<O, I, S>::Strategy
   , public tuning::TunableStrategy
 {
 public:
@@ -28,15 +28,15 @@ public:
   using StrategySettings = S;
 
   // FIXME catch std::bad_cast at a reasonable place and react accordingly
-  // Hypothetically, dynamic_cast should always succeed, because all the algorithms that use KTT
-  // have to inherit from KTT_Base, and only such algorithms are passed into this constructor
-  KTTStrategyBase(const BasicAlgorithm<O, I, S> &algorithm)
-    : BasicAlgorithm<O, I, S>::Strategy(algorithm),
-      TunableStrategy(dynamic_cast<const KTT_Base &>(algorithm).GetHelper())
+  // Hypothetically, dynamic_cast should always succeed, because all the operations that use KTT
+  // have to inherit from KTT_Base, and only such operations are passed into this constructor
+  KTTStrategyBase(const BasicOperation<O, I, S> &operation)
+    : BasicOperation<O, I, S>::Strategy(operation),
+      TunableStrategy(dynamic_cast<const KTT_Base &>(operation).GetHelper())
   {}
 
   /**
-   * Initialization method automatically called by the BasicAlgorithm class. This overriden version
+   * Initialization method automatically called by the BasicOperation class. This overriden version
    * allows to automate some tasks tied to the tuning process.
    */
   bool Init() override final
@@ -60,27 +60,27 @@ public:
   virtual bool InitImpl() = 0;
 
   /**
-   * Getter for algorithm's OutputData.
+   * Getter for operation's OutputData.
    */
   virtual const StrategyOutput &GetOutputRef() const
   {
-    return BasicAlgorithm<O, I, S>::Strategy::alg.GetOutputRef();
+    return BasicOperation<O, I, S>::Strategy::op.GetOutputRef();
   }
 
   /**
-   * Getter for algorithm's InputData.
+   * Getter for operation's InputData.
    */
   virtual const StrategyInput &GetInputRef() const
   {
-    return BasicAlgorithm<O, I, S>::Strategy::alg.GetInputRef();
+    return BasicOperation<O, I, S>::Strategy::op.GetInputRef();
   }
 
   /**
-   * Getter for algorithm's Settings.
+   * Getter for operation's Settings.
    */
   virtual const StrategySettings &GetSettings() const
   {
-    return BasicAlgorithm<O, I, S>::Strategy::alg.GetSettings();
+    return BasicOperation<O, I, S>::Strategy::op.GetSettings();
   }
 
   std::string GetUniqueName() const final

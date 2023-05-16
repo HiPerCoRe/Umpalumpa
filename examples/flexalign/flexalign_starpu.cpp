@@ -1,9 +1,9 @@
 #include "flexalign_starpu.hpp"
 #include <libumpalumpa/utils/starpu.hpp>
-#include <libumpalumpa/algorithms/fourier_transformation/fft_starpu.hpp>
-#include <libumpalumpa/algorithms/fourier_processing/fp_starpu.hpp>
-#include <libumpalumpa/algorithms/correlation/correlation_starpu.hpp>
-#include <libumpalumpa/algorithms/extrema_finder/single_extrema_finder_starpu.hpp>
+#include <libumpalumpa/operations/fourier_transformation/fft_starpu.hpp>
+#include <libumpalumpa/operations/fourier_processing/fp_starpu.hpp>
+#include <libumpalumpa/operations/correlation/correlation_starpu.hpp>
+#include <libumpalumpa/operations/extrema_finder/single_extrema_finder_starpu.hpp>
 #include <libumpalumpa/utils/cuda.hpp>
 #include <libumpalumpa/system_includes/spdlog.hpp>
 
@@ -15,11 +15,11 @@ using namespace umpalumpa;
 
 template<typename T>
 FlexAlignStarPU<T>::FlexAlignStarPU()
-  : forwardFFTAlg(std::make_unique<fourier_transformation::FFTStarPU>()),
-    inverseFFTAlg(std::make_unique<fourier_transformation::FFTStarPU>()),
-    cropAlg(std::make_unique<fourier_processing::FPStarPU>()),
-    corrAlg(std::make_unique<correlation::Correlation_StarPU>()),
-    extremaFinderAlg(std::make_unique<extrema_finder::SingleExtremaFinderStarPU>())
+  : forwardFFTOp(std::make_unique<fourier_transformation::FFTStarPU>()),
+    inverseFFTOp(std::make_unique<fourier_transformation::FFTStarPU>()),
+    cropOp(std::make_unique<fourier_processing::FPStarPU>()),
+    corrOp(std::make_unique<correlation::Correlation_StarPU>()),
+    extremaFinderOp(std::make_unique<extrema_finder::SingleExtremaFinderStarPU>())
 {
   SetAvailableBytesRAM();
   SetAvailableBytesCUDA();
@@ -69,12 +69,12 @@ template<typename T> void FlexAlignStarPU<T>::SetAvailableBytesCUDA()
 
 template<typename T> FlexAlignStarPU<T>::~FlexAlignStarPU()
 {
-  // algorithms must be deleted before StarPU is turned off
-  forwardFFTAlg.release();
-  inverseFFTAlg.release();
-  cropAlg.release();
-  corrAlg.release();
-  extremaFinderAlg.release();
+  // operations must be deleted before StarPU is turned off
+  forwardFFTOp.release();
+  inverseFFTOp.release();
+  cropOp.release();
+  corrOp.release();
+  extremaFinderOp.release();
   {
     keepWorking = false;// tell thread that we want to finish
     workAvailable.notify_one();// wake it up
