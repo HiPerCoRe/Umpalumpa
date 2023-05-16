@@ -49,7 +49,7 @@ namespace detail {
  * This is a wrapper for multiple Payloads
  * Intended usage:
  * Derived class will provide Constructor and Getters
- * for the payloads, so that they can be algorithm-specific
+ * for the payloads, so that they can be operation-specific
  **/
 template<typename... Args> struct PayloadWrapper
 {

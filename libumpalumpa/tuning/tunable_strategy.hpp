@@ -51,7 +51,7 @@ public:
    * In order to get the correct type of the strategy, this method needs to be overriden by the
    * successor classes it the following way:
    *
-   * return tuning::StrategyGroup::CreateLeader(*this, alg);
+   * return tuning::StrategyGroup::CreateLeader(*this, op);
    */
   std::unique_ptr<Leader> CreateLeader() const override = 0;
 
@@ -65,7 +65,7 @@ public:
 
   /**
    * Returns hash of this strategy. This method needs to be overriden by successor strategy because
-   * the hash is computed using algorithm specific data and settings.
+   * the hash is computed using operation specific data and settings.
    */
   size_t GetHash() const override = 0;
 
@@ -189,7 +189,7 @@ protected:
   void SaveTuningToLeader(ktt::KernelId kernelId, const ktt::KernelResult &tuningResults);
 
   /**
-   * Registers this strategy to the AlgorithmManager.
+   * Registers this strategy to the OperationManager.
    * This method is called automatically when the successor class successfully initializes.
    */
   void Register();

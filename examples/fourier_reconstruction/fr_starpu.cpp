@@ -1,8 +1,8 @@
 #include "fr_starpu.hpp"
 #include <libumpalumpa/utils/starpu.hpp>
-#include <libumpalumpa/algorithms/fourier_transformation/fft_starpu.hpp>
-#include <libumpalumpa/algorithms/fourier_processing/fp_starpu.hpp>
-#include <libumpalumpa/algorithms/fourier_reconstruction/fr_starpu.hpp>
+#include <libumpalumpa/operations/fourier_transformation/fft_starpu.hpp>
+#include <libumpalumpa/operations/fourier_processing/fp_starpu.hpp>
+#include <libumpalumpa/operations/fourier_reconstruction/fr_starpu.hpp>
 #include <libumpalumpa/utils/cuda.hpp>
 #include <libumpalumpa/system_includes/spdlog.hpp>
 
@@ -14,9 +14,9 @@ using namespace umpalumpa;
 
 template<typename T>
 FourierReconstructionStarPU<T>::FourierReconstructionStarPU()
-  : FFTAlg(std::make_unique<fourier_transformation::FFTStarPU>()),
-    cropAlg(std::make_unique<fourier_processing::FPStarPU>()),
-    FRAlg(std::make_unique<fourier_reconstruction::FRStarPU>())
+  : FFTOp(std::make_unique<fourier_transformation::FFTStarPU>()),
+    cropOp(std::make_unique<fourier_processing::FPStarPU>()),
+    FROp(std::make_unique<fourier_reconstruction::FRStarPU>())
 {
   SetAvailableBytesRAM();
   SetAvailableBytesCUDA();
@@ -27,11 +27,11 @@ FourierReconstructionStarPU<T>::FourierReconstructionStarPU()
 template<typename T> void FourierReconstructionStarPU<T>::OptionalSynch() {
   static size_t counter = 0;
   if (counter++ == 500) {
-    // every now and then clean KTT algorithms. They store Arguments, and at some point
+    // every now and then clean KTT operations. They store Arguments, and at some point
     // the book keeping of them is too expensive
     counter = 0;
-    FRAlg->Cleanup();
-    cropAlg->Cleanup();
+    FROp->Cleanup();
+    cropOp->Cleanup();
   }
   // StarPU schedulers are not very good at handling a lot of tasks,
   // but since we synchronize above, we get that for free
@@ -79,10 +79,10 @@ template<typename T> void FourierReconstructionStarPU<T>::SetAvailableBytesCUDA(
 
 template<typename T> FourierReconstructionStarPU<T>::~FourierReconstructionStarPU()
 {
-  // algorithms must be deleted before StarPU is turned off
-  FFTAlg.release();
-  cropAlg.release();
-  FRAlg.release();
+  // operations must be deleted before StarPU is turned off
+  FFTOp.release();
+  cropOp.release();
+  FROp.release();
   {
     keepWorking = false;// tell thread that we want to finish
     workAvailable.notify_one();// wake it up

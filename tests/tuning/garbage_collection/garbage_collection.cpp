@@ -81,10 +81,10 @@ class GarbageCollectionTests : public Test
 {
 protected:
   GarbageCollectionTests()
-    : baseAlgo(0), kttHelper(baseAlgo.GetHelper()), tuner(kttHelper.GetTuner())
+    : baseOpo(0), kttHelper(baseOpo.GetHelper()), tuner(kttHelper.GetTuner())
   {}
 
-  KTT_Base baseAlgo;
+  KTT_Base baseOpo;
   KTTHelper &kttHelper;
   ktt::Tuner &tuner;
 

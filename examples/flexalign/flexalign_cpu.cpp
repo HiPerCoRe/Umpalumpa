@@ -1,19 +1,19 @@
 #include "flexalign_cpu.hpp"
-#include <libumpalumpa/algorithms/fourier_transformation/fft_cpu.hpp>
-#include <libumpalumpa/algorithms/fourier_processing/fp_cpu.hpp>
-#include <libumpalumpa/algorithms/correlation/correlation_cpu.hpp>
-#include <libumpalumpa/algorithms/extrema_finder/single_extrema_finder_cpu.hpp>
+#include <libumpalumpa/operations/fourier_transformation/fft_cpu.hpp>
+#include <libumpalumpa/operations/fourier_processing/fp_cpu.hpp>
+#include <libumpalumpa/operations/correlation/correlation_cpu.hpp>
+#include <libumpalumpa/operations/extrema_finder/single_extrema_finder_cpu.hpp>
 
 using umpalumpa::data::ManagedBy;
 using namespace umpalumpa;
 
 template<typename T>
 FlexAlignCPU<T>::FlexAlignCPU()
-  : forwardFFTAlg(std::make_unique<fourier_transformation::FFTCPU>()),
-    inverseFFTAlg(std::make_unique<fourier_transformation::FFTCPU>()),
-    cropAlg(std::make_unique<fourier_processing::FPCPU>()),
-    corrAlg(std::make_unique<correlation::Correlation_CPU>()),
-    extremaFinderAlg(std::make_unique<extrema_finder::SingleExtremaFinderCPU>())
+  : forwardFFTOp(std::make_unique<fourier_transformation::FFTCPU>()),
+    inverseFFTOp(std::make_unique<fourier_transformation::FFTCPU>()),
+    cropOp(std::make_unique<fourier_processing::FPCPU>()),
+    corrOp(std::make_unique<correlation::Correlation_CPU>()),
+    extremaFinderOp(std::make_unique<extrema_finder::SingleExtremaFinderCPU>())
 {}
 
 template<typename T>

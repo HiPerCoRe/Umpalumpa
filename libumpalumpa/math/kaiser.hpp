@@ -1,6 +1,6 @@
 #pragma once
 
-#include <libumpalumpa/algorithms/fourier_reconstruction/blob_order.hpp>
+#include <libumpalumpa/operations/fourier_reconstruction/blob_order.hpp>
 #include <libumpalumpa/math/pi.hpp>
 #include <libumpalumpa/math/bessier.hpp>
 #include <libumpalumpa/system_includes/spdlog.hpp>

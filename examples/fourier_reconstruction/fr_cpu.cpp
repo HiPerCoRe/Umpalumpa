@@ -1,16 +1,16 @@
 #include "fr_cpu.hpp"
-#include <libumpalumpa/algorithms/fourier_transformation/fft_cpu.hpp>
-#include <libumpalumpa/algorithms/fourier_processing/fp_cpu.hpp>
-#include <libumpalumpa/algorithms/fourier_reconstruction/fr_cpu.hpp>
+#include <libumpalumpa/operations/fourier_transformation/fft_cpu.hpp>
+#include <libumpalumpa/operations/fourier_processing/fp_cpu.hpp>
+#include <libumpalumpa/operations/fourier_reconstruction/fr_cpu.hpp>
 
 using umpalumpa::data::ManagedBy;
 using namespace umpalumpa;
 
 template<typename T>
 FourierReconstructionCPU<T>::FourierReconstructionCPU()
-  : FFTAlg(std::make_unique<fourier_transformation::FFTCPU>()),
-    cropAlg(std::make_unique<fourier_processing::FPCPU>()),
-    FRAlg(std::make_unique<fourier_reconstruction::FRCPU>())
+  : FFTOp(std::make_unique<fourier_transformation::FFTCPU>()),
+    cropOp(std::make_unique<fourier_processing::FPCPU>()),
+    FROp(std::make_unique<fourier_reconstruction::FRCPU>())
 {}
 
 template<typename T>

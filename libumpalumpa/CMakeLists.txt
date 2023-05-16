@@ -12,21 +12,21 @@ set(umpalumpa_sources
     utils/system.cpp
     utils/cuda.cpp
     utils/ktt.cpp
-    algorithms/extrema_finder/single_extrema_finder_cpu.cpp
-    algorithms/extrema_finder/single_extrema_finder_cuda.cpp
-    algorithms/fourier_transformation/fft_cuda.cpp
-    algorithms/fourier_transformation/fft_cpu.cpp
-    algorithms/fourier_processing/fp_cpu.cpp
-    algorithms/fourier_processing/fp_cuda.cpp
-    algorithms/fourier_reconstruction/afr.cpp
-    algorithms/fourier_reconstruction/fr_cuda.cpp
-    algorithms/fourier_reconstruction/fr_cpu.cpp
-    algorithms/correlation/correlation_cuda.cpp
-    algorithms/correlation/correlation_cpu.cpp
-    algorithms/reduction/cpu.cpp
-    algorithms/reduction/cuda.cpp
-    algorithms/initialization/cpu.cpp
-    algorithms/initialization/cuda.cpp
+    operations/extrema_finder/single_extrema_finder_cpu.cpp
+    operations/extrema_finder/single_extrema_finder_cuda.cpp
+    operations/fourier_transformation/fft_cuda.cpp
+    operations/fourier_transformation/fft_cpu.cpp
+    operations/fourier_processing/fp_cpu.cpp
+    operations/fourier_processing/fp_cuda.cpp
+    operations/fourier_reconstruction/afr.cpp
+    operations/fourier_reconstruction/fr_cuda.cpp
+    operations/fourier_reconstruction/fr_cpu.cpp
+    operations/correlation/correlation_cuda.cpp
+    operations/correlation/correlation_cpu.cpp
+    operations/reduction/cpu.cpp
+    operations/reduction/cuda.cpp
+    operations/initialization/cpu.cpp
+    operations/initialization/cuda.cpp
     tuning/ktt_provider.cpp
     tuning/strategy_manager.cpp
     tuning/tunable_strategy.cpp
@@ -36,14 +36,14 @@ if(USE_STARPU)
   list(
     APPEND
     umpalumpa_sources
-    algorithms/extrema_finder/single_extrema_finder_starpu.cpp
-    algorithms/correlation/correlation_starpu.cpp
-    algorithms/fourier_processing/fp_starpu.cpp
-    algorithms/fourier_reconstruction/fr_starpu.cpp
-    algorithms/fourier_reconstruction/fr_starpu_kernels.cu
-    algorithms/fourier_transformation/fft_starpu.cpp
-    algorithms/reduction/starpu.cpp
-    algorithms/initialization/starpu.cpp
+    operations/extrema_finder/single_extrema_finder_starpu.cpp
+    operations/correlation/correlation_starpu.cpp
+    operations/fourier_processing/fp_starpu.cpp
+    operations/fourier_reconstruction/fr_starpu.cpp
+    operations/fourier_reconstruction/fr_starpu_kernels.cu
+    operations/fourier_transformation/fft_starpu.cpp
+    operations/reduction/starpu.cpp
+    operations/initialization/starpu.cpp
     utils/starpu.cpp)
 endif()
 

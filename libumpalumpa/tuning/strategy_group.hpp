@@ -5,7 +5,7 @@
 #include <fstream>
 #include <sstream>
 #include <filesystem>
-#include <libumpalumpa/algorithms/basic_algorithm.hpp>
+#include <libumpalumpa/operations/basic_operation.hpp>
 #include <libumpalumpa/tuning/tunable_strategy.hpp>
 #include <libumpalumpa/tuning/ktt_strategy_base.hpp>
 
@@ -83,19 +83,19 @@ struct StrategyGroup
    *
    * Leader strategies are not inteded as strategies that can be initialized and executed.
    */
-  template<typename Strategy, typename Algorithm>
-  static std::unique_ptr<Leader> CreateLeader(const Strategy &s, const Algorithm &a)
+  template<typename Strategy, typename Operation>
+  static std::unique_ptr<Leader> CreateLeader(const Strategy &s, const Operation &a)
   {
-    using O = typename Algorithm::OutputData;
-    using I = typename Algorithm::InputData;
-    using S = typename Algorithm::Settings;
-    static_assert(std::is_base_of<BasicAlgorithm<O, I, S>, Algorithm>::value);
+    using O = typename Operation::OutputData;
+    using I = typename Operation::InputData;
+    using S = typename Operation::Settings;
+    static_assert(std::is_base_of<BasicOperation<O, I, S>, Operation>::value);
     static_assert(std::is_base_of<KTTStrategyBase<O, I, S>, Strategy>::value);
     return std::make_unique<InternalLeader<Strategy>>(s, a);
   }
 
-  template<typename Strategy, typename Algorithm>
-  static StrategyGroup LoadTuningData(const Strategy &s, const Algorithm &a)
+  template<typename Strategy, typename Operation>
+  static StrategyGroup LoadTuningData(const Strategy &s, const Operation &a)
   {
     auto filePath = utils::GetTuningDirectory() + s.GetUniqueName();
     std::ifstream inputFile(filePath);
@@ -132,7 +132,7 @@ private:
 
   /**
    * Leader strategies are used to lead StrategyGroups. They provide methods for checking equality
-   * and similarity even without associated BasicAlgorithm class (Leader strategy stores copies of
+   * and similarity even without associated BasicOperation class (Leader strategy stores copies of
    * all the needed information).
    * TODO They store additional information (best configurations, whether we still need tuning,
    * etc.) about the StrategyGroup they are leading.
@@ -153,7 +153,7 @@ private:
       std::is_base_of<KTTStrategyBase<StrategyOutput, StrategyInput, StrategySettings>, S>::value);
 
     using StratType = S;
-    using AlgType = BasicAlgorithm<StrategyOutput, StrategyInput, StrategySettings>;
+    using OpType = BasicOperation<StrategyOutput, StrategyInput, StrategySettings>;
 
     std::string GetFullName() const override { return typeid(S).name(); }
     /**
@@ -172,10 +172,10 @@ private:
     const StrategySettings &GetSettings() const override { return s; }
 
     /**
-     * Creates a Leader strategy from the provided strategy and algorithm. Copies necessary
-     * information from the provided algorithm.
+     * Creates a Leader strategy from the provided strategy and operation. Copies necessary
+     * information from the provided operation.
      */
-    InternalLeader(const S &orig, const AlgType &a)
+    InternalLeader(const S &orig, const OpType &a)
       : S(a), op(orig.GetOutputRef().CopyWithoutData()), ip(orig.GetInputRef().CopyWithoutData()),
         o(op), i(ip), s(orig.GetSettings())
     {
@@ -205,7 +205,7 @@ private:
       }
     }
 
-    static auto Deserialize(const AlgType &a, std::istream &in)
+    static auto Deserialize(const OpType &a, std::istream &in)
     {
       auto outData = StrategyOutput::Deserialize(in);
       auto inData = StrategyInput::Deserialize(in);
@@ -253,7 +253,7 @@ private:
     using InputPayloads = typename StrategyInput::PayloadCollection;
 
   public:
-    InternalLeader(const AlgType &a,
+    InternalLeader(const OpType &a,
       OutputPayloads &&ops,
       InputPayloads &&ips,
       StrategySettings &&ss,

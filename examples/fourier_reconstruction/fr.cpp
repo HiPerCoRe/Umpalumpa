@@ -2,7 +2,7 @@
 #include <cassert>
 #include <libumpalumpa/system_includes/spdlog.hpp>
 #include <libumpalumpa/utils/payload.hpp>
-#include <libumpalumpa/algorithms/fourier_reconstruction/traverse_space_generator.hpp>
+#include <libumpalumpa/operations/fourier_reconstruction/traverse_space_generator.hpp>
 #include <iostream>
 
 template<typename T>
@@ -63,7 +63,7 @@ void FourierReconstruction<T>::Execute(const umpalumpa::data::Size &imgSize,
     OptionalSynch();
   }
 
-  GetFRAlg().Synchronize();// wait till the work is done
+  GetFROp().Synchronize();// wait till the work is done
 
   // Show results
   // Print(volume, "Volume data");
@@ -149,17 +149,17 @@ Payload<FourierDescriptor> FourierReconstruction<T>::ConvertToFFT(
     return Payload(ld, CreatePD(bytes, type, false, false), "FFT (out) " + name);
   }();
   using namespace umpalumpa::fourier_transformation;
-  auto &alg = this->GetFFTAlg();
+  auto &op = this->GetFFTOp();
   auto in = AFFT::InputData(inFFT);
   auto out = AFFT::OutputData(outFFT);
-  if (!alg.IsInitialized()) {
+  if (!op.IsInitialized()) {
     auto settings =
       Settings(Locality::kOutOfPlace, Direction::kForward, std::min(1ul, GetAvailableCores()));
-    if (!alg.Init(out, in, settings)) {
-      spdlog::error("Initialization of the FFT algorithm failed");
+    if (!op.Init(out, in, settings)) {
+      spdlog::error("Initialization of the FFT operation failed");
     }
   }
-  if (!alg.Execute(out, in)) { spdlog::error("Execution of the FFT algorithm failed"); }
+  if (!op.Execute(out, in)) { spdlog::error("Execution of the FFT operation failed"); }
   return outFFT;
 }
 
@@ -185,20 +185,20 @@ Payload<FourierDescriptor> FourierReconstruction<T>::Crop(const Payload<FourierD
   }();
   using namespace umpalumpa::fourier_processing;
   using umpalumpa::fourier_transformation::Locality;
-  auto &alg = this->GetCropAlg();
+  auto &op = this->GetCropOp();
   auto in = AFP::InputData(inCrop, filter);
   auto out = AFP::OutputData(outCrop);
-  if (!alg.IsInitialized()) {
+  if (!op.IsInitialized()) {
     auto settings = Settings(Locality::kOutOfPlace);
     settings.SetApplyFilter(false);
     settings.SetCenter(true);
     settings.SetNormalize(true);
     settings.SetShift(true);
-    if (!alg.Init(out, in, settings)) {
-      spdlog::error("Initialization of the Crop algorithm failed");
+    if (!op.Init(out, in, settings)) {
+      spdlog::error("Initialization of the Crop operation failed");
     }
   }
-  if (!alg.Execute(out, in)) { spdlog::error("Execution of the Crop algorithm failed"); }
+  if (!op.Execute(out, in)) { spdlog::error("Execution of the Crop operation failed"); }
   return outCrop;
 }
 
@@ -211,19 +211,19 @@ void FourierReconstruction<T>::InsertToVolume(Payload<FourierDescriptor> &fft,
   const umpalumpa::fourier_reconstruction::Settings &settings)
 {
   using namespace umpalumpa::fourier_reconstruction;
-  auto &alg = this->GetFRAlg();
+  auto &op = this->GetFROp();
   auto in = AFR::InputData(fft, volume, weight, traverseSpace, table);
   auto out = AFR::OutputData(volume, weight);
-  if (!alg.IsInitialized()) {
-    if (!alg.Init(out, in, settings)) {
-      spdlog::error("Initialization of the Fourier Reconstruction algorithm failed");
+  if (!op.IsInitialized()) {
+    if (!op.Init(out, in, settings)) {
+      spdlog::error("Initialization of the Fourier Reconstruction operation failed");
     }
     if (settings.GetInterpolation() == Settings::Interpolation::kLookup) {
       AFR::FillBlobTable(in, settings);
     }
   }
-  if (!alg.Execute(out, in)) {
-    spdlog::error("Execution of the Fourier Reconstruction algorithm failed");
+  if (!op.Execute(out, in)) {
+    spdlog::error("Execution of the Fourier Reconstruction operation failed");
   }
 }
 

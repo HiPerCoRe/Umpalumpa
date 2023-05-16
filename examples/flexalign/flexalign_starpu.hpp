@@ -20,15 +20,15 @@ protected:
 
   void RemovePD(const PhysicalDescriptor &pd) override;
 
-  AFFT &GetForwardFFTAlg() const override { return *forwardFFTAlg; }
+  AFFT &GetForwardFFTOp() const override { return *forwardFFTOp; }
 
-  AFFT &GetInverseFFTAlg() const override { return *inverseFFTAlg; }
+  AFFT &GetInverseFFTOp() const override { return *inverseFFTOp; }
 
-  AFP &GetCropAlg() const override { return *cropAlg; }
+  AFP &GetCropOp() const override { return *cropOp; }
 
-  ACorrelation &GetCorrelationAlg() const override { return *corrAlg; }
+  ACorrelation &GetCorrelationOp() const override { return *corrOp; }
 
-  AExtremaFinder &GetFindMaxAlg() const override { return *extremaFinderAlg; }
+  AExtremaFinder &GetFindMaxOp() const override { return *extremaFinderOp; }
 
   void Acquire(const PhysicalDescriptor &p) const override;
 
@@ -49,11 +49,11 @@ private:
   static void SetAvailableBytesRAM();
   static void SetAvailableBytesCUDA();
 
-  std::unique_ptr<AFFT> forwardFFTAlg;
-  std::unique_ptr<AFFT> inverseFFTAlg;
-  std::unique_ptr<AFP> cropAlg;
-  std::unique_ptr<ACorrelation> corrAlg;
-  std::unique_ptr<AExtremaFinder> extremaFinderAlg;
+  std::unique_ptr<AFFT> forwardFFTOp;
+  std::unique_ptr<AFFT> inverseFFTOp;
+  std::unique_ptr<AFP> cropOp;
+  std::unique_ptr<ACorrelation> corrOp;
+  std::unique_ptr<AExtremaFinder> extremaFinderOp;
 
   void RemoveFromQueue();
   std::mutex mutex;

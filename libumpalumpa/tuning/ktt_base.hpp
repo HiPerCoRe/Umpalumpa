@@ -11,7 +11,7 @@ class KTT_Base
 public:
   /**
    * Recommended contructor. Pass streams that you want to use.
-   * See documentation of the specific algorithm to know how many streams you should pass.
+   * See documentation of the specific operation to know how many streams you should pass.
    * Notice that workerId != CUDA device ordinal.
    * CUDA device is detected from the first stream.
    **/

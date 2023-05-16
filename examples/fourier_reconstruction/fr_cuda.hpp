@@ -15,11 +15,11 @@ protected:
 
   void RemovePD(const PhysicalDescriptor &pd) override;
 
-  AFFT &GetFFTAlg() const override { return *FFTAlg; }
+  AFFT &GetFFTOp() const override { return *FFTOp; }
 
-  AFP &GetCropAlg() const override { return *cropAlg; }
+  AFP &GetCropOp() const override { return *cropOp; }
 
-  AFR &GetFRAlg() const override { return *FRAlg; }
+  AFR &GetFROp() const override { return *FROp; }
 
   void Acquire(const PhysicalDescriptor &p) const override;
 
@@ -28,7 +28,7 @@ protected:
 private:
   const int worker = 0;
 
-  std::unique_ptr<AFFT> FFTAlg;
-  std::unique_ptr<AFP> cropAlg;
-  std::unique_ptr<AFR> FRAlg;
+  std::unique_ptr<AFFT> FFTOp;
+  std::unique_ptr<AFP> cropOp;
+  std::unique_ptr<AFR> FROp;
 };

@@ -40,7 +40,7 @@ public:
 
   /**
    * Create an exact copy of this Payload, but without data.
-   * This can be useful for e.g. Algorithm initialization or to compare
+   * This can be useful for e.g. Operation initialization or to compare
    * multiple Payloads
    * */
   Payload CopyWithoutData() const
