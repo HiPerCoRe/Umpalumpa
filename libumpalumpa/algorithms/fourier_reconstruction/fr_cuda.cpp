@@ -188,7 +188,7 @@ namespace {// to avoid poluting
         tuner.AddArgumentLocal<uint64_t>(1);// must be non-zero value because KTT
 
       auto argConstants =
-        tuner.AddArgumentSymbol<Constants>(AFR::CreateConstants(in, s), "constants");
+        tuner.AddArgumentSymbol<Constants>(AFR::CreateConstants(in, s),"", "constants");
 
       auto definitionId = GetDefinitionId();
       auto kernelId = GetKernelId();
